@@ -11,7 +11,7 @@
 ## Phase 1 - Core V1
 - [x] Foundation: App Router, PostgreSQL, migrations, policy engine, audit primitives, worker, runtime UAT.
 - [x] Identity/organization foundation and role-aware query boundary.
-- [ ] Transaction command service and API: submit, approve, return, reject, finance verify/return.
+- [x] Transaction command service and API: submit/resubmit, Head approve/return/reject, Finance verify/return, idempotency, revision fencing and API CSRF boundary.
 - [ ] Leave.
 - [ ] OT and payroll-cycle workflow.
 - [ ] Expense including Entertainment and receipt/document flow.

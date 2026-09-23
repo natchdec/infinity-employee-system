@@ -164,15 +164,57 @@ try {
 } finally {
   await admin.end();
 }
-let stopping = false;
-for (const signal of ['SIGTERM', 'SIGINT'])
-  process.on(signal, () => {
-    if (!stopping) {
-      stopping = true;
-      child.kill('SIGTERM');
-    }
+
+const mode = process.argv[2] ?? 'serve';
+if (mode !== 'serve' && mode !== '--run-transaction') {
+  child.kill('SIGTERM');
+  throw new Error('Unsupported UAT PostgreSQL mode');
+}
+
+if (mode === '--run-transaction') {
+  const runtimeEnv = {
+    ...process.env,
+    APP_ENV: 'uat',
+    APP_ORIGIN: 'http://127.0.0.1:4311',
+    DATABASE_URL: connection('ies_uat_app'),
+    MIGRATION_DATABASE_URL: connection('ies_uat_owner'),
+    STORAGE_DRIVER: 'filesystem',
+    STORAGE_ROOT: path.join(dir, 'documents'),
+    UAT_SEED_ALLOWED: 'true',
+  };
+  const check = spawn('/usr/local/bin/pnpm', ['exec', 'tsx', 'scripts/transaction-uat.ts'], {
+    cwd: root,
+    env: runtimeEnv,
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
-child.on('exit', (code) => {
-  console.log(JSON.stringify({ event: 'uat_postgres_stopped', code, persistent: true }));
-  process.exitCode = code ?? 1;
-});
+  let checkOut = '';
+  let checkErr = '';
+  check.stdout.on('data', (chunk) => {
+    checkOut += chunk.toString();
+  });
+  check.stderr.on('data', (chunk) => {
+    checkErr += chunk.toString();
+  });
+  const checkCode = await new Promise((resolve, reject) => {
+    check.on('error', reject);
+    check.on('exit', (code) => resolve(code ?? 1));
+  });
+  if (checkOut) process.stdout.write(checkOut);
+  if (checkErr) process.stderr.write(checkErr);
+  child.kill('SIGTERM');
+  await new Promise((resolve) => child.once('exit', resolve));
+  if (checkCode !== 0) process.exitCode = checkCode;
+} else {
+  let stopping = false;
+  for (const signal of ['SIGTERM', 'SIGINT'])
+    process.on(signal, () => {
+      if (!stopping) {
+        stopping = true;
+        child.kill('SIGTERM');
+      }
+    });
+  child.on('exit', (code) => {
+    console.log(JSON.stringify({ event: 'uat_postgres_stopped', code, persistent: true }));
+    process.exitCode = code ?? 1;
+  });
+}

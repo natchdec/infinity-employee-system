@@ -49,6 +49,10 @@
 - Isolated OCI UAT uses PostgreSQL 18.4 over a private Unix-domain socket with no TCP listener.
 - Database migrations: 3 total; checksum verification passes and restart persistence is verified.
 - Synthetic UAT seed contains 6 non-production identities and 8 policy families; real employee data is not seeded.
-- Source gates pass: format, lint, typecheck, 39/39 domain tests, and Next production build.
+- Source gates pass: format, lint, typecheck, 40/40 tests, and Next production build.
 - Runtime UAT passes health 200, readiness 200, unauthenticated redirect, Employee/Head/Finance/Admin protected pages, worker heartbeat, and exactly-once durable in-app notification delivery.
+- Transaction command service and HTTP API are implemented for submit/resubmit, Head approve/return/reject, and Finance verify/return with idempotency keys, optimistic revisions, immutable action history, Owner/Head system-skip, and Finance conflict-of-interest enforcement.
+- Transaction UAT passes idempotent submit, Employee-to-Head approval, Owner system-skip, Finance self-verification block, independent Finance verification, return/resubmit round 2, and 73 km mileage = 584.00 THB payable.
+- HTTP API UAT passes health/readiness, CSRF enforcement, idempotent submit, Head approval, independent Finance verification, Owner system-skip, and Finance self-verification block.
+- UAT process evidence shows worker processes must be launched directly rather than through a pnpm wrapper when supervisor SIGTERM semantics are under test; the wrapper can outlive/strand the actual tsx child. Production container commands must target the worker process directly.
 - Docker CLI/socket is not exposed inside the OCI worker; live Docker Compose verification remains a separate sanctioned host/deployment gate.
