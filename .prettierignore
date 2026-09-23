@@ -1,0 +1,10 @@
+.next
+node_modules
+coverage
+data
+evidence
+design
+pnpm-lock.yaml
+tsconfig.tsbuildinfo
+next-env.d.ts
+*.md

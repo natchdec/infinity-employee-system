@@ -1,7 +1,7 @@
 # Infinity Employee System
 
 ## Status
-Blueprint V1 approved for UX/UI design. Implementation has not started.
+V1 implementation is in progress on Agent Gateway OCI. The M0 foundation/runtime milestone is verified in isolated UAT; transactional V1 workflows are being implemented next.
 
 ## Objective
 Build a mobile-first employee self-service system for Infinity Solution Service covering leave, OT, expenses, business travel, cash advances, approvals, finance verification, payroll handoff, accounting handoff, policy management, document evidence, and audit.

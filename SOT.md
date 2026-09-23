@@ -42,3 +42,13 @@
 - Object storage for receipt/document binaries.
 - Microsoft Entra ID for authentication.
 - OCI is the target initial production hosting environment.
+
+## Verified Implementation State
+- Active branch: feat/v1-implementation.
+- Next.js App Router foundation, Entra OIDC boundary, role-aware server pages, PostgreSQL access, structured logging, health/readiness routes, and PostgreSQL-backed worker exist.
+- Isolated OCI UAT uses PostgreSQL 18.4 over a private Unix-domain socket with no TCP listener.
+- Database migrations: 3 total; checksum verification passes and restart persistence is verified.
+- Synthetic UAT seed contains 6 non-production identities and 8 policy families; real employee data is not seeded.
+- Source gates pass: format, lint, typecheck, 39/39 domain tests, and Next production build.
+- Runtime UAT passes health 200, readiness 200, unauthenticated redirect, Employee/Head/Finance/Admin protected pages, worker heartbeat, and exactly-once durable in-app notification delivery.
+- Docker CLI/socket is not exposed inside the OCI worker; live Docker Compose verification remains a separate sanctioned host/deployment gate.

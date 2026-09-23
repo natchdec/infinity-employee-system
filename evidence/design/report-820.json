@@ -1,0 +1,178 @@
+{
+  "createdAt": "2026-09-23T10:37:34.085Z",
+  "width": 820,
+  "scope": "Synthetic design prototype; not implemented-app UAT",
+  "browser": {
+    "version": "153.0.8010.52",
+    "sandbox": false,
+    "network": "trusted loopback only"
+  },
+  "fingerprints": {
+    "design/index.html": "192d73862d5d1912b360c9ded2d0475c3f5470ac0271c6ec30f2d8ccf5570f8b",
+    "design/preview.css": "aaaafc425e4bfe1b0e6546117625226a074a64690e60d26c933136f5dc49f2c8",
+    "design/preview.js": "2e383b330928d62743e8fd582d74769ef11addd3f11af39dc6e944795f809879",
+    "design/helpers.js": "0c79d54d6087b89e86f836ea72b53e0a5966ac3b2938e3634b98fa24d11c5ef8",
+    "design/employee-views.js": "cf69df0151c335531a0b952c981cb8a4aa282a6db84c468c2dee996299a0ec38",
+    "design/travel-views.js": "1a398340206c4205a2afdc72187e1e386c760fba9905b1795aa5598913451bf2",
+    "design/operations-views.js": "76ca1fe1741b18371e1a99db2eb08cd43fe4e4097db2d964cf64a20d7e014dbd",
+    "scripts/design-server.mjs": "358f4626bbd6e12fa1fad466ee7c6e5d9b560e502111aaa6efb03d6c92eaa187",
+    "scripts/design-review.mjs": "6d6e566cc522b7d19929ee7b46b3107d5e6147002ce118057f6cf024f2f4b7af"
+  },
+  "results": [
+    {
+      "screen": "home",
+      "width": 820,
+      "documentWidth": 820,
+      "heading": "สวัสดี กมลวรรณ",
+      "fontLoaded": true,
+      "screenshot": "evidence/design/home-820.png",
+      "screenshotSha256": "15710f0ec3b6a321673d11652dc1f0eb26ca7ee80897b049bfef5b445b04ffba",
+      "violations": []
+    },
+    {
+      "screen": "leave",
+      "width": 820,
+      "documentWidth": 820,
+      "heading": "ขอลา",
+      "fontLoaded": true,
+      "screenshot": "evidence/design/leave-820.png",
+      "screenshotSha256": "ed3b1a66d8f32f89aa72a619b7373c523d790c46cfbf05cfc598b557092ed554",
+      "violations": []
+    },
+    {
+      "screen": "ot",
+      "width": 820,
+      "documentWidth": 820,
+      "heading": "บันทึก OT",
+      "fontLoaded": true,
+      "screenshot": "evidence/design/ot-820.png",
+      "screenshotSha256": "45fdff337709f378a16ebeb20a90b1130370d641d2257c49a7d3cb5613fad1cb",
+      "violations": []
+    },
+    {
+      "screen": "expense",
+      "width": 820,
+      "documentWidth": 820,
+      "heading": "เบิกค่าใช้จ่าย",
+      "fontLoaded": true,
+      "screenshot": "evidence/design/expense-820.png",
+      "screenshotSha256": "622733e99239196fce29c39ce8961d90fc9403ea7e802c4c3b2d8c0baed754e3",
+      "violations": []
+    },
+    {
+      "screen": "mileage",
+      "width": 820,
+      "documentWidth": 820,
+      "heading": "ค่าเดินทางรถส่วนตัว",
+      "fontLoaded": true,
+      "screenshot": "evidence/design/mileage-820.png",
+      "screenshotSha256": "dd64f614c426aaf63e8b9a695570e58caa678a1eb28e87f38530fa831bd6a41c",
+      "violations": []
+    },
+    {
+      "screen": "trip",
+      "width": 820,
+      "documentWidth": 820,
+      "heading": "ขอเดินทางปฏิบัติงาน",
+      "fontLoaded": true,
+      "screenshot": "evidence/design/trip-820.png",
+      "screenshotSha256": "1967426dd198f73857fc9d30f88d4534d5ab789f5a8bf0be88cb3122dc7885eb",
+      "violations": []
+    },
+    {
+      "screen": "settlement",
+      "width": 820,
+      "documentWidth": 820,
+      "heading": "เคลียร์ค่าใช้จ่าย",
+      "fontLoaded": true,
+      "screenshot": "evidence/design/settlement-820.png",
+      "screenshotSha256": "3a276ec4bf65b08a7f76952020e242bd748983a98754f2b285ea842fd582c83f",
+      "violations": []
+    },
+    {
+      "screen": "approval",
+      "width": 820,
+      "documentWidth": 820,
+      "heading": "ตรวจคำขอค่าใช้จ่าย",
+      "fontLoaded": true,
+      "screenshot": "evidence/design/approval-820.png",
+      "screenshotSha256": "ab4fa4fb855108a2bf57a2f159846db182f2b015ed8b5755cd1e40c169feeb38",
+      "violations": []
+    },
+    {
+      "screen": "finance",
+      "width": 820,
+      "documentWidth": 820,
+      "heading": "งานการเงิน",
+      "fontLoaded": true,
+      "screenshot": "evidence/design/finance-820.png",
+      "screenshotSha256": "095e297bbfde7ffd82f7cad4cad1e1d4cfb2c0e7045a4493f0575ffe1dd36262",
+      "violations": []
+    },
+    {
+      "screen": "payment",
+      "width": 820,
+      "documentWidth": 820,
+      "heading": "ชุดการจ่ายเงิน",
+      "fontLoaded": true,
+      "screenshot": "evidence/design/payment-820.png",
+      "screenshotSha256": "17adb1312f7a2125f68f710d8a41957fa9e7a012960764090e28ada13e60c6d1",
+      "violations": []
+    },
+    {
+      "screen": "policy",
+      "width": 820,
+      "documentWidth": 820,
+      "heading": "นโยบายค่าเดินทาง",
+      "fontLoaded": true,
+      "screenshot": "evidence/design/policy-820.png",
+      "screenshotSha256": "f2a7152026766cf83a4987e7761dceae2cc007dd55bf38cc0d99c120e00622c4",
+      "violations": []
+    },
+    {
+      "screen": "signin",
+      "width": 820,
+      "documentWidth": 820,
+      "heading": "ระบบพนักงาน",
+      "fontLoaded": true,
+      "screenshot": "evidence/design/signin-820.png",
+      "screenshotSha256": "7b4a56f3aa764beb275ad7c3b865075084d1ce77142f1f6110d3955e751c0713",
+      "violations": []
+    },
+    {
+      "screen": "empty",
+      "width": 820,
+      "documentWidth": 820,
+      "heading": "รายการของฉัน",
+      "fontLoaded": true,
+      "screenshot": "evidence/design/empty-820.png",
+      "screenshotSha256": "8b3f96efb79e01eb8bf501d06bdf465479d0931c230090446dd4ecf87e4a0d21",
+      "violations": []
+    },
+    {
+      "screen": "error",
+      "width": 820,
+      "documentWidth": 820,
+      "heading": "ส่งคำขอไม่สำเร็จ",
+      "fontLoaded": true,
+      "screenshot": "evidence/design/error-820.png",
+      "screenshotSha256": "3b5e2a7657877e92a23099105bdf9bdfedfc2604cd3b79f161a3a22cf4649cf7",
+      "violations": []
+    },
+    {
+      "screen": "offline",
+      "width": 820,
+      "documentWidth": 820,
+      "heading": "ขณะนี้ออฟไลน์",
+      "fontLoaded": true,
+      "screenshot": "evidence/design/offline-820.png",
+      "screenshotSha256": "df4361196462fd1b60fb6bebd9fd4e9227f7ef1ad67a331e26f08357c0208092",
+      "violations": []
+    }
+  ],
+  "errors": [],
+  "complete": true,
+  "visualInspection": "PENDING_IMAGE_REVIEW",
+  "dialogOpened": true,
+  "dialogClosed": true
+}

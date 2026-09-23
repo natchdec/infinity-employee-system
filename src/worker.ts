@@ -1,0 +1,132 @@
+import { z } from 'zod';
+import { hostname } from 'node:os';
+import { db, closeDb } from './server/db';
+import { log } from './server/logging';
+
+const noticeSchema = z
+  .object({
+    employeeId: z.string().uuid(),
+    title: z.string().min(1).max(200),
+    href: z.string().startsWith('/').max(500),
+  })
+  .strict();
+
+const workerId = `${hostname()}:${process.pid}`;
+let stopping = false;
+
+async function heartbeat(state: 'running' | 'stopping'): Promise<void> {
+  await db()`
+    insert into runtime_heartbeats(worker_id, last_seen_at, state, details)
+    values(${workerId}, now(), ${state}, '{}'::jsonb)
+    on conflict(worker_id)
+    do update set last_seen_at = excluded.last_seen_at, state = excluded.state
+  `;
+}
+
+async function runOne(): Promise<boolean> {
+  const claimed = await db().begin(async (tx) => {
+    const [job] = await tx`
+      select id, kind, dedupe_key, payload, attempts
+      from jobs
+      where state = 'queued'
+        and available_at <= now()
+        and (locked_until is null or locked_until < now())
+      order by available_at, created_at, id
+      for update skip locked
+      limit 1
+    `;
+    if (!job) return null;
+    await tx`
+      update jobs
+      set state = 'running',
+          attempts = attempts + 1,
+          locked_by = ${workerId},
+          locked_until = now() + interval '60 seconds',
+          updated_at = now()
+      where id = ${job.id}
+    `;
+    return job;
+  });
+
+  if (!claimed) return false;
+
+  try {
+    if (claimed.kind === 'in_app_notification') {
+      const value = noticeSchema.parse(claimed.payload);
+      await db().begin(async (tx) => {
+        await tx`
+          insert into notifications(employee_id, event_key, kind, title, href)
+          values(${value.employeeId}, ${claimed.dedupe_key}, 'in_app', ${value.title}, ${value.href})
+          on conflict(event_key) do nothing
+        `;
+        await tx`
+          update jobs
+          set state = 'succeeded',
+              result = '{"delivered":true}'::jsonb,
+              locked_by = null,
+              locked_until = null,
+              updated_at = now()
+          where id = ${claimed.id} and locked_by = ${workerId}
+        `;
+      });
+    } else {
+      await db()`
+        update jobs
+        set state = 'blocked',
+            error_code = 'UNSUPPORTED_JOB_KIND',
+            locked_by = null,
+            locked_until = null,
+            updated_at = now()
+        where id = ${claimed.id} and locked_by = ${workerId}
+      `;
+    }
+    return true;
+  } catch (error) {
+    const retryable = claimed.attempts + 1 < 5;
+    await db()`
+      update jobs
+      set state = ${retryable ? 'queued' : 'failed'},
+          available_at = case when ${retryable} then now() + interval '30 seconds' else available_at end,
+          error_code = 'JOB_HANDLER_FAILED',
+          locked_by = null,
+          locked_until = null,
+          updated_at = now()
+      where id = ${claimed.id} and locked_by = ${workerId}
+    `;
+    log('error', 'worker_job_failed', {
+      jobId: claimed.id,
+      kind: claimed.kind,
+      retryable,
+      message: error instanceof Error ? error.message : 'unknown',
+    });
+    return true;
+  }
+}
+
+async function main(): Promise<void> {
+  log('info', 'worker_started', { workerId });
+  while (!stopping) {
+    await heartbeat('running');
+    const worked = await runOne();
+    if (!worked) await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  await heartbeat('stopping');
+}
+
+for (const signal of ['SIGTERM', 'SIGINT'] as const) {
+  process.once(signal, () => {
+    stopping = true;
+  });
+}
+
+main()
+  .catch((error) => {
+    log('error', 'worker_fatal', {
+      workerId,
+      message: error instanceof Error ? error.message : 'unknown',
+    });
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await closeDb();
+  });
