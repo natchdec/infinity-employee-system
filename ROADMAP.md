@@ -20,7 +20,7 @@
 - [x] Petty cash / transfer payment batches.
 - [x] Neutral payroll/accounting review exports and fail-closed Easy-ACC/Smartbiz adapter boundaries.
 - [x] Responsive browser hardening and implemented-app UAT at 390/820/1440.
-- [ ] PWA installability/offline-shell hardening.
+- [x] PWA installability/offline-shell hardening with cache-privacy UAT.
 - [ ] Microsoft Lists/SharePoint Project Master production read sync.
 - [ ] Google Routes verified mileage automation.
 - [ ] Verify and enable exact Easy-ACC supported export/import format.

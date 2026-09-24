@@ -1,0 +1,28 @@
+{
+  "event": "pwa_uat_pass",
+  "manifest": {
+    "name": "Infinity Employee",
+    "display": "standalone",
+    "icons": [
+      "192x192",
+      "512x512",
+      "512x512"
+    ]
+  },
+  "serviceWorker": true,
+  "cacheAudit": {
+    "keys": [
+      "infinity-employee-offline-v1"
+    ],
+    "paths": [
+      "/icon-192.png",
+      "/icon-512.png",
+      "/offline"
+    ]
+  },
+  "sensitiveDataCached": false,
+  "offlineFallback": true,
+  "reconnect": true,
+  "screenshot": "evidence/app-uat/pwa-offline-390.png",
+  "screenshotSha256": "d4c3f0b4852f269d698a4836bc3916cf1c75c5c249b4832c823cf098f459e6bb"
+}
