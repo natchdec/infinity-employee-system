@@ -1,7 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { invariant } from '@/domain/core';
 import { apiActor, apiError, mutationHeaders } from '@/server/api';
-import { financeDecision, headDecision, resubmitRequest } from '@/server/request-service';
+import {
+  cancelRequest,
+  financeDecision,
+  headDecision,
+  resubmitRequest,
+} from '@/server/request-service';
+import { markOriginalReceiptReceived } from '@/server/finance-ops';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,6 +42,39 @@ export async function POST(request: Request, { params }: Params) {
       );
       return Response.json(
         { ok: true, request: result },
+        { headers: { 'Cache-Control': 'no-store' } },
+      );
+    }
+
+    if (body.action === 'cancel') {
+      const result = await cancelRequest(
+        actor,
+        id,
+        body,
+        idempotencyKey,
+        new Date(),
+        correlationId,
+      );
+      return Response.json(
+        { ok: true, request: result },
+        { headers: { 'Cache-Control': 'no-store' } },
+      );
+    }
+
+    if (body.action === 'original_received') {
+      const result = await markOriginalReceiptReceived(
+        actor,
+        id,
+        {
+          expectedRevision: body.expectedRevision,
+          note: body.note,
+        },
+        idempotencyKey,
+        new Date(),
+        correlationId,
+      );
+      return Response.json(
+        { ok: true, originalReceipt: result },
         { headers: { 'Cache-Control': 'no-store' } },
       );
     }

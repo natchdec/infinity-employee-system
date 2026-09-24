@@ -64,7 +64,7 @@ export default async function HomePage() {
           </div>
         </div>
         {attention.length ? (
-          <div className="data-table-wrap">
+          <div className="data-table-wrap" tabIndex={0}>
             <table className="data-table">
               <caption className="sr-only">รายการที่ต้องดำเนินการ</caption>
               <thead>
@@ -118,7 +118,7 @@ export default async function HomePage() {
           </Link>
         </div>
         {requests.length ? (
-          <div className="data-table-wrap">
+          <div className="data-table-wrap" tabIndex={0}>
             <table className="data-table">
               <caption className="sr-only">คำขอล่าสุด</caption>
               <thead>

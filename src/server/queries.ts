@@ -189,3 +189,231 @@ export async function organizationSummary(): Promise<{
     publishedPolicies: row?.published_policies ?? 0,
   };
 }
+
+export interface PayableQueueRow {
+  id: string;
+  ownerId: string;
+  employeeName: string;
+  sourceKind: string;
+  requestId: string | null;
+  reference: string;
+  amountSatang: string;
+  state: string;
+}
+
+export interface PaymentBatchRow {
+  id: string;
+  reference: string;
+  method: string;
+  status: string;
+  totalSatang: string;
+  revision: number;
+  itemCount: number;
+  createdAt: Date;
+  paidDate: string | null;
+  externalReference: string | null;
+}
+
+export async function financePayments(): Promise<{
+  obligations: PayableQueueRow[];
+  batches: PaymentBatchRow[];
+}> {
+  const obligations = await db()`
+    select
+      o.id,
+      o.owner_id,
+      e.display_name,
+      o.source_kind,
+      o.request_id,
+      coalesce(r.reference,'SET-' || left(o.source_id::text,8)) as reference,
+      o.amount_satang::text,
+      o.state
+    from payable_obligations o
+    join employees e on e.id=o.owner_id
+    left join requests r on r.id=o.request_id
+    where o.state='unpaid'
+    order by e.display_name,o.id
+    limit 300
+  `;
+  const batches = await db()`
+    select
+      b.id,b.reference,b.method,b.status,b.total_satang::text,b.revision,b.created_at,
+      b.paid_date::text,b.external_reference,
+      count(i.obligation_id) filter(where i.active)::integer as item_count
+    from payment_batches b
+    left join payment_items i on i.batch_id=b.id
+    group by b.id
+    order by b.created_at desc
+    limit 100
+  `;
+  return {
+    obligations: obligations.map((row) => ({
+      id: row.id,
+      ownerId: row.owner_id,
+      employeeName: row.display_name,
+      sourceKind: row.source_kind,
+      requestId: row.request_id ?? null,
+      reference: row.reference,
+      amountSatang: row.amount_satang,
+      state: row.state,
+    })),
+    batches: batches.map((row) => ({
+      id: row.id,
+      reference: row.reference,
+      method: row.method,
+      status: row.status,
+      totalSatang: row.total_satang,
+      revision: row.revision,
+      itemCount: row.item_count ?? 0,
+      createdAt: new Date(row.created_at),
+      paidDate: row.paid_date ?? null,
+      externalReference: row.external_reference ?? null,
+    })),
+  };
+}
+
+export interface SettlementQueueRow {
+  id: string;
+  tripId: string;
+  tripReference: string;
+  tripTitle: string;
+  ownerId: string;
+  employeeName: string;
+  revision: number;
+  state: string;
+  actualSatang: string;
+  paidAdvanceSatang: string;
+  netSatang: string;
+  dueDate: string;
+  createdAt: Date;
+}
+
+export async function financeSettlements(): Promise<SettlementQueueRow[]> {
+  const rows = await db()`
+    select
+      s.id,s.trip_id,r.reference,r.title,s.owner_id,e.display_name,s.revision,s.state,
+      s.actual_satang::text,s.paid_advance_satang::text,s.net_satang::text,
+      s.due_date::text,s.created_at
+    from settlements s
+    join requests r on r.id=s.trip_id
+    join employees e on e.id=s.owner_id
+    where s.state not in ('void')
+    order by
+      case when s.state='refund_due' then 0 when s.state='top_up_due' then 1 when s.state='submitted' then 2 else 3 end,
+      s.due_date,s.created_at
+    limit 200
+  `;
+  return rows.map((row) => ({
+    id: row.id,
+    tripId: row.trip_id,
+    tripReference: row.reference,
+    tripTitle: row.title,
+    ownerId: row.owner_id,
+    employeeName: row.display_name,
+    revision: row.revision,
+    state: row.state,
+    actualSatang: row.actual_satang,
+    paidAdvanceSatang: row.paid_advance_satang,
+    netSatang: row.net_satang,
+    dueDate: row.due_date,
+    createdAt: new Date(row.created_at),
+  }));
+}
+
+export interface OriginalReceiptQueueRow {
+  requestId: string;
+  reference: string;
+  employeeName: string;
+  title: string;
+  amountSatang: string;
+  paymentState: string;
+  state: string;
+  revision: number;
+  updatedAt: Date;
+}
+
+export async function financeOriginalReceipts(): Promise<OriginalReceiptQueueRow[]> {
+  const rows = await db()`
+    select
+      o.request_id,r.reference,e.display_name,r.title,r.total_satang::text,r.payment_state,
+      o.state,o.revision,r.updated_at
+    from original_receipts o
+    join requests r on r.id=o.request_id
+    join employees e on e.id=r.employee_id
+    where o.state='outstanding'
+    order by (r.payment_state='paid') desc,r.updated_at
+    limit 300
+  `;
+  return rows.map((row) => ({
+    requestId: row.request_id,
+    reference: row.reference,
+    employeeName: row.display_name,
+    title: row.title,
+    amountSatang: row.total_satang,
+    paymentState: row.payment_state,
+    state: row.state,
+    revision: row.revision,
+    updatedAt: new Date(row.updated_at),
+  }));
+}
+
+export interface PayrollCycleRow {
+  month: string;
+  payday: string;
+  cutoffAt: Date;
+  state: string;
+  revision: number;
+  itemCount: number;
+  totalSatang: string;
+}
+
+export async function financePayroll(): Promise<PayrollCycleRow[]> {
+  const rows = await db()`
+    select
+      c.month,c.payday::text,c.cutoff_at,c.state,c.revision,
+      count(i.id) filter(where i.state='queued')::integer as item_count,
+      coalesce(sum(i.amount_satang) filter(where i.state='queued'),0)::text as total_satang
+    from payroll_cycles c
+    left join payroll_items i on i.cycle_month=c.month
+    group by c.month
+    order by c.month desc
+    limit 24
+  `;
+  return rows.map((row) => ({
+    month: row.month,
+    payday: row.payday,
+    cutoffAt: new Date(row.cutoff_at),
+    state: row.state,
+    revision: row.revision,
+    itemCount: row.item_count ?? 0,
+    totalSatang: row.total_satang,
+  }));
+}
+
+export interface ExportJobRow {
+  id: string;
+  adapter: string;
+  scope: string;
+  state: string;
+  artifactSha256: string | null;
+  blockedReason: string | null;
+  createdAt: Date;
+}
+
+export async function financeExports(): Promise<ExportJobRow[]> {
+  const rows = await db()`
+    select id,adapter,scope,state,artifact_sha256,blocked_reason,created_at
+    from export_jobs
+    order by created_at desc
+    limit 100
+  `;
+  return rows.map((row) => ({
+    id: row.id,
+    adapter: row.adapter,
+    scope: row.scope,
+    state: row.state,
+    artifactSha256: row.artifact_sha256 ?? null,
+    blockedReason: row.blocked_reason ?? null,
+    createdAt: new Date(row.created_at),
+  }));
+}

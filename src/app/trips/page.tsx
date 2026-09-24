@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { AppShell, Money, StateLabel } from '@/components/AppShell';
 import { requireActor } from '@/server/auth-context';
 import { employeeTrips } from '@/server/queries';
@@ -15,8 +16,22 @@ export default async function TripsPage() {
       description="ติดตามทริป เบี้ยเลี้ยง เงินทดรอง และสถานะการเคลียร์ค่าใช้จ่าย"
     >
       <section className="section">
+        <div className="section-header">
+          <div>
+            <h2>ทริปของฉัน</h2>
+            <p>เงินทดรองและค่าใช้จ่ายต้องอ้างอิงทริปที่ได้รับอนุมัติ</p>
+          </div>
+          <div className="action-row">
+            <Link className="button button-primary" href="/requests/new?kind=trip">
+              สร้างทริป
+            </Link>
+            <Link className="button button-secondary" href="/requests/new?kind=advance">
+              ขอเงินทดรอง
+            </Link>
+          </div>
+        </div>
         {trips.length ? (
-          <div className="data-table-wrap">
+          <div className="data-table-wrap" tabIndex={0}>
             <table className="data-table">
               <caption className="sr-only">ทริปของฉัน</caption>
               <thead>
@@ -31,7 +46,11 @@ export default async function TripsPage() {
               <tbody>
                 {trips.map((item) => (
                   <tr key={item.id}>
-                    <td>{item.reference}</td>
+                    <td>
+                      <Link className="text-link" href={`/requests/${item.id}`}>
+                        {item.reference}
+                      </Link>
+                    </td>
                     <td>{item.title}</td>
                     <td>{item.businessDate}</td>
                     <td>

@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { AppShell, Money, StateLabel } from '@/components/AppShell';
 import { requireActor, requirePageRole } from '@/server/auth-context';
 import { financeOverview } from '@/server/queries';
@@ -37,6 +38,16 @@ export default async function FinancePage() {
       </section>
 
       <section className="section">
+        <div className="finance-links">
+          <Link href="/finance/payments">ชุดการจ่ายเงิน</Link>
+          <Link href="/finance/settlements">Settlement</Link>
+          <Link href="/finance/receipts">ใบเสร็จต้นฉบับ</Link>
+          <Link href="/finance/payroll">OT / Payroll</Link>
+          <Link href="/finance/exports">ส่งออก</Link>
+        </div>
+      </section>
+
+      <section className="section">
         <div className="section-header">
           <div>
             <h2>คิวรายการ</h2>
@@ -44,7 +55,7 @@ export default async function FinancePage() {
           </div>
         </div>
         {finance.rows.length ? (
-          <div className="data-table-wrap">
+          <div className="data-table-wrap" tabIndex={0}>
             <table className="data-table">
               <caption className="sr-only">คิวงานการเงิน</caption>
               <thead>
@@ -62,7 +73,11 @@ export default async function FinancePage() {
               <tbody>
                 {finance.rows.map((item) => (
                   <tr key={item.id}>
-                    <td>{item.reference}</td>
+                    <td>
+                      <Link className="text-link" href={`/requests/${item.id}`}>
+                        {item.reference}
+                      </Link>
+                    </td>
                     <td>{item.employeeName}</td>
                     <td>{item.title}</td>
                     <td>

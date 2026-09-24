@@ -34,7 +34,7 @@ export default async function RequestsPage() {
           </Link>
         </div>
         {requests.length ? (
-          <div className="data-table-wrap">
+          <div className="data-table-wrap" tabIndex={0}>
             <table className="data-table">
               <caption className="sr-only">รายการคำขอของฉัน</caption>
               <thead>

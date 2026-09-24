@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { AppShell, Money, StateLabel } from '@/components/AppShell';
 import { requireActor, requirePageRole } from '@/server/auth-context';
 import { assignedApprovals } from '@/server/queries';
@@ -17,7 +18,7 @@ export default async function ApprovalsPage() {
     >
       <section className="section">
         {requests.length ? (
-          <div className="data-table-wrap">
+          <div className="data-table-wrap" tabIndex={0}>
             <table className="data-table">
               <caption className="sr-only">คำขอที่รอการอนุมัติ</caption>
               <thead>
@@ -33,7 +34,11 @@ export default async function ApprovalsPage() {
               <tbody>
                 {requests.map((item) => (
                   <tr key={item.id}>
-                    <td>{item.reference}</td>
+                    <td>
+                      <Link className="text-link" href={`/requests/${item.id}`}>
+                        {item.reference}
+                      </Link>
+                    </td>
                     <td>{item.employeeName}</td>
                     <td>{item.title}</td>
                     <td>{item.businessDate}</td>

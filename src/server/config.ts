@@ -7,6 +7,10 @@ const configSchema = z.object({
   ENTRA_TENANT_ID: z.string().uuid().optional(),
   ENTRA_CLIENT_ID: z.string().uuid().optional(),
   ENTRA_CLIENT_AUTH: z.string().min(1).optional(),
+  STORAGE_DRIVER: z.enum(['filesystem', 's3']).default('filesystem'),
+  STORAGE_ROOT: z.string().min(1).default('data/documents'),
+  STORAGE_BUCKET: z.string().min(1).optional(),
+  STORAGE_REGION: z.string().min(1).optional(),
 });
 
 export type AppConfig = z.infer<typeof configSchema>;
@@ -22,7 +26,14 @@ export function config(): AppConfig {
       .join(', ');
     throw new Error(`Invalid application configuration: ${names}`);
   }
-  cached = parsed.data;
+  const value = parsed.data;
+  if (value.APP_ENV === 'production' && value.STORAGE_DRIVER !== 's3') {
+    throw new Error('Production document storage must use the s3 driver');
+  }
+  if (value.STORAGE_DRIVER === 's3' && (!value.STORAGE_BUCKET || !value.STORAGE_REGION)) {
+    throw new Error('S3 document storage requires bucket and region configuration');
+  }
+  cached = value;
   return cached;
 }
 
