@@ -1,7 +1,7 @@
 # Infinity Employee System
 
 ## Status
-Core transactional V1 and the installable/offline-safe PWA are usable and verified in isolated Agent Gateway OCI UAT. Production identity, external provider formats/credentials, live Docker deployment, and production cutover remain separate acceptance gates.
+Core transactional V1 and the installable/offline-safe PWA are usable and verified in isolated Agent Gateway OCI UAT. Production identity, external provider formats/credentials, live Docker deployment on the Infinity ESXi environment, and production cutover remain separate acceptance gates.
 
 ## Objective
 Build a mobile-first employee self-service system for Infinity Solution Service covering leave, OT, expenses, business travel, cash advances, approvals, finance verification, payroll handoff, accounting handoff, policy management, document evidence, and audit.
@@ -31,7 +31,7 @@ Build a mobile-first employee self-service system for Infinity Solution Service 
 - Microsoft Lists / SharePoint Project Master integration.
 - Mobile-first PWA.
 - Audit trail and policy versioning.
-- Docker-first deployment on OCI.
+- Docker Compose deployment on a dedicated Linux VM hosted on Infinity ESXi. Agent Gateway OCI remains a separate automation/VPN platform and is not the Employee System production application host.
 
 ## Out of Scope for Initial V1
 - LINE OA as primary UI.

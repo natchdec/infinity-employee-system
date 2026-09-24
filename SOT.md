@@ -41,7 +41,7 @@
 - PostgreSQL primary transactional database.
 - Object storage for receipt/document binaries.
 - Microsoft Entra ID for authentication.
-- OCI is the target initial production hosting environment.
+- Infinity ESXi is the target initial production hosting environment. Run Docker Compose inside a dedicated Linux VM on ESXi; do not run the Employee System application on Agent Gateway OCI.
 
 ## Verified Implementation State
 - Active branch: feat/v1-implementation.
@@ -65,14 +65,14 @@
 - PWA UAT passes installable manifest, active service worker, offline fallback and reconnect. Service-worker cache is restricted to `/offline`, `/icon-192.png`, and `/icon-512.png`; employee, Finance, API, and authenticated page data are not cached.
 - Health and readiness return HTTP 200 on the current isolated UAT stack.
 - UAT process evidence shows supervisor timeout/stop behavior can leave an idle PostgreSQL client session during smart shutdown; UAT recovery is bounded to the isolated database and does not change product persistence semantics.
-- Docker CLI/socket is not exposed inside the OCI worker; live Docker Compose verification remains a separate sanctioned host/deployment gate.
+- Docker CLI/socket is not exposed inside the OCI worker. This is expected because production Docker Compose verification now belongs on the dedicated Linux VM hosted by Infinity ESXi, not on Agent Gateway OCI.
 
 ## External Readiness Gates
 - Production Entra tenant/client credentials and redirect registration.
-- Production OCI Object Storage/S3-compatible bucket credentials.
+- Production S3-compatible object storage credentials. OCI Object Storage remains a compatible option even though the application host is on Infinity ESXi.
 - Microsoft Lists/SharePoint Project Master production source connection and field mapping.
 - Google Routes credential/provider verification for automated route quotes.
 - Verified Easy-ACC supported import/API format.
 - Verified Smartbiz supported import/API format.
-- Sanctioned host/deployment access for live Docker Compose verification.
+- Sanctioned Infinity ESXi Linux-VM deployment access for live Docker Compose verification.
 - Explicit authorization before production cutover affecting live users.

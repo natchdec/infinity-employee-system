@@ -44,11 +44,11 @@ Unit tests cover rational money/rounding, full-day dates, effective policy, stat
 
 Run axe and layout checks, then inspect actual images for typography, hierarchy, density and Thai copy. Automated a11y is not a complete accessibility audit. Candidate prototype evidence does not replace implemented-app screenshots. Test restore in a different database/storage prefix; do not restore over a live target. Keep accepted evidence bound to source SHA, schema/lockfile and runtime identity.
 
-## OCI, Docker and CI
+## OCI engineering/UAT, Infinity ESXi production, Docker and CI
 
-Live preflight found ARM64 Linux, Node24, pnpm11, Git/GitHub access, Chromium, substantial free disk/RAM; no Docker CLI/socket in the worker. Recheck rather than assuming this remains permanent. Use an isolated native PostgreSQL test cluster where sanctioned, while separately checking existing authorized OCI host deployment access. Never mount a host Docker socket or weaken worker isolation to manufacture a Docker pass.
+Agent Gateway OCI remains the engineering/UAT execution plane and currently also hosts separate VPN-container work. Its worker does not need to become the Employee System production Docker host. Production runs on a dedicated Linux VM hosted by Infinity ESXi. Use isolated native PostgreSQL on OCI for sanctioned UAT where useful, but perform live Docker Compose acceptance on the ESXi Linux VM. Never mount a host Docker socket or weaken worker isolation to manufacture a Docker pass.
 
-Compose services are employee-app, employee-worker, postgres and reverse-proxy, with distinct project/volume/network names. Loopback UAT only until hostname/TLS/cutover approval. Non-root app/worker, private database, runtime secrets, health checks and bounded resources. CI uses frozen lockfile and real PostgreSQL service, runs all source gates/build, then browser/runtime/container gates as configured. Remote CI status must be read from GitHub, not inferred from a push.
+On the Infinity ESXi Linux VM, Compose services are employee-app, employee-worker, postgres and reverse-proxy, with distinct project/volume/network names. Loopback/isolated UAT remains separate until production hostname/TLS/cutover approval. Non-root app/worker, private database, runtime secrets, health checks and bounded resources. CI uses frozen lockfile and real PostgreSQL service, runs all source gates/build, then browser/runtime/container gates as configured. Remote CI status must be read from GitHub, not inferred from a push.
 
 ## Git/checkpoint policy
 
@@ -58,4 +58,4 @@ Before large changes read project.context/revision and hold bounded path leases.
 
 ## Rollback and production cutover
 
-A source rollback is a new revert commit, not history rewrite. Image rollback requires schema compatibility and retained previous artifact. Prefer expand-only migrations; never silently delete financial data to make a test pass. Before live cutover verify real Entra mapping, roster/wage eligibility, policies/holidays, object storage/scanning, backups/restore, hostname/TLS and operational ownership. Get explicit approval for a cutover affecting live users. Vendor format, Microsoft mapping and Google rights/credentials remain named integration gates. Report DONE/VERIFIED/NOT DONE/WHY/BLOCKER/NEXT SANCTIONED ACTION exactly when execution closes.
+A source rollback is a new revert commit, not history rewrite. Image rollback requires schema compatibility and retained previous artifact. Prefer expand-only migrations; never silently delete financial data to make a test pass. Before live cutover verify the ESXi Linux VM capacity/backup policy, real Entra mapping, roster/wage eligibility, policies/holidays, S3-compatible object storage/scanning, database and VM/application backups/restore, hostname/TLS and operational ownership. Get explicit approval for a cutover affecting live users. Vendor format, Microsoft mapping and Google rights/credentials remain named integration gates. Report DONE/VERIFIED/NOT DONE/WHY/BLOCKER/NEXT SANCTIONED ACTION exactly when execution closes.

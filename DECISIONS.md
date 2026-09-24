@@ -4,7 +4,7 @@
 Use one Infinity Employee System with modular business domains rather than separate applications.
 
 ## D-002 Deployment
-Use Docker Compose and a modular monolith. Do not start with Kubernetes or microservices.
+Use Docker Compose and a modular monolith. Production runs inside a dedicated Linux VM hosted on Infinity ESXi. Do not deploy the Employee System application on Agent Gateway OCI. Do not start with Kubernetes or microservices.
 
 ## D-003 Identity
 Use Microsoft Entra ID. Do not maintain a separate employee password database.
@@ -44,3 +44,6 @@ Digital receipt may allow payment before original paper receipt arrives. Origina
 
 ## D-015 UX Direction
 Use Quiet Enterprise / Modern Editorial design. Avoid AI-template aesthetics: neon/black defaults, excessive gradients, glassmorphism, oversized stat cards, decorative glow, and unnecessary assistant UI.
+
+## D-016 OCI Role
+Agent Gateway OCI remains a separate automation and remote-connectivity platform. Its Docker VPN containers may connect AGW OCI to customer or remote networks, but Employee System production availability must not depend on the OCI VPN stack unless a later explicit architecture decision says otherwise.
