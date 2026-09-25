@@ -1,0 +1,16 @@
+.git
+.gitignore
+node_modules
+.next
+data
+tmp
+.cache
+coverage
+playwright-report
+test-results
+evidence
+design
+*.log
+.env
+.env.*
+!.env.example

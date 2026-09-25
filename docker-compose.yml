@@ -1,0 +1,87 @@
+name: infinity-employee
+
+x-app-env: &app-env
+  APP_ENV: uat
+  APP_ORIGIN: ${APP_ORIGIN:-http://172.20.11.220:3000}
+  DATABASE_URL: "postgresql://infinity_app:${DB_APP_PASSWORD:?DB_APP_PASSWORD is required}@db:5432/infinity_employee"
+  STORAGE_DRIVER: filesystem
+  STORAGE_ROOT: /data/documents
+
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: infinity_employee
+      POSTGRES_USER: infinity_owner
+      POSTGRES_PASSWORD: ${DB_OWNER_PASSWORD:?DB_OWNER_PASSWORD is required}
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD:?DB_APP_PASSWORD is required}
+    volumes:
+      - employee_db:/var/lib/postgresql/data
+      - ./deploy/postgres-init.sh:/docker-entrypoint-initdb.d/10-app-role.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U infinity_owner -d infinity_employee"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    networks: [backend]
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: "no"
+    environment:
+      <<: *app-env
+      MIGRATION_DATABASE_URL: "postgresql://infinity_owner:${DB_OWNER_PASSWORD:?DB_OWNER_PASSWORD is required}@db:5432/infinity_employee"
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["pnpm", "db:migrate"]
+    networks: [backend]
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "${APP_BIND_IP:-0.0.0.0}:${APP_PORT:-3000}:3000"
+    volumes:
+      - employee_documents:/data/documents
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    networks: [backend]
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    command: ["pnpm", "worker"]
+    volumes:
+      - employee_documents:/data/documents
+    networks: [backend]
+
+networks:
+  backend:
+    driver: bridge
+    internal: true
+
+volumes:
+  employee_db:
+  employee_documents:
