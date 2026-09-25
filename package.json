@@ -19,7 +19,9 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed:test": "tsx scripts/seed-test.ts",
     "worker": "tsx src/worker.ts",
-    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "integration:project-master": "tsx scripts/sync-project-master.ts",
+    "production:preflight": "tsx scripts/production-preflight.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1137.0",

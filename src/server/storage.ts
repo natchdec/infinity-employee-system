@@ -31,7 +31,11 @@ function localPath(key: string): string {
 function s3Client(): S3Client {
   const c = config();
   invariant(c.STORAGE_REGION, 'STORAGE_NOT_CONFIGURED', 'ยังไม่ได้ตั้งค่า Object Storage', 503);
-  client ??= new S3Client({ region: c.STORAGE_REGION });
+  client ??= new S3Client({
+    region: c.STORAGE_REGION,
+    endpoint: c.STORAGE_ENDPOINT,
+    forcePathStyle: c.STORAGE_FORCE_PATH_STYLE,
+  });
   return client;
 }
 

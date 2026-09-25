@@ -96,20 +96,59 @@ export async function prepareExpense(
         'COMMUTE_NOT_CONFIGURED',
         'ต้องยืนยันระยะทางบ้านถึงสำนักงานก่อนเบิกค่าเดินทาง',
       );
-      // Client-provided provider labels are never trusted as a verified Google route.
-      invariant(
-        line.mileage.every((leg) => leg.source === 'manual_attested'),
-        'ROUTE_QUOTE_REQUIRED',
-        'ต้องใช้ route quote ที่ระบบตรวจสอบแล้ว ไม่รับผลผู้ให้บริการที่ส่งมาจากเบราว์เซอร์',
-      );
-      const result = calculateMileage(line.mileage, commute.distance_metres, rate.body);
+      const verifiedLegs = [];
+      for (const leg of line.mileage) {
+        if (leg.source === 'manual_attested') {
+          verifiedLegs.push(leg);
+          continue;
+        }
+        invariant(
+          leg.providerReference,
+          'ROUTE_QUOTE_REQUIRED',
+          'ต้องใช้ route quote ที่ระบบตรวจสอบแล้ว',
+        );
+        const [quote] = await tx`
+          select id,employee_id,origin_kind,destination_kind,origin_label,destination_label,
+                 distance_metres,retention_confirmed,expires_at,consumed_by_request_id
+          from route_quotes
+          where id=${leg.providerReference} and provider='google_routes'
+          for update
+        `;
+        invariant(
+          quote &&
+            quote.employee_id === actor.id &&
+            quote.retention_confirmed &&
+            quote.origin_kind === leg.origin &&
+            quote.destination_kind === leg.destination &&
+            quote.origin_label === leg.originLabel &&
+            quote.destination_label === leg.destinationLabel &&
+            (new Date(quote.expires_at) > now || quote.consumed_by_request_id === requestId) &&
+            (!quote.consumed_by_request_id || quote.consumed_by_request_id === requestId),
+          'ROUTE_QUOTE_INVALID',
+          'route quote ไม่ตรงกับรายการ หมดอายุ หรือถูกใช้กับคำขออื่นแล้ว',
+          409,
+        );
+        if (!quote.consumed_by_request_id)
+          await tx`
+            update route_quotes
+            set consumed_by_request_id=${requestId}, consumed_at=${now}
+            where id=${quote.id} and consumed_by_request_id is null
+          `;
+        verifiedLegs.push({
+          ...leg,
+          distanceMetres: quote.distance_metres,
+          providerReference: quote.id,
+        });
+      }
+      const result = calculateMileage(verifiedLegs, commute.distance_metres, rate.body);
       amount = BigInt(result.totalSatang);
+      const providerVerified = verifiedLegs.some((leg) => leg.source === 'google_routes');
       detail = safeJson({
         ...result,
         commuteVersionId: commute.id,
         recordedAt: now.toISOString(),
-        attestation: 'employee_manual',
-        providerVerified: false,
+        attestation: providerVerified ? 'server_verified_route' : 'employee_manual',
+        providerVerified,
       });
     } else {
       invariant(line.amount !== undefined, 'AMOUNT_REQUIRED', 'ระบุจำนวนเงินค่าใช้จ่าย');

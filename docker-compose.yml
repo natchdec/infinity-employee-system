@@ -2,8 +2,14 @@ name: infinity-employee
 
 x-app-env: &app-env
   APP_ENV: uat
-  APP_ORIGIN: ${APP_ORIGIN:-http://172.20.11.220:3000}
-  DATABASE_URL: "postgresql://infinity_app:${DB_APP_PASSWORD:?DB_APP_PASSWORD is required}@db:5432/infinity_employee"
+  APP_ORIGIN: ${APP_ORIGIN:-https://172.20.11.220}
+  ENTRA_TENANT_ID: ${ENTRA_TENANT_ID:-}
+  ENTRA_CLIENT_ID: ${ENTRA_CLIENT_ID:-}
+  ENTRA_CLIENT_AUTH_MODE: ${ENTRA_CLIENT_AUTH_MODE:-secret}
+  ENTRA_CLIENT_AUTH: ${ENTRA_CLIENT_AUTH:-}
+  ENTRA_CLIENT_PRIVATE_KEY_PATH: ${ENTRA_CLIENT_PRIVATE_KEY_PATH:-}
+  ENTRA_CLIENT_CERT_PATH: ${ENTRA_CLIENT_CERT_PATH:-}
+  DATABASE_URL: 'postgresql://infinity_app:${DB_APP_PASSWORD:?DB_APP_PASSWORD is required}@db:5432/infinity_employee'
   STORAGE_DRIVER: filesystem
   STORAGE_ROOT: /data/documents
 
@@ -20,7 +26,7 @@ services:
       - employee_db:/var/lib/postgresql
       - ./deploy/postgres-init.sh:/docker-entrypoint-initdb.d/10-app-role.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U infinity_owner -d infinity_employee"]
+      test: ['CMD-SHELL', 'pg_isready -U infinity_owner -d infinity_employee']
       interval: 5s
       timeout: 5s
       retries: 30
@@ -30,16 +36,16 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    restart: "no"
+    restart: 'no'
     environment:
       <<: *app-env
-      DATABASE_URL: "postgresql://infinity_app@127.0.0.1:5432/infinity_employee"
-      MIGRATION_DATABASE_URL: "postgresql://infinity_owner@127.0.0.1:5432/infinity_employee"
+      DATABASE_URL: 'postgresql://infinity_app@127.0.0.1:5432/infinity_employee'
+      MIGRATION_DATABASE_URL: 'postgresql://infinity_owner@127.0.0.1:5432/infinity_employee'
     depends_on:
       db:
         condition: service_healthy
-    command: ["pnpm", "db:migrate"]
-    network_mode: "service:db"
+    command: ['pnpm', 'db:migrate']
+    network_mode: 'service:db'
 
   app:
     build:
@@ -52,11 +58,18 @@ services:
       migrate:
         condition: service_completed_successfully
     ports:
-      - "${APP_BIND_IP:-0.0.0.0}:${APP_PORT:-3000}:3000"
+      - '${APP_BIND_IP:-0.0.0.0}:${APP_PORT:-3000}:3000'
     volumes:
       - employee_documents:/data/documents
+      - /opt/infinity-employee/secrets/entra:/run/secrets/entra:ro
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
       interval: 10s
       timeout: 5s
       retries: 20
@@ -73,7 +86,7 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
-    command: ["pnpm", "worker"]
+    command: ['pnpm', 'worker']
     volumes:
       - employee_documents:/data/documents
     networks: [backend]

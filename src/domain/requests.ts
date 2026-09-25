@@ -20,7 +20,21 @@ export const mileageLegSchema = z
     source: z.enum(['manual_attested', 'google_routes']),
     providerReference: id.optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    if (value.source === 'google_routes' && !value.providerReference)
+      context.addIssue({
+        code: 'custom',
+        path: ['providerReference'],
+        message: 'Google Routes ต้องมี route quote ที่ระบบออกให้',
+      });
+    if (value.source === 'manual_attested' && value.providerReference)
+      context.addIssue({
+        code: 'custom',
+        path: ['providerReference'],
+        message: 'การรับรองระยะทางด้วยตนเองต้องไม่มี provider reference',
+      });
+  });
 export const expenseLineSchema = z
   .object({
     categoryId: z.enum(expenseCategories),

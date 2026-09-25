@@ -1,4 +1,6 @@
 import * as client from 'openid-client';
+import { createHash, X509Certificate } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { NextResponse } from 'next/server';
 import { config } from './config';
 import { db } from './db';
@@ -7,14 +9,49 @@ import { cookieNames, cookieValue, digestOpaque, issueSession } from './identity
 
 let discovery: Promise<client.Configuration> | undefined;
 
+function decodePkcs8(pem: string): Uint8Array {
+  const encoded = pem
+    .replace(/-----BEGIN [^-]+-----/g, '')
+    .replace(/-----END [^-]+-----/g, '')
+    .replace(/\s/g, '');
+  return Uint8Array.from(Buffer.from(encoded, 'base64'));
+}
+
+async function certificateClientAuth(privateKeyPath: string, certificatePath: string) {
+  const [privateKeyPem, certificatePem] = await Promise.all([
+    readFile(privateKeyPath, 'utf8'),
+    readFile(certificatePath, 'utf8'),
+  ]);
+  const der = decodePkcs8(privateKeyPem);
+  const keyData = new ArrayBuffer(der.byteLength);
+  new Uint8Array(keyData).set(der);
+  const privateKey = await globalThis.crypto.subtle.importKey(
+    'pkcs8',
+    keyData,
+    { name: 'RSA-PSS', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const certificate = new X509Certificate(certificatePem);
+  const thumbprint = createHash('sha256').update(certificate.raw).digest('base64url');
+
+  return client.PrivateKeyJwt(privateKey, {
+    [client.modifyAssertion]: (header) => {
+      header.alg = 'PS256';
+      header.typ = 'JWT';
+      header['x5t#S256'] = thumbprint;
+      delete header.x5t;
+    },
+  });
+}
+
 async function oidc(): Promise<client.Configuration> {
   const c = config();
   const tenant = c.ENTRA_TENANT_ID;
   const clientId = c.ENTRA_CLIENT_ID;
-  const clientAuth = c.ENTRA_CLIENT_AUTH;
 
   invariant(
-    tenant && clientId && clientAuth,
+    tenant && clientId,
     'ENTRA_NOT_CONFIGURED',
     'ยังไม่ได้ตั้งค่าการเข้าสู่ระบบ Microsoft Entra',
     503,
@@ -26,21 +63,42 @@ async function oidc(): Promise<client.Configuration> {
     503,
   );
 
-  discovery ??= client
-    .discovery(
+  discovery ??= (async () => {
+    const clientAuthentication =
+      c.ENTRA_CLIENT_AUTH_MODE === 'certificate'
+        ? await (async () => {
+            invariant(
+              c.ENTRA_CLIENT_PRIVATE_KEY_PATH && c.ENTRA_CLIENT_CERT_PATH,
+              'ENTRA_NOT_CONFIGURED',
+              'ยังไม่ได้ตั้งค่า certificate สำหรับ Microsoft Entra',
+              503,
+            );
+            return certificateClientAuth(c.ENTRA_CLIENT_PRIVATE_KEY_PATH, c.ENTRA_CLIENT_CERT_PATH);
+          })()
+        : (() => {
+            invariant(
+              c.ENTRA_CLIENT_AUTH,
+              'ENTRA_NOT_CONFIGURED',
+              'ยังไม่ได้ตั้งค่า client credential สำหรับ Microsoft Entra',
+              503,
+            );
+            return client.ClientSecretPost(c.ENTRA_CLIENT_AUTH);
+          })();
+
+    return client.discovery(
       new URL(`https://login.microsoftonline.com/${tenant}/v2.0`),
       clientId,
       undefined,
-      client.ClientSecretPost(clientAuth),
-    )
-    .catch(() => {
-      discovery = undefined;
-      throw new DomainError(
-        'IDENTITY_PROVIDER_UNAVAILABLE',
-        'เชื่อมต่อผู้ให้บริการ Microsoft ไม่สำเร็จ กรุณาลองใหม่',
-        503,
-      );
-    });
+      clientAuthentication,
+    );
+  })().catch(() => {
+    discovery = undefined;
+    throw new DomainError(
+      'IDENTITY_PROVIDER_UNAVAILABLE',
+      'เชื่อมต่อผู้ให้บริการ Microsoft ไม่สำเร็จ กรุณาลองใหม่',
+      503,
+    );
+  });
 
   return discovery;
 }
@@ -71,7 +129,7 @@ export async function startSignIn(): Promise<NextResponse> {
   const response = NextResponse.redirect(url);
   response.cookies.set(cookieNames().flow, state, {
     httpOnly: true,
-    secure: config().APP_ENV === 'production',
+    secure: config().APP_ORIGIN.startsWith('https://'),
     sameSite: 'lax',
     path: '/auth',
     maxAge: 600,
@@ -140,7 +198,7 @@ export async function completeSignIn(request: Request): Promise<NextResponse> {
   const session = await issueSession(employee.id);
   const response = NextResponse.redirect(new URL('/', config().APP_ORIGIN));
   const common = {
-    secure: config().APP_ENV === 'production',
+    secure: config().APP_ORIGIN.startsWith('https://'),
     sameSite: 'lax' as const,
     path: '/',
     expires: session.expiresAt,

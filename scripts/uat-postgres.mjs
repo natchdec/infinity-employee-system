@@ -99,6 +99,9 @@ child.on('error', (error) => {
   console.error(error.message);
   process.exitCode = 1;
 });
+const connection = (user) =>
+  `postgres://${user}@localhost:54329/ies_uat?host=${encodeURIComponent(socket)}`;
+
 const admin = postgres({
   host: socket,
   port: 54329,
@@ -136,8 +139,6 @@ try {
   if (!(await admin`select 1 from pg_database where datname='ies_uat'`).length)
     await admin.unsafe('CREATE DATABASE ies_uat OWNER ies_uat_owner');
   const version = (await admin`select version() as version`)[0].version;
-  const connection = (user) =>
-    `postgres://${user}@localhost:54329/ies_uat?host=${encodeURIComponent(socket)}`;
   await writeFile(
     path.join(dir, 'runtime.env'),
     [
