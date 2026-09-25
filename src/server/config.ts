@@ -12,7 +12,7 @@ const configSchema = z.object({
   ENTRA_TENANT_ID: z.string().uuid().optional(),
   ENTRA_CLIENT_ID: z.string().uuid().optional(),
   ENTRA_CLIENT_AUTH_MODE: z.enum(['secret', 'certificate']).default('secret'),
-  ENTRA_CLIENT_AUTH: z.string().min(1).optional(),
+  ENTRA_CLIENT_AUTH: z.preprocess((value) => value === '' ? undefined : value, z.string().min(1).optional()),
   ENTRA_CLIENT_PRIVATE_KEY_PATH: z.string().min(1).optional(),
   ENTRA_CLIENT_CERT_PATH: z.string().min(1).optional(),
   STORAGE_DRIVER: z.enum(['filesystem', 's3']).default('filesystem'),

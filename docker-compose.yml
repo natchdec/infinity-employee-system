@@ -61,7 +61,8 @@ services:
       - '${APP_BIND_IP:-0.0.0.0}:${APP_PORT:-3000}:3000'
     volumes:
       - employee_documents:/data/documents
-      - /opt/infinity-employee/secrets/entra:/run/secrets/entra:ro
+      - /etc/ssl/private/ssl-cert-snakeoil.key:/run/secrets/entra/client.key:ro
+      - /etc/ssl/certs/ssl-cert-snakeoil.pem:/run/secrets/entra/client.crt:ro
     healthcheck:
       test:
         [
