@@ -25,7 +25,7 @@
 - [ ] Google Routes verified mileage automation.
 - [ ] Verify and enable exact Easy-ACC supported export/import format.
 - [ ] Verify and enable exact Smartbiz supported export/import format.
-- [ ] Provision the dedicated Infinity ESXi Linux VM and complete live Docker Compose build/start/restart/persistence/backup verification there.
+- [x] Provision the dedicated Infinity ESXi Linux VM and complete live Docker Compose build/start/restart/persistence/backup verification there.
 - [ ] Production Entra identity, S3-compatible object storage, domain/TLS, backup/restore and ESXi production rollout readiness.
 - [ ] Explicit cutover approval.
 

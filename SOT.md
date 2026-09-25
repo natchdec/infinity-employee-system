@@ -66,6 +66,13 @@
 - Health and readiness return HTTP 200 on the current isolated UAT stack.
 - UAT process evidence shows supervisor timeout/stop behavior can leave an idle PostgreSQL client session during smart shutdown; UAT recovery is bounded to the isolated database and does not change product persistence semantics.
 - Docker CLI/socket is not exposed inside the OCI worker. This is expected because production Docker Compose verification now belongs on the dedicated Linux VM hosted by Infinity ESXi, not on Agent Gateway OCI.
+- Live Infinity ESXi UAT passed on `INFINITY-EMPLOYEE-PROD01` at `172.20.11.220` with 2 vCPU, 4 GB RAM and a 60 GB thin VMDK on the NFS datastore.
+- The ESXi VM runs Docker 29.1.3 and Docker Compose 2.40.3. The production-image build passed Next.js compilation, TypeScript validation and static generation before the runtime stack was started.
+- PostgreSQL 18 uses the version-compatible `/var/lib/postgresql` volume layout. Database, migration and worker traffic stay on the internal backend network; the app additionally joins a frontend bridge and publishes `0.0.0.0:3000`.
+- Live ESXi runtime acceptance passes: database healthy, migration exit 0, app healthy, worker running, `/api/health` HTTP 200 and `/api/ready` HTTP 200 from both the VM and the Infinity VPN worker.
+- Reboot persistence passed with a changed VM boot ID; Docker returned enabled/active and db/app/worker recovered automatically with health/readiness still green.
+- Backup verification passed with a PostgreSQL dump and document-volume archive under `/var/backups/infinity-employee`; both archives validated successfully after reboot.
+- The current ESXi deployment remains UAT: production-grade secret rotation, Entra production identity, S3-compatible object storage, domain/TLS and explicit cutover approval remain required before serving live users.
 
 ## External Readiness Gates
 - Production Entra tenant/client credentials and redirect registration.
@@ -74,5 +81,4 @@
 - Google Routes credential/provider verification for automated route quotes.
 - Verified Easy-ACC supported import/API format.
 - Verified Smartbiz supported import/API format.
-- Sanctioned Infinity ESXi Linux-VM deployment access for live Docker Compose verification.
 - Explicit authorization before production cutover affecting live users.
