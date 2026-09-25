@@ -4,16 +4,22 @@ import { config } from '../config';
 import { db } from '../db';
 
 type Fields = Record<string, unknown>;
+interface LookupSource {
+  lookupIdField: string;
+  listId: string;
+  valueField: string;
+}
+type TextSource = string | LookupSource;
 interface ColumnMap {
   code: string;
   name: string;
-  customer?: string;
-  salesOwner?: string;
-  engineerLead?: string;
+  customer?: TextSource;
+  salesOwner?: TextSource;
+  engineerLead?: TextSource;
   startDate?: string;
   endDate?: string;
   status: string;
-  costCenter?: string;
+  costCenter?: TextSource;
   activeValues: string[];
 }
 interface Runtime {
@@ -24,9 +30,39 @@ interface Runtime {
   listId: string;
   columns: ColumnMap;
 }
+
 function nonEmpty(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }
+
+function optionalString(map: Record<string, unknown>, key: string): string | undefined {
+  return nonEmpty(map[key]) ? (map[key] as string) : undefined;
+}
+
+function textSource(map: Record<string, unknown>, key: string): TextSource | undefined {
+  const value = map[key];
+  if (value === undefined || value === null || value === '') return undefined;
+  if (nonEmpty(value)) return value;
+  invariant(
+    value && typeof value === 'object' && !Array.isArray(value),
+    'PROJECT_MASTER_MAPPING_INVALID',
+    'การแมปคอลัมน์ Project Master ไม่ถูกต้อง',
+    503,
+  );
+  const lookup = value as Record<string, unknown>;
+  invariant(
+    nonEmpty(lookup.lookupIdField) && nonEmpty(lookup.listId) && nonEmpty(lookup.valueField),
+    'PROJECT_MASTER_MAPPING_INVALID',
+    'การแมป lookup ของ Project Master ไม่ถูกต้อง',
+    503,
+  );
+  return {
+    lookupIdField: lookup.lookupIdField,
+    listId: lookup.listId,
+    valueField: lookup.valueField,
+  };
+}
+
 function runtime(): Runtime {
   const c = config();
   invariant(
@@ -40,6 +76,7 @@ function runtime(): Runtime {
     'ยังไม่ได้ตั้งค่า Microsoft Project Master สำหรับ production',
     503,
   );
+
   let raw: unknown;
   try {
     raw = JSON.parse(c.PROJECT_MASTER_COLUMN_MAP);
@@ -69,7 +106,7 @@ function runtime(): Runtime {
     'การแมปคอลัมน์ Project Master ไม่ถูกต้อง',
     503,
   );
-  const optional = (key: string) => (nonEmpty(map[key]) ? (map[key] as string) : undefined);
+
   return {
     tenantId: c.PROJECT_MASTER_TENANT_ID,
     clientId: c.PROJECT_MASTER_CLIENT_ID,
@@ -81,12 +118,12 @@ function runtime(): Runtime {
       name: map.name,
       status: map.status,
       activeValues: map.activeValues as string[],
-      customer: optional('customer'),
-      salesOwner: optional('salesOwner'),
-      engineerLead: optional('engineerLead'),
-      startDate: optional('startDate'),
-      endDate: optional('endDate'),
-      costCenter: optional('costCenter'),
+      customer: textSource(map, 'customer'),
+      salesOwner: textSource(map, 'salesOwner'),
+      engineerLead: textSource(map, 'engineerLead'),
+      startDate: optionalString(map, 'startDate'),
+      endDate: optionalString(map, 'endDate'),
+      costCenter: textSource(map, 'costCenter'),
     },
   };
 }
@@ -96,7 +133,7 @@ async function bearer(value: Runtime): Promise<string> {
     grant_type: 'client_credentials',
     scope: 'https://graph.microsoft.com/.default',
   });
-  body.set(['client', 'secret'].join('_'), value.clientAuth);
+  body.set(['client', 'secret'].join('_'), value.clientAuth!);
   const response = await fetch(
     `https://login.microsoftonline.com/${value.tenantId}/oauth2/v2.0/token`,
     {
@@ -136,9 +173,8 @@ function dateField(fields: Fields, name?: string): string | null {
   const date = value.slice(0, 10);
   return /^20\d{2}-\d{2}-\d{2}$/.test(date) ? date : null;
 }
-async function readItems(value: Runtime) {
-  const access = await bearer(value);
-  let url = `https://graph.microsoft.com/v1.0/sites/${encodeURIComponent(value.siteId)}/lists/${encodeURIComponent(value.listId)}/items?$expand=fields&$top=200`;
+async function readListItems(access: string, siteId: string, listId: string) {
+  let url = `https://graph.microsoft.com/v1.0/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(listId)}/items?$expand=fields&$top=200`;
   const rows: Array<{ id: string; etag: string | null; fields: Fields }> = [];
   for (let page = 0; page < 100; page++) {
     const response = await fetch(url, {
@@ -190,9 +226,66 @@ async function readItems(value: Runtime) {
   );
   return rows;
 }
+
+function lookupKey(source: LookupSource): string {
+  return `${source.listId}\u0000${source.valueField}`;
+}
+
+function lookupSources(value: Runtime): LookupSource[] {
+  const sources = [
+    value.columns.customer,
+    value.columns.salesOwner,
+    value.columns.engineerLead,
+    value.columns.costCenter,
+  ];
+  return sources.filter((source): source is LookupSource =>
+    Boolean(source && typeof source !== 'string'),
+  );
+}
+
+async function lookupTables(value: Runtime, access: string) {
+  const tables = new Map<string, Map<string, string>>();
+  const seen = new Set<string>();
+  for (const source of lookupSources(value)) {
+    const key = lookupKey(source);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const items = await readListItems(access, value.siteId, source.listId);
+    const table = new Map<string, string>();
+    for (const item of items) {
+      const resolved = textField(item.fields, source.valueField);
+      if (resolved) table.set(item.id, resolved);
+    }
+    tables.set(key, table);
+  }
+  return tables;
+}
+
+function mappedTextField(
+  fields: Fields,
+  source: TextSource | undefined,
+  tables: Map<string, Map<string, string>>,
+): string | null {
+  if (!source) return null;
+  if (typeof source === 'string') return textField(fields, source);
+  const lookupId = textField(fields, source.lookupIdField);
+  if (!lookupId) return null;
+  const resolved = tables.get(lookupKey(source))?.get(lookupId) ?? null;
+  invariant(
+    resolved,
+    'PROJECT_MASTER_LOOKUP_UNRESOLVED',
+    'Project Master มี lookup ที่อ้างอิงข้อมูลไม่ได้ จึงไม่ซิงก์ข้อมูลบางส่วน',
+    503,
+  );
+  return resolved;
+}
 export async function syncProjectMaster(now = new Date()) {
   const value = runtime();
-  const items = await readItems(value);
+  const access = await bearer(value);
+  const [items, lookups] = await Promise.all([
+    readListItems(access, value.siteId, value.listId),
+    lookupTables(value, access),
+  ]);
   const activeValues = new Set(value.columns.activeValues.map((item) => item.trim().toLowerCase()));
   const rows = items.map((item) => {
     const code = textField(item.fields, value.columns.code);
@@ -209,13 +302,13 @@ export async function syncProjectMaster(now = new Date()) {
       sourceEtag: item.etag,
       code,
       name,
-      customer: textField(item.fields, value.columns.customer),
-      salesOwner: textField(item.fields, value.columns.salesOwner),
-      engineerLead: textField(item.fields, value.columns.engineerLead),
+      customer: mappedTextField(item.fields, value.columns.customer, lookups),
+      salesOwner: mappedTextField(item.fields, value.columns.salesOwner, lookups),
+      engineerLead: mappedTextField(item.fields, value.columns.engineerLead, lookups),
       startDate: dateField(item.fields, value.columns.startDate),
       endDate: dateField(item.fields, value.columns.endDate),
       status: activeValues.has(sourceStatus.toLowerCase()) ? 'active' : 'inactive',
-      costCenter: textField(item.fields, value.columns.costCenter),
+      costCenter: mappedTextField(item.fields, value.columns.costCenter, lookups),
     };
   });
   const correlationId = randomUUID();
