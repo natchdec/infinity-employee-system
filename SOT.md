@@ -94,3 +94,16 @@
 - Full source verification on 2026-09-26 passed `pnpm verify` after the Routes preview redesign and integration cleanup: Prettier, ESLint with zero warnings, TypeScript, 46/46 tests and Next production build all green.
 - Migration 005 applied successfully to isolated PostgreSQL 18.4 UAT (`total=5`, checksum verified); synthetic seed remained 6 employees / 8 policy families and the full transaction UAT passed after the migration.
 <!-- agent-gateway:managed:end:external-readiness-2026-09-26 -->
+
+<!-- agent-gateway:managed:start:autocontinue-2026-09-26-run -->
+Run checkpoint 2026-09-26:
+- Verified local HEAD 0075d395e1f60042de3cbc08ddc6ce0077f01154 on feat/v1-implementation. Commit message: "feat: advance production integration readiness". Working tree after commit has only untracked .transfer-runtime/; do not commit it.
+- Full source gate PASS via task 3a08c828-1235-403e-96ba-471ace636d67: Prettier, ESLint --max-warnings 0, TypeScript, 46/46 tests, Next production build.
+- Google Routes now exposes /api/routes/preview as transient Cache-Control:no-store, non-persistable/non-evidence preview. Durable /api/routes/quote remains fail-closed unless GOOGLE_ROUTES_RETENTION_CONFIRMED=true with separately confirmed retention rights.
+- Migration 005_identity_bootstrap.sql applied successfully to isolated PostgreSQL 18.4 UAT with checksum verification (task e7d35237-29ea-41ff-a53e-2f1c74927047); synthetic seed PASS; post-migration transaction UAT PASS (task 77ee4891-6ede-49f5-a802-dc2f097f2878).
+- Project Master authoritative live snapshot remains 458 rows: Customer/Sales Owner/Status 458/458, Start/End 405/458, Engineer Lead 0/458, Cost Center 0/458. Do not invent the two missing semantics.
+- Source-control push is externally blocked by GitHub auth. One receipt-backed HTTPS push attempt (task 56ec231f-bad5-4be8-aec8-5f4b6bfc0225) failed code 128: "could not read Username for https://github.com". A read-only SSH ls-remote probe (task 918f1d4c-8f97-424f-983e-76b7061346fa) also failed: repository not found/access denied. Do not blind-retry. Restore repo access/credential, then push feat/v1-implementation and verify upstream ahead=0.
+- Existing ESXi UAT/reboot/backup archive evidence remains valid for the previously deployed build. Latest local commit is not yet deployed because source sync/auth and a live ESXi connection are unavailable in this run.
+- Remaining true external gates: authoritative Engineer Lead + Cost Center source; Google Routes API credential and retention rights only if durable Google evidence is required; Easy-ACC employee/workday/OT1-OT4 mappings; sanctioned Smartbiz transaction contract; production Entra identity; S3-compatible private object storage credentials/bucket; public domain/TLS; restore acceptance on production config; explicit cutover approval.
+Next run: resume from this checkpoint, fix/reauthorize GitHub without exposing tokens, push 0075d395..., then continue production infrastructure and latest-commit ESXi UAT.
+<!-- agent-gateway:managed:end:autocontinue-2026-09-26-run -->
