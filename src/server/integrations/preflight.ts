@@ -17,8 +17,16 @@ function entraAuthReady(env: NodeJS.ProcessEnv): boolean {
   return present(env.ENTRA_CLIENT_AUTH);
 }
 
+function identityReady(env: NodeJS.ProcessEnv): boolean {
+  if (env.AUTH_MODE === 'cloudflare_access') {
+    return present(env.CLOUDFLARE_ACCESS_TEAM_DOMAIN) && present(env.CLOUDFLARE_ACCESS_AUD);
+  }
+  return entraAuthReady(env);
+}
+
 export function productionReadiness(env: NodeJS.ProcessEnv = process.env): ReadinessGate[] {
   const origin = env.APP_ORIGIN ?? '';
+  const cloudflare = env.AUTH_MODE === 'cloudflare_access';
   return [
     {
       id: 'https_origin',
@@ -29,10 +37,12 @@ export function productionReadiness(env: NodeJS.ProcessEnv = process.env): Readi
         : 'Production hostname/TLS is not configured',
     },
     {
-      id: 'entra_oidc',
-      ready: entraAuthReady(env),
+      id: 'identity_gateway',
+      ready: identityReady(env),
       blocking: true,
-      detail: 'Dedicated Entra tenant/client/auth and redirect registration are required',
+      detail: cloudflare
+        ? 'Cloudflare Access team domain and application audience are required; the Access policy must use the approved Microsoft Entra identity provider'
+        : 'Dedicated Entra tenant/client/auth and redirect registration are required',
     },
     {
       id: 'object_storage',

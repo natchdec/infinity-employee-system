@@ -8,6 +8,7 @@ const booleanText = z
 const configSchema = z.object({
   APP_ENV: z.enum(['development', 'test', 'uat', 'production']).default('development'),
   APP_ORIGIN: z.string().url().default('http://127.0.0.1:3000'),
+  AUTH_MODE: z.enum(['entra_oidc', 'cloudflare_access']).default('entra_oidc'),
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   ENTRA_TENANT_ID: z.string().uuid().optional(),
   ENTRA_CLIENT_ID: z.string().uuid().optional(),
@@ -18,6 +19,17 @@ const configSchema = z.object({
   ),
   ENTRA_CLIENT_PRIVATE_KEY_PATH: z.string().min(1).optional(),
   ENTRA_CLIENT_CERT_PATH: z.string().min(1).optional(),
+  CLOUDFLARE_ACCESS_TEAM_DOMAIN: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z
+      .string()
+      .regex(/^[a-z0-9.-]+\.cloudflareaccess\.com$/)
+      .optional(),
+  ),
+  CLOUDFLARE_ACCESS_AUD: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.string().min(16).max(512).optional(),
+  ),
   STORAGE_DRIVER: z.enum(['filesystem', 's3']).default('filesystem'),
   STORAGE_ROOT: z.string().min(1).default('data/documents'),
   STORAGE_BUCKET: z.string().min(1).optional(),
@@ -52,17 +64,25 @@ export function config(): AppConfig {
     if (!value.APP_ORIGIN.startsWith('https://')) {
       throw new Error('Production APP_ORIGIN must use HTTPS');
     }
-    if (!value.ENTRA_TENANT_ID || !value.ENTRA_CLIENT_ID) {
-      throw new Error('Production Microsoft Entra tenant and application are required');
-    }
-    if (value.ENTRA_CLIENT_AUTH_MODE === 'secret' && !value.ENTRA_CLIENT_AUTH) {
-      throw new Error('Production Microsoft Entra client credential is required');
-    }
-    if (
-      value.ENTRA_CLIENT_AUTH_MODE === 'certificate' &&
-      (!value.ENTRA_CLIENT_PRIVATE_KEY_PATH || !value.ENTRA_CLIENT_CERT_PATH)
-    ) {
-      throw new Error('Production Microsoft Entra certificate paths are required');
+    if (value.AUTH_MODE === 'cloudflare_access') {
+      if (!value.CLOUDFLARE_ACCESS_TEAM_DOMAIN || !value.CLOUDFLARE_ACCESS_AUD) {
+        throw new Error(
+          'Production Cloudflare Access team domain and application audience are required',
+        );
+      }
+    } else {
+      if (!value.ENTRA_TENANT_ID || !value.ENTRA_CLIENT_ID) {
+        throw new Error('Production Microsoft Entra tenant and application are required');
+      }
+      if (value.ENTRA_CLIENT_AUTH_MODE === 'secret' && !value.ENTRA_CLIENT_AUTH) {
+        throw new Error('Production Microsoft Entra client credential is required');
+      }
+      if (
+        value.ENTRA_CLIENT_AUTH_MODE === 'certificate' &&
+        (!value.ENTRA_CLIENT_PRIVATE_KEY_PATH || !value.ENTRA_CLIENT_CERT_PATH)
+      ) {
+        throw new Error('Production Microsoft Entra certificate paths are required');
+      }
     }
     if (value.STORAGE_DRIVER !== 's3') {
       throw new Error('Production document storage must use the s3 driver');

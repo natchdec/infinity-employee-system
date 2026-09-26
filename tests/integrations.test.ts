@@ -4,6 +4,7 @@ import { DomainError } from '../src/domain/core';
 import { requestSchemas } from '../src/domain/requests';
 import { aggregateEasyAccOt, formatEasyAccPrimport } from '../src/server/integrations/easy-acc';
 import { blockingReadiness, productionReadiness } from '../src/server/integrations/preflight';
+import { validateCloudflareAccessClaims } from '../src/server/cloudflare-access';
 
 test('Easy-ACC PRIMPORT uses six single-space-delimited fields and three decimals', () => {
   assert.equal(
@@ -175,4 +176,61 @@ test('production restore acceptance remains a blocking gate', () => {
   const gates = productionReadiness({ NODE_ENV: 'test' });
   assert.equal(gates.find((gate) => gate.id === 'restore_acceptance')?.blocking, true);
   assert.equal(gates.find((gate) => gate.id === 'restore_acceptance')?.ready, false);
+});
+
+test('Cloudflare Access claims require issuer, audience and active employee identity claims', () => {
+  const identity = validateCloudflareAccessClaims(
+    { alg: 'RS256', kid: 'key-1' },
+    {
+      iss: 'https://steep-scene-b973.cloudflareaccess.com',
+      aud: ['0123456789abcdef'],
+      email: 'User@InfinitySolutions.co.th',
+      sub: 'cloudflare-subject',
+      exp: 1100,
+      nbf: 900,
+      iat: 950,
+    },
+    {
+      teamDomain: 'steep-scene-b973.cloudflareaccess.com',
+      audience: '0123456789abcdef',
+      nowSeconds: 1000,
+    },
+  );
+  assert.deepEqual(identity, {
+    email: 'user@infinitysolutions.co.th',
+    subject: 'cloudflare-subject',
+  });
+});
+
+test('Cloudflare Access claims reject a different application audience', () => {
+  assert.throws(
+    () =>
+      validateCloudflareAccessClaims(
+        { alg: 'RS256', kid: 'key-1' },
+        {
+          iss: 'https://steep-scene-b973.cloudflareaccess.com',
+          aud: 'different-audience',
+          email: 'user@infinitysolutions.co.th',
+          sub: 'cloudflare-subject',
+          exp: 1100,
+        },
+        {
+          teamDomain: 'steep-scene-b973.cloudflareaccess.com',
+          audience: '0123456789abcdef',
+          nowSeconds: 1000,
+        },
+      ),
+    (error: unknown) =>
+      error instanceof DomainError && error.code === 'ACCESS_TOKEN_AUDIENCE_REJECTED',
+  );
+});
+
+test('Cloudflare Access can satisfy the production identity gate without direct Entra app auth', () => {
+  const gates = productionReadiness({
+    NODE_ENV: 'test',
+    AUTH_MODE: 'cloudflare_access',
+    CLOUDFLARE_ACCESS_TEAM_DOMAIN: 'steep-scene-b973.cloudflareaccess.com',
+    CLOUDFLARE_ACCESS_AUD: '0123456789abcdef',
+  });
+  assert.equal(gates.find((gate) => gate.id === 'identity_gateway')?.ready, true);
 });
