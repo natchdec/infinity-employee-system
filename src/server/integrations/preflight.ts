@@ -44,10 +44,16 @@ export function productionReadiness(env: NodeJS.ProcessEnv = process.env): Readi
       detail: 'Microsoft Lists/SharePoint source IDs and explicit column mapping are required',
     },
     {
+      id: 'google_routes_preview',
+      ready: present(env.GOOGLE_ROUTES_API_KEY),
+      detail:
+        'A Routes API key enables transient no-store previews only; preview values are not durable provider evidence',
+    },
+    {
       id: 'google_routes',
       ready: present(env.GOOGLE_ROUTES_API_KEY) && env.GOOGLE_ROUTES_RETENTION_CONFIRMED === 'true',
       detail:
-        'Google Routes credential and confirmed retention rights are required before verified quotes are stored',
+        'Durable Google-verified mileage evidence requires separately confirmed contractual retention rights',
     },
     {
       id: 'easy_acc',

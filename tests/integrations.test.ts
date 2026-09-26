@@ -38,6 +38,22 @@ test('Easy-ACC export rejects unverified employee code shape', () => {
   );
 });
 
+test('Easy-ACC PRIMPORT rejects employee codes longer than 9 digits', () => {
+  const row = {
+    employeeCode: '1'.repeat(10),
+    workDays: '22',
+    ot1Hours: '0',
+    ot2Hours: '0',
+    ot3Hours: '0',
+    ot4Hours: '0',
+  };
+  assert.throws(
+    () => formatEasyAccPrimport([row]),
+    (error: unknown) =>
+      error instanceof DomainError && error.code === 'EASY_ACC_EMPLOYEE_CODE_INVALID',
+  );
+});
+
 test('Easy-ACC OT mapping is explicit and never guesses a slot', () => {
   assert.deepEqual(
     aggregateEasyAccOt(

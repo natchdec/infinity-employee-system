@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { fingerprint, invariant, type Actor } from '../../domain/core';
-import { config } from '../config';
+import { config, type AppConfig } from '../config';
 import { db } from '../db';
 
 const waypointSchema = z
@@ -25,28 +25,23 @@ const quoteInputSchema = z
 function googleWaypoint(value: z.infer<typeof waypointSchema>) {
   return value.placeId ? { placeId: value.placeId } : { address: value.address };
 }
+
 function durationSeconds(value: unknown): number | null {
   if (typeof value !== 'string' || !/^\d+(?:\.\d+)?s$/.test(value)) return null;
   const seconds = Math.round(Number(value.slice(0, -1)));
   return Number.isSafeInteger(seconds) && seconds >= 0 ? seconds : null;
 }
 
-export async function createGoogleRouteQuote(actor: Actor, raw: unknown, now = new Date()) {
-  invariant(actor.active, 'FORBIDDEN', 'บัญชีพนักงานไม่พร้อมใช้งาน', 403);
-  const c = config();
+async function requestGoogleRoute(
+  c: AppConfig,
+  input: z.infer<typeof quoteInputSchema>,
+): Promise<{ distanceMetres: number; durationSeconds: number | null }> {
   invariant(
     c.GOOGLE_ROUTES_API_KEY,
     'GOOGLE_ROUTES_NOT_CONFIGURED',
     'ยังไม่ได้ตั้งค่า Google Routes',
     503,
   );
-  invariant(
-    c.GOOGLE_ROUTES_RETENTION_CONFIRMED,
-    'GOOGLE_ROUTES_RETENTION_NOT_CONFIRMED',
-    'ยังไม่ยืนยันสิทธิ์การเก็บหลักฐานระยะทางจากผู้ให้บริการ',
-    503,
-  );
-  const input = quoteInputSchema.parse(raw);
   const response = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
     method: 'POST',
     headers: {
@@ -83,8 +78,43 @@ export async function createGoogleRouteQuote(actor: Actor, raw: unknown, now = n
     'ผลระยะทางจาก Google Routes ไม่ถูกต้อง',
     503,
   );
-  const distanceMetres = Number(route.distanceMeters);
-  const duration = durationSeconds(route.duration);
+  return {
+    distanceMetres: Number(route.distanceMeters),
+    durationSeconds: durationSeconds(route.duration),
+  };
+}
+
+/**
+ * Standard Google Maps Platform terms do not grant this application a right to
+ * retain Routes API distance/duration as permanent financial evidence. This
+ * endpoint therefore returns a no-store, transient preview only. It must not be
+ * converted into a provider-verified claim or persisted by the application.
+ */
+export async function createGoogleRoutePreview(actor: Actor, raw: unknown) {
+  invariant(actor.active, 'FORBIDDEN', 'บัญชีพนักงานไม่พร้อมใช้งาน', 403);
+  const input = quoteInputSchema.parse(raw);
+  const result = await requestGoogleRoute(config(), input);
+  return {
+    provider: 'google_routes' as const,
+    usage: 'transient_preview' as const,
+    persistable: false as const,
+    canSubmitAsProviderEvidence: false as const,
+    attribution: 'Google',
+    ...result,
+  };
+}
+
+export async function createGoogleRouteQuote(actor: Actor, raw: unknown, now = new Date()) {
+  invariant(actor.active, 'FORBIDDEN', 'บัญชีพนักงานไม่พร้อมใช้งาน', 403);
+  const c = config();
+  invariant(
+    c.GOOGLE_ROUTES_RETENTION_CONFIRMED,
+    'GOOGLE_ROUTES_RETENTION_NOT_CONFIRMED',
+    'ยังไม่ยืนยันสิทธิ์การเก็บหลักฐานระยะทางจากผู้ให้บริการ',
+    503,
+  );
+  const input = quoteInputSchema.parse(raw);
+  const { distanceMetres, durationSeconds: duration } = await requestGoogleRoute(c, input);
   const evidence = { distanceMetres, durationSeconds: duration, travelMode: 'DRIVE' };
   const expiresAt = new Date(now.getTime() + 2 * 60 * 60 * 1000);
   const [row] = await db()`
@@ -106,6 +136,10 @@ export async function createGoogleRouteQuote(actor: Actor, raw: unknown, now = n
     durationSeconds: duration,
     expiresAt: expiresAt.toISOString(),
   };
+}
+
+export function googleRoutesPreviewConfigured(): boolean {
+  return Boolean(config().GOOGLE_ROUTES_API_KEY);
 }
 
 export function googleRoutesConfigured(): boolean {

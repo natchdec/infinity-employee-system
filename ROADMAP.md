@@ -21,9 +21,12 @@
 - [x] Neutral payroll/accounting review exports and fail-closed Easy-ACC/Smartbiz adapter boundaries.
 - [x] Responsive browser hardening and implemented-app UAT at 390/820/1440.
 - [x] PWA installability/offline-shell hardening with cache-privacy UAT.
-- [ ] Microsoft Lists/SharePoint Project Master production read sync.
-- [ ] Google Routes verified mileage automation.
-- [ ] Verify and enable exact Easy-ACC supported export/import format.
+- [x] Microsoft Lists/SharePoint live source discovery, 458-row read snapshot, and available lookup mapping.
+- [ ] Project Master production sync activation after authoritative Engineer Lead and Cost Center sources are defined.
+- [x] Google Routes transient no-store mileage preview boundary with explicit non-evidence semantics.
+- [ ] Google Routes durable verified-evidence mode after API credential and contractual retention rights are confirmed.
+- [x] Implement and regression-test Easy-ACC PRIMPORT exact row shape and <=9-digit employee code constraint.
+- [ ] Enable Easy-ACC production export after employee-code, workday and OT1-OT4 mappings are verified.
 - [ ] Verify and enable exact Smartbiz supported export/import format.
 - [x] Provision the dedicated Infinity ESXi Linux VM and complete live Docker Compose build/start/restart/persistence/backup verification there.
 - [ ] Production Entra identity, S3-compatible object storage, domain/TLS, backup/restore and ESXi production rollout readiness.

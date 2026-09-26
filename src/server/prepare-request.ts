@@ -111,6 +111,12 @@ export async function prepareRequest(
     );
     policies.push(policy, calendar);
     const [employee] = await tx`select hire_date::text from employees where id=${actor.id}`;
+    invariant(
+      employee?.hire_date,
+      'HIRE_DATE_REQUIRED',
+      'ยังไม่มีวันเริ่มงานที่ยืนยันแล้ว กรุณาให้ HR/Admin อัปเดตก่อนยื่นคำขอลา',
+      409,
+    );
     const type = policy.body.types.find((item) => item.id === input.typeId);
     invariant(type, 'LEAVE_TYPE_NOT_ENABLED', 'ประเภทลาไม่เปิดใช้งาน');
     const period = type.period === 'year' ? date.slice(0, 4) : (input.eventReference ?? '');

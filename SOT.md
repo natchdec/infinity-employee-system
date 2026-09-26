@@ -48,9 +48,9 @@
 - M0 foundation and M1/M2 transaction engine are already committed and synchronized to origin.
 - Next.js App Router, Entra OIDC boundary, role-aware server pages, PostgreSQL access, structured logging, health/readiness routes, and PostgreSQL-backed worker exist.
 - Isolated OCI UAT uses PostgreSQL 18.4 over a private Unix-domain socket with no TCP listener.
-- Database migrations: 3 total; checksum verification and restart persistence pass.
+- Database migrations: 5 total. Migration 005 (`identity_bootstrap`) was applied on the isolated PostgreSQL 18.4 UAT with checksum verification; the post-migration transaction UAT passed.
 - Synthetic UAT seed contains 6 non-production identities and 8 policy families; real employee data is not seeded.
-- Source verification passes format, lint, typecheck, 40/40 tests, and Next production build.
+- Source verification passes the full `pnpm verify` gate: format, lint with zero warnings, typecheck, 46/46 tests, and Next production build.
 - Request workflows implement submit/resubmit/cancel, Head approve/return/reject, Owner/Head system-skip, Finance verify/return, optimistic revision fencing, idempotency receipts, immutable approval history, and Finance conflict-of-interest enforcement.
 - Leave, OT, Expense, Mileage, Entertainment, Trip, Per Diem, Cash Advance and settlement calculations/persistence are policy-versioned and transactional.
 - OT approval allocates to the centralized payroll-cycle cutoff logic; late approval moves to the next eligible cycle.
@@ -82,3 +82,15 @@
 - Verified Easy-ACC supported import/API format.
 - Verified Smartbiz supported import/API format.
 - Explicit authorization before production cutover affecting live users.
+
+<!-- agent-gateway:managed:start:external-readiness-2026-09-26 -->
+## External readiness verification — 2026-09-26
+- Project Master live SharePoint snapshot contains 458 projects. Customer, Sales Owner and Status are populated 458/458; Start Date and End Date are populated 405/458; Engineer Lead and Cost Center are populated 0/458. Do not invent these two required semantics; production mapping remains blocked until an authoritative source/list/field is identified or scope explicitly changes.
+- Google Routes now has a separate transient preview boundary at `/api/routes/preview`: it requires only the API key, returns `Cache-Control: no-store`, never writes `route_quotes`, and explicitly marks the result non-persistable/non-evidence. The durable `/api/routes/quote` path remains fail-closed unless contractual retention rights are explicitly confirmed. This avoids treating preview distance/duration as permanent Google-verified financial evidence.
+- Easy-ACC PRIMPORT employee-code width is verified at <=9 digits with regression coverage; production enablement still requires authoritative employee-code, workday and OT1–OT4 mappings from the payroll owner/system.
+- Smartbiz exact transaction import/API contract remains unverified and therefore fail-closed.
+- Live ESXi UAT, reboot persistence and backup archive validation remain previously verified. Production cutover still requires production object storage, domain/TLS, production credentials, restore acceptance and explicit cutover approval.
+- Earlier Agent Gateway git commit/push operations remained non-terminal and are preserved as ambiguous receipts. Current source state has since been re-verified through the project control plane and AGW OCI git CLI; only a new receipt-backed commit/push attempt may replace those stale operations.
+- Full source verification on 2026-09-26 passed `pnpm verify` after the Routes preview redesign and integration cleanup: Prettier, ESLint with zero warnings, TypeScript, 46/46 tests and Next production build all green.
+- Migration 005 applied successfully to isolated PostgreSQL 18.4 UAT (`total=5`, checksum verified); synthetic seed remained 6 employees / 8 policy families and the full transaction UAT passed after the migration.
+<!-- agent-gateway:managed:end:external-readiness-2026-09-26 -->

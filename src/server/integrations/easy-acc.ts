@@ -22,9 +22,9 @@ export function formatEasyAccPrimport(rows: readonly EasyAccPrimportRow[]): stri
     rows
       .map((row) => {
         invariant(
-          /^\d{1,10}$/.test(row.employeeCode),
+          /^\d{1,9}$/.test(row.employeeCode),
           'EASY_ACC_EMPLOYEE_CODE_INVALID',
-          'รหัสพนักงาน Easy-ACC ต้องเป็นตัวเลขไม่เกิน 10 หลัก',
+          'รหัสพนักงาน Easy-ACC ต้องเป็นตัวเลขไม่เกิน 9 หลัก',
         );
         return [
           row.employeeCode,

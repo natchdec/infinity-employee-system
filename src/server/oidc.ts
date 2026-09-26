@@ -17,7 +17,7 @@ function decodePkcs8(pem: string): Uint8Array {
   return Uint8Array.from(Buffer.from(encoded, 'base64'));
 }
 
-async function certificateClientAuth(privateKeyPath: string, certificatePath: string) {
+export async function certificateClientAuth(privateKeyPath: string, certificatePath: string) {
   const [privateKeyPem, certificatePem] = await Promise.all([
     readFile(privateKeyPath, 'utf8'),
     readFile(certificatePath, 'utf8'),
@@ -45,7 +45,7 @@ async function certificateClientAuth(privateKeyPath: string, certificatePath: st
   });
 }
 
-async function oidc(): Promise<client.Configuration> {
+export async function oidc(): Promise<client.Configuration> {
   const c = config();
   const tenant = c.ENTRA_TENANT_ID;
   const clientId = c.ENTRA_CLIENT_ID;
