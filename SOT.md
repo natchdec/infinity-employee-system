@@ -107,3 +107,21 @@ Run checkpoint 2026-09-26:
 - Remaining true external gates: authoritative Engineer Lead + Cost Center source; Google Routes API credential and retention rights only if durable Google evidence is required; Easy-ACC employee/workday/OT1-OT4 mappings; sanctioned Smartbiz transaction contract; production Entra identity; S3-compatible private object storage credentials/bucket; public domain/TLS; restore acceptance on production config; explicit cutover approval.
 Next run: resume from this checkpoint, fix/reauthorize GitHub without exposing tokens, push 0075d395..., then continue production infrastructure and latest-commit ESXi UAT.
 <!-- agent-gateway:managed:end:autocontinue-2026-09-26-run -->
+
+<!-- agent-gateway:managed:start:github-mcp-oci -->
+2026-09-26: Configured AGW OCI external MCP `Infinity-GitHub` for GitHub hosted MCP all-toolsets endpoint `https://api.githubcopilot.com/mcp/x/all`. Configuration is valid, transport preflight passes, `readOnly=false`, `writeEnabled=true`, and AGW policy reports `autoApproveMode=full-access`. Integration validation is intentionally not called ready yet because GitHub authentication/consent is missing (`AUTHENTICATION_FAILED`); do not recreate or duplicate the server. Complete GitHub OAuth/PAT authorization, then validate tool discovery + bounded read + write probe before using it for source-control sync.
+<!-- agent-gateway:managed:end:github-mcp-oci -->
+
+<!-- agent-gateway:managed:start:autocontinue-2026-09-26-run2 -->
+Run checkpoint 2026-09-26 continuation:
+- User decision: Project Master does not exist yet and is deferred for this cut. Easy-ACC and Smartbiz are also deferred. They remain visible and fail-closed, but are non-blocking production readiness gates.
+- Production preflight now distinguishes blocking vs deferred gates and supports Entra certificate-mode readiness. Blocking gates include HTTPS origin, Entra identity, private S3-compatible storage, Google Routes credential/retention, receipt-backed restore acceptance, and explicit cutover approval.
+- Production deployment hardening added: runtime image executes as non-root UID/GID 10001; production Compose overlay; Caddy TLS reverse-proxy template; runtime S3 credentials file mount; Google Routes runtime env-file path; production environment template; database backup script; isolated disposable-database restore drill with receipt.
+- Verification receipt: Agent Gateway OCI task 2fcefa3d-33f0-4ddb-8b35-55a1f5002cf2 completed code 0. pnpm verify PASS: formatting, ESLint, TypeScript, 50/50 tests, Next.js 16.3.6 production build.
+- Backup and restore scripts pass bash syntax checks (tasks 30846126-2ecf-4c6f-967a-3068517b3321 and d61ac2bc-6d87-4b77-86db-90d42e28b38a) and are executable.
+- Microsoft Graph live read shows current app registration "Infinity Employee System UAT" exists; no production-named Employee System application was present in the 22-application inventory read on this run. Graph connection is read-only, so production identity creation remains external/authorization work.
+- ESXi live UAT cannot yet be refreshed from this run: direct SSH connect task 75b280b1-f1ed-4f06-aa8d-3a2fcfdda530 did not establish a session and was canceled; ssh.status returned no sessions. Do not blind-retry credentials. Existing prior ESXi UAT evidence remains valid only for the prior source/runtime, not these new production assets.
+- Source sync remains externally blocked: Infinity-GitHub is configured but unauthenticated; the expected AGW OCI GitHub header credential file is absent. Do not blind-retry push until authorization is restored.
+- Production external inputs still required for final live acceptance: production Entra app/certificate + final HTTPS callback, private S3-compatible bucket and runtime credential file, approved hostname/DNS/TLS ingress, Google Routes production credential and retention approval for durable evidence, restore drill on production config, and explicit cutover approval.
+- Next sanctioned action: commit this verified local milestone, push after GitHub auth is restored, then transfer/deploy the exact commit to ESXi via the authorized shared connection and execute Compose/TLS/backup/restore/live-route UAT.
+<!-- agent-gateway:managed:end:autocontinue-2026-09-26-run2 -->

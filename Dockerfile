@@ -17,6 +17,11 @@ RUN pnpm build
 
 FROM base AS runtime
 ENV NODE_ENV=production
-COPY --from=build /app /app
+ENV HOME=/app
+RUN groupadd --system --gid 10001 infinity && \
+    useradd --system --uid 10001 --gid infinity --home-dir /app --shell /usr/sbin/nologin infinity && \
+    mkdir -p /app/.aws && chown -R infinity:infinity /app
+COPY --from=build --chown=infinity:infinity /app /app
+USER infinity
 EXPOSE 3000
 CMD ["pnpm","start"]

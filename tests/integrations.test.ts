@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { DomainError } from '../src/domain/core';
 import { requestSchemas } from '../src/domain/requests';
 import { aggregateEasyAccOt, formatEasyAccPrimport } from '../src/server/integrations/easy-acc';
+import { blockingReadiness, productionReadiness } from '../src/server/integrations/preflight';
 
 test('Easy-ACC PRIMPORT uses six single-space-delimited fields and three decimals', () => {
   assert.equal(
@@ -145,4 +146,33 @@ test('manual mileage attestation cannot smuggle a provider reference', () => {
     ],
   });
   assert.equal(result.success, false);
+});
+
+test('deferred integrations remain visible but non-blocking', () => {
+  const gates = productionReadiness({ NODE_ENV: 'test' });
+  assert.equal(gates.find((gate) => gate.id === 'project_master')?.blocking, false);
+  assert.equal(gates.find((gate) => gate.id === 'easy_acc')?.blocking, false);
+  assert.equal(gates.find((gate) => gate.id === 'smartbiz')?.blocking, false);
+});
+
+test('blocking readiness ignores deferred false gates', () => {
+  const gates = productionReadiness({ NODE_ENV: 'test' }).map((gate) =>
+    gate.blocking ? { ...gate, ready: true } : gate,
+  );
+  assert.equal(blockingReadiness(gates), true);
+});
+
+test('Google Routes durable evidence and cutover approval remain blocking gates', () => {
+  const gates = productionReadiness({ NODE_ENV: 'test' });
+  assert.equal(gates.find((gate) => gate.id === 'google_routes')?.blocking, true);
+  assert.equal(gates.find((gate) => gate.id === 'google_routes')?.ready, false);
+  assert.equal(gates.find((gate) => gate.id === 'cutover_approval')?.blocking, true);
+  assert.equal(gates.find((gate) => gate.id === 'cutover_approval')?.ready, false);
+  assert.equal(blockingReadiness(gates), false);
+});
+
+test('production restore acceptance remains a blocking gate', () => {
+  const gates = productionReadiness({ NODE_ENV: 'test' });
+  assert.equal(gates.find((gate) => gate.id === 'restore_acceptance')?.blocking, true);
+  assert.equal(gates.find((gate) => gate.id === 'restore_acceptance')?.ready, false);
 });

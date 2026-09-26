@@ -1,0 +1,55 @@
+services:
+  app:
+    env_file:
+      - ${GOOGLE_ROUTES_ENV_FILE}
+    environment:
+      APP_ENV: production
+      STORAGE_DRIVER: s3
+      STORAGE_BUCKET: ${STORAGE_BUCKET}
+      STORAGE_REGION: ${STORAGE_REGION}
+      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT}
+      STORAGE_FORCE_PATH_STYLE: ${STORAGE_FORCE_PATH_STYLE:-false}
+      AWS_SHARED_CREDENTIALS_FILE: /app/.aws/credentials
+      GOOGLE_ROUTES_RETENTION_CONFIRMED: ${GOOGLE_ROUTES_RETENTION_CONFIRMED:-false}
+      PRODUCTION_RESTORE_ACCEPTED: ${PRODUCTION_RESTORE_ACCEPTED:-false}
+      PRODUCTION_CUTOVER_APPROVED: ${PRODUCTION_CUTOVER_APPROVED:-false}
+    volumes:
+      - ${S3_CREDENTIALS_HOST_PATH}:/app/.aws/credentials:ro
+      - ${ENTRA_CLIENT_PRIVATE_KEY_HOST_PATH}:/run/secrets/entra/client.key:ro
+      - ${ENTRA_CLIENT_CERT_HOST_PATH}:/run/secrets/entra/client.crt:ro
+
+  worker:
+    env_file:
+      - ${GOOGLE_ROUTES_ENV_FILE}
+    environment:
+      APP_ENV: production
+      STORAGE_DRIVER: s3
+      STORAGE_BUCKET: ${STORAGE_BUCKET}
+      STORAGE_REGION: ${STORAGE_REGION}
+      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT}
+      STORAGE_FORCE_PATH_STYLE: ${STORAGE_FORCE_PATH_STYLE:-false}
+      AWS_SHARED_CREDENTIALS_FILE: /app/.aws/credentials
+      GOOGLE_ROUTES_RETENTION_CONFIRMED: ${GOOGLE_ROUTES_RETENTION_CONFIRMED:-false}
+    volumes:
+      - ${S3_CREDENTIALS_HOST_PATH}:/app/.aws/credentials:ro
+
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      APP_HOSTNAME: ${APP_HOSTNAME}
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+    networks: [frontend]
+
+volumes:
+  caddy_data:
+  caddy_config:

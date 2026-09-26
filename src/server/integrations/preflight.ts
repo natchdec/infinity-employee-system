@@ -1,11 +1,20 @@
 export interface ReadinessGate {
   id: string;
   ready: boolean;
+  blocking: boolean;
   detail: string;
 }
 
 function present(value: string | undefined): boolean {
   return Boolean(value && value.trim());
+}
+
+function entraAuthReady(env: NodeJS.ProcessEnv): boolean {
+  if (!present(env.ENTRA_TENANT_ID) || !present(env.ENTRA_CLIENT_ID)) return false;
+  if (env.ENTRA_CLIENT_AUTH_MODE === 'certificate') {
+    return present(env.ENTRA_CLIENT_PRIVATE_KEY_PATH) && present(env.ENTRA_CLIENT_CERT_PATH);
+  }
+  return present(env.ENTRA_CLIENT_AUTH);
 }
 
 export function productionReadiness(env: NodeJS.ProcessEnv = process.env): ReadinessGate[] {
@@ -14,22 +23,22 @@ export function productionReadiness(env: NodeJS.ProcessEnv = process.env): Readi
     {
       id: 'https_origin',
       ready: origin.startsWith('https://'),
+      blocking: true,
       detail: origin.startsWith('https://')
         ? 'APP_ORIGIN uses HTTPS'
         : 'Production hostname/TLS is not configured',
     },
     {
       id: 'entra_oidc',
-      ready:
-        present(env.ENTRA_TENANT_ID) &&
-        present(env.ENTRA_CLIENT_ID) &&
-        present(env.ENTRA_CLIENT_AUTH),
+      ready: entraAuthReady(env),
+      blocking: true,
       detail: 'Dedicated Entra tenant/client/auth and redirect registration are required',
     },
     {
       id: 'object_storage',
       ready:
         env.STORAGE_DRIVER === 's3' && present(env.STORAGE_BUCKET) && present(env.STORAGE_REGION),
+      blocking: true,
       detail: 'Production documents require S3-compatible private object storage',
     },
     {
@@ -41,36 +50,59 @@ export function productionReadiness(env: NodeJS.ProcessEnv = process.env): Readi
         present(env.PROJECT_MASTER_SITE_ID) &&
         present(env.PROJECT_MASTER_LIST_ID) &&
         present(env.PROJECT_MASTER_COLUMN_MAP),
-      detail: 'Microsoft Lists/SharePoint source IDs and explicit column mapping are required',
+      blocking: false,
+      detail:
+        'Deferred by product decision: Microsoft Lists/SharePoint Project Master can be activated later without blocking core production readiness',
     },
     {
       id: 'google_routes_preview',
       ready: present(env.GOOGLE_ROUTES_API_KEY),
+      blocking: true,
       detail:
         'A Routes API key enables transient no-store previews only; preview values are not durable provider evidence',
     },
     {
       id: 'google_routes',
       ready: present(env.GOOGLE_ROUTES_API_KEY) && env.GOOGLE_ROUTES_RETENTION_CONFIRMED === 'true',
+      blocking: true,
       detail:
         'Durable Google-verified mileage evidence requires separately confirmed contractual retention rights',
     },
     {
       id: 'easy_acc',
       ready: false,
+      blocking: false,
       detail:
-        'PRIMPORT.TXT format is implemented; live employee-code, workday and OT1-4 mappings still require payroll-owner verification',
+        'Deferred by product decision: PRIMPORT.TXT integration remains fail-closed until payroll-owner mappings are verified',
     },
     {
       id: 'smartbiz',
       ready: false,
+      blocking: false,
       detail:
-        'No sanctioned transaction import schema is configured; use a vendor-provided format or Smartbiz 366 Developer Partner API',
+        'Deferred by product decision: accounting export remains fail-closed until a sanctioned Smartbiz transaction contract is available',
+    },
+    {
+      id: 'restore_acceptance',
+      ready: env.PRODUCTION_RESTORE_ACCEPTED === 'true',
+      blocking: true,
+      detail:
+        env.PRODUCTION_RESTORE_ACCEPTED === 'true'
+          ? 'Receipt-backed production restore drill has been accepted'
+          : 'A receipt-backed restore drill must be reviewed and accepted before cutover',
     },
     {
       id: 'cutover_approval',
-      ready: false,
-      detail: 'Explicit production cutover approval is intentionally external to configuration',
+      ready: env.PRODUCTION_CUTOVER_APPROVED === 'true',
+      blocking: true,
+      detail:
+        env.PRODUCTION_CUTOVER_APPROVED === 'true'
+          ? 'Explicit production cutover approval is recorded for this runtime'
+          : 'Explicit production cutover approval is required before serving live users',
     },
   ];
+}
+
+export function blockingReadiness(gates: ReadinessGate[]): boolean {
+  return gates.filter((gate) => gate.blocking).every((gate) => gate.ready);
 }
