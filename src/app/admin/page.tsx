@@ -1,4 +1,6 @@
+import Link from 'next/link';
 import { AppShell } from '@/components/AppShell';
+import { AdminSectionNav } from '@/components/AdminConfiguration';
 import { requireActor, requirePageRole } from '@/server/auth-context';
 import { organizationSummary } from '@/server/queries';
 
@@ -13,8 +15,9 @@ export default async function AdminPage() {
     <AppShell
       actor={actor}
       title="จัดการระบบ"
-      description="ข้อมูลพนักงาน โครงสร้างองค์กร นโยบาย และความพร้อมของ Integration"
+      description="กำหนดสิทธิ์พนักงาน โครงสร้างผู้อนุมัติ และตรวจ Approval Rules ที่ระบบบังคับใช้"
     >
+      <AdminSectionNav />
       <section className="section">
         <div className="metric-row" aria-label="โครงสร้างที่ตั้งค่าแล้ว">
           <div className="metric">
@@ -36,17 +39,26 @@ export default async function AdminPage() {
         </div>
       </section>
       <section className="section">
-        <div className="section-header">
-          <div>
-            <h2>นโยบาย</h2>
-            <p>มีนโยบาย published {summary.publishedPolicies} เวอร์ชันในฐานข้อมูลปัจจุบัน</p>
-          </div>
+        <div className="quick-list admin-quick-list">
+          <Link className="quick-link" href="/admin/employees">
+            <strong>พนักงานและสิทธิ์</strong>
+            <span>Role, Head/Owner, Department และสถานะบัญชี</span>
+          </Link>
+          <Link className="quick-link" href="/admin/organization">
+            <strong>โครงสร้างองค์กร</strong>
+            <span>Department และ Reporting Line แบบมี Effective Date</span>
+          </Link>
+          <Link className="quick-link" href="/admin/approval-rules">
+            <strong>Approval Rules</strong>
+            <span>ดู Manager / Finance / Payroll routing และ policy version</span>
+          </Link>
         </div>
+      </section>
+      <section className="section">
         <div className="notice notice-warning">
           <p>
-            การตั้งค่า production เช่น Entra, Microsoft Project Master, Google Routes, Easy-ACC,
-            Smartbiz และ Object Storage ต้องผ่าน readiness ของแต่ละ adapter ก่อน
-            ระบบจะไม่แสดงสถานะพร้อมจากค่าตัวอย่าง
+            การเปลี่ยน Reporting Line มีผลกับคำขอใหม่เท่านั้น คำขอที่ส่งแล้วเก็บ Head snapshot เดิม
+            และ Finance ไม่สามารถตรวจหรือจ่ายรายการของตนเองได้แม้มี Admin role.
           </p>
         </div>
       </section>

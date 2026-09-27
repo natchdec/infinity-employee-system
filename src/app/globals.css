@@ -1053,3 +1053,165 @@ code {
     width: 100%;
   }
 }
+
+.admin-subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  margin: -8px 0 28px;
+  border-block: 1px solid var(--border);
+}
+.admin-subnav a {
+  padding: 11px 14px;
+  border-right: 1px solid var(--border);
+  color: var(--primary);
+  font-weight: 600;
+}
+.admin-subnav a:first-child {
+  padding-left: 0;
+}
+.admin-quick-list {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.admin-card-list {
+  display: grid;
+  gap: 16px;
+}
+.admin-employee-card {
+  max-width: 980px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.admin-card-heading,
+.admin-card-actions,
+.admin-inline-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.admin-card-heading {
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+.admin-card-heading strong,
+.admin-card-heading span {
+  display: block;
+}
+.admin-card-heading > div > span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.admin-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.admin-form-grid label,
+.admin-create-row label {
+  display: grid;
+  gap: 6px;
+}
+.admin-form-grid select,
+.admin-create-row input,
+.department-row input,
+.admin-reporting-table select,
+.admin-reporting-table input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #bfc1bd;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: var(--surface);
+  color: var(--text);
+}
+.field-label,
+.admin-form-grid label > span,
+.admin-create-row label > span {
+  font-weight: 600;
+}
+.field-value {
+  margin: 8px 0 0;
+}
+.admin-role-fieldset {
+  margin: 18px 0;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.admin-role-fieldset legend {
+  padding: 0 6px;
+  font-weight: 600;
+}
+.role-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 22px;
+}
+.admin-inline-controls {
+  padding-block: 10px;
+  border-block: 1px solid var(--border);
+}
+.admin-card-actions {
+  margin-top: 16px;
+}
+.admin-create-row {
+  max-width: 900px;
+  display: grid;
+  grid-template-columns: 180px minmax(240px, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.department-list {
+  max-width: 980px;
+  display: grid;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.department-row {
+  display: grid;
+  grid-template-columns: 140px minmax(220px, 1fr) 80px 110px auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.department-row:last-child {
+  border-bottom: 0;
+}
+.department-row .field-note {
+  grid-column: 1 / -1;
+}
+.admin-reporting-table select {
+  min-width: 220px;
+}
+.admin-reporting-table input[type='date'] {
+  min-width: 150px;
+}
+
+@media (max-width: 900px) {
+  .admin-quick-list,
+  .admin-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .admin-create-row,
+  .department-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+  .admin-subnav {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .admin-subnav a,
+  .admin-subnav a:first-child {
+    padding: 10px 8px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+}
