@@ -105,7 +105,7 @@ services:
       - employee_documents:/data/documents
       - ./secrets/outlook/calendar-sync.key.pem:/run/secrets/outlook/client.key:ro
       - ./secrets/outlook/calendar-sync.crt.pem:/run/secrets/outlook/client.crt:ro
-    networks: [backend]
+    networks: [frontend, backend]
 
 networks:
   frontend:
