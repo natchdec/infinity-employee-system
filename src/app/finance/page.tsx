@@ -43,6 +43,8 @@ export default async function FinancePage() {
           <Link href="/finance/settlements">Settlement</Link>
           <Link href="/finance/receipts">ใบเสร็จต้นฉบับ</Link>
           <Link href="/finance/payroll">OT / Payroll</Link>
+          <Link href="/finance/projects">ต้นทุนตามโครงการ</Link>
+          <Link href="/finance/reconciliation">Reconciliation</Link>
           <Link href="/finance/monthly-close">Monthly Closing</Link>
           <Link href="/finance/exports">ส่งออก</Link>
         </div>
