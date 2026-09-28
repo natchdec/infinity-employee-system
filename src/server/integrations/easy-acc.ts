@@ -46,7 +46,7 @@ export function aggregateEasyAccOt(
   const totals: [number, number, number, number] = [0, 0, 0, 0];
   for (const line of lines) {
     invariant(
-      Number.isSafeInteger(line.hours) && line.hours >= 0,
+      Number.isFinite(line.hours) && line.hours >= 0 && Number.isInteger(line.hours * 2),
       'EASY_ACC_OT_HOURS_INVALID',
       'ชั่วโมง OT สำหรับ Easy-ACC ไม่ถูกต้อง',
     );

@@ -51,7 +51,7 @@ Quiet Enterprise / Modern Editorial.
 - Date.
 - Project.
 - Task / work description.
-- Whole-hour inputs grouped by applicable OT category/multiplier.
+- 0.5-hour increment inputs grouped by applicable OT category/multiplier.
 - Calculated summary.
 - Submit.
 
@@ -126,3 +126,20 @@ Before implementation:
 - Validate hierarchy, density, touch targets, and form length.
 - Reject any screen that resembles a generic AI dashboard/template.
 - Lock components, spacing, typography, statuses, and navigation before coding.
+
+
+## Calendar Inbox and Monthly Review
+- Outlook integration only considers events explicitly categorized with an `IES · ...` category.
+- Supported draft intents: `IES · OT`, `IES · Onsite`, and Thai leave categories.
+- Online meetings never create mileage unless the employee explicitly marks the event Onsite.
+- Calendar data creates Suggested items only. Employee actions are Review/Edit, Ignore, and Create Monthly Requests.
+- The monthly summary shows OT hours, mileage distance/amount, Leave days and items needing review.
+- Same-day multiple Onsite events are proposed as one route chain (for example Office -> Customer A -> Customer B -> Office) and require employee confirmation when ambiguous.
+- Calendar edits update only unsubmitted drafts. Changes after submission create a visible exception and audit event; they never silently rewrite the request.
+
+## Finance Operations
+- Monthly Closing shows pending approvals, Finance verification gaps, receipt gaps, payroll readiness and period state.
+- Exception Inbox groups blocking/ambiguous items instead of hiding them across individual screens.
+- Receipt Inbox lets employees upload first and assign the receipt to a claim later.
+- Employee Monthly Statement provides a period summary without exposing another employee's salary or private claim data.
+- Audit Timeline uses human-readable events and redacted metadata.

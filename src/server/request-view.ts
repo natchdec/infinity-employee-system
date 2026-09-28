@@ -36,6 +36,7 @@ export interface RequestFormOptions {
     title: string;
     businessDate: string;
   }[];
+  receiptInbox: { id: string; filename: string }[];
 }
 
 export async function requestFormOptions(actor: Actor): Promise<RequestFormOptions> {
@@ -65,6 +66,16 @@ export async function requestFormOptions(actor: Actor): Promise<RequestFormOptio
         where s.trip_id=r.id and s.state not in ('returned','void')
       )
     order by r.business_date desc
+    limit 100
+  `;
+  const receiptInbox = await db()`
+    select d.id,d.filename
+    from documents d
+    where d.owner_id=${actor.id}
+      and d.scan_state='clean'
+      and d.evidence_class='expense'
+      and not exists(select 1 from document_links l where l.document_id=d.id)
+    order by d.uploaded_at desc,d.id desc
     limit 100
   `;
   return {
@@ -105,10 +116,15 @@ export async function requestFormOptions(actor: Actor): Promise<RequestFormOptio
       title: row.title,
       businessDate: row.business_date,
     })),
+    receiptInbox: receiptInbox.map((row) => ({
+      id: String(row.id),
+      filename: String(row.filename),
+    })),
   };
 }
 
 export interface RequestDetail {
+  canHeadDecide: boolean;
   request: RequestRecord & { employeeName: string; employeeEmail: string };
   payload: Record<string, Json>;
   calculation: Record<string, Json>;
@@ -144,7 +160,33 @@ export async function requestDetail(actor: Actor, id: string): Promise<RequestDe
   `;
   invariant(row, 'NOT_FOUND', 'ไม่พบรายการ', 404);
   const request = requestFromRow(row as Record<string, unknown>);
-  invariant(canViewRequest(actor, request), 'NOT_FOUND', 'ไม่พบรายการ', 404);
+  let canHeadDecide =
+    actor.roles.includes('head') &&
+    request.assigned_head_id === actor.id &&
+    request.employee_id !== actor.id;
+  let allowed = canViewRequest(actor, request);
+  if (
+    !allowed &&
+    actor.roles.includes('head') &&
+    request.assigned_head_id &&
+    request.workflow_state === 'pending_head'
+  ) {
+    const date = bangkokDate(new Date());
+    const delegated = await db()`
+      select id
+      from approval_delegations
+      where active
+        and scope='manager_approval'
+        and delegator_id=${request.assigned_head_id}
+        and delegate_id=${actor.id}
+        and effective_from <= ${date}::date
+        and effective_to >= ${date}::date
+      limit 1
+    `;
+    canHeadDecide = delegated.length > 0 && request.employee_id !== actor.id;
+    allowed = canHeadDecide;
+  }
+  invariant(allowed, 'NOT_FOUND', 'ไม่พบรายการ', 404);
   const [revision] = await db()`
     select payload,calculation,policy_snapshots
     from request_revisions
@@ -186,6 +228,7 @@ export async function requestDetail(actor: Actor, id: string): Promise<RequestDe
     }
   }
   return {
+    canHeadDecide,
     request: {
       ...request,
       employeeName: row.display_name,

@@ -87,6 +87,13 @@ export function LeaveFields({ options, initial }: Omit<Props, 'kind'>) {
 
 export function OTFields({ options, initial }: Omit<Props, 'kind'>) {
   const map = new Map<string, number>();
+  const suggestedHours =
+    typeof initial.calendarSuggestedHours === 'number' ? initial.calendarSuggestedHours : 0;
+  const calendarDayKind = textValue(initial.calendarDayKind);
+  const calendarCategories = options.otCategories.filter(
+    (category) => category.dayKind === calendarDayKind,
+  );
+  const suggestedCategoryId = calendarCategories.length === 1 ? calendarCategories[0]!.id : null;
   for (const item of arrayValue(initial.lines)) {
     const line = objectValue(item);
     if (typeof line.categoryId === 'string' && typeof line.hours === 'number') {
@@ -117,14 +124,27 @@ export function OTFields({ options, initial }: Omit<Props, 'kind'>) {
               name={`ot_${category.id}`}
               min={0}
               max={24}
-              step={1}
-              inputMode="numeric"
-              defaultValue={map.get(category.id) ?? 0}
+              step={0.5}
+              inputMode="decimal"
+              defaultValue={
+                map.get(category.id) ??
+                (category.id === suggestedCategoryId && suggestedHours >= 0.5 ? suggestedHours : 0)
+              }
             />
           </label>
         ))}
       </div>
-      <p className="field-note">กรอกจำนวนชั่วโมงเต็มเท่านั้น ระบบคำนวณยอดจากฐานค่าจ้างและนโยบาย</p>
+      {suggestedHours > 0 ? (
+        <p className="field-note">
+          Outlook แนะนำ {suggestedHours} ชั่วโมง
+          {suggestedCategoryId
+            ? ' และระบบเติมหมวด OT ที่ตรงกับวันให้อัตโนมัติ กรุณาตรวจสอบก่อนส่ง'
+            : ' กรุณาเลือกหมวด OT ที่ถูกต้องก่อนส่ง โดยเฉพาะวันหยุด'}
+        </p>
+      ) : null}
+      <p className="field-note">
+        ขั้นต่ำ 0.5 ชั่วโมง และเพิ่มทีละ 0.5 ชั่วโมง ระบบคำนวณยอดจากฐานค่าจ้างและนโยบาย
+      </p>
     </fieldset>
   );
 }

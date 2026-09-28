@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { bangkokDate } from '../domain/calendar';
 import {
   invariant,
   requireIndependentFinance,
@@ -6,7 +7,7 @@ import {
   type Actor,
   type Json,
 } from '../domain/core';
-import { commandSchema, requireHeadDecision, type RequestRecord } from '../domain/requests';
+import { commandSchema, type RequestRecord } from '../domain/requests';
 import { audit, command, enqueue, safeJson } from './db';
 import { approvedEffects, voidQueuedPayroll } from './payroll';
 import { releaseLeave } from './persist-request';
@@ -41,7 +42,31 @@ export async function headDecision(
   return command(actor, `request.head:${id}`, idempotencyKey, { id, ...input }, async (tx) => {
     const current = await requestForUpdate(tx, id);
     requireRevision(current.revision, input.expectedRevision);
-    requireHeadDecision(actor, current);
+    const decisionDate = bangkokDate(now);
+    const delegated =
+      current.assigned_head_id && current.assigned_head_id !== actor.id
+        ? await tx`
+            select id
+            from approval_delegations
+            where active
+              and scope='manager_approval'
+              and delegator_id=${current.assigned_head_id}
+              and delegate_id=${actor.id}
+              and effective_from <= ${decisionDate}::date
+              and effective_to >= ${decisionDate}::date
+            limit 1
+          `
+        : [];
+    invariant(
+      actor.active &&
+        actor.roles.includes('head') &&
+        current.workflow_state === 'pending_head' &&
+        current.employee_id !== actor.id &&
+        (current.assigned_head_id === actor.id || delegated.length > 0),
+      'FORBIDDEN',
+      'คุณไม่ใช่หัวหน้าหรือผู้รับมอบหมายที่อนุมัติรายการนี้ได้',
+      403,
+    );
 
     const nextRevision = current.revision + 1;
     const workflowState =

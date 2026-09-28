@@ -3,6 +3,11 @@ import { dateSchema, expenseCategories } from './policy';
 import { invariant, type Actor } from './core';
 
 const id = z.string().uuid();
+const otHours = z
+  .number()
+  .min(0.5)
+  .max(24)
+  .refine((value) => Number.isInteger(value * 2), 'ชั่วโมง OT ต้องเพิ่มทีละ 0.5 ชั่วโมง');
 const text = z.string().trim().min(1).max(2000);
 const decimalAmount = z.string().regex(/^(0|[1-9]\d{0,9})(\.\d{1,2})?$/);
 const base = {
@@ -78,7 +83,7 @@ export const requestSchemas = {
           z
             .object({
               categoryId: z.string().min(1).max(40),
-              hours: z.number().int().min(1).max(24),
+              hours: otHours,
             })
             .strict(),
         )

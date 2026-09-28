@@ -113,7 +113,7 @@ test('closed cycle is skipped and year rollover is safe', () => {
   );
 });
 const wage = { monthlySatang: '3000000', normalDailyHours: 8, eligibility: 'eligible' as const };
-test('integer OT is policy driven, not typed money or time ranges', () => {
+test('OT is policy driven and supports half-hour increments', () => {
   const result = calculateOT(
     '2026-09-22',
     [{ categoryId: 'weekday_ot', hours: 3 }],
@@ -123,18 +123,27 @@ test('integer OT is policy driven, not typed money or time ranges', () => {
   );
   assert.equal(result.totalSatang, '56250');
   assert.equal(result.totalHours, 3);
+  const halfHour = calculateOT(
+    '2026-09-22',
+    [{ categoryId: 'weekday_ot', hours: 1.5 }],
+    wage,
+    otPolicy,
+    calendar,
+  );
+  assert.equal(halfHour.totalSatang, '28125');
+  assert.equal(halfHour.totalHours, 1.5);
 });
-test('fractional OT hours fail', () =>
+test('OT rejects increments smaller than half an hour', () =>
   rejects(
     () =>
       calculateOT(
         '2026-09-22',
-        [{ categoryId: 'weekday_ot', hours: 1.5 }],
+        [{ categoryId: 'weekday_ot', hours: 1.25 }],
         wage,
         otPolicy,
         calendar,
       ),
-    'INTEGER_HOURS_REQUIRED',
+    'HALF_HOUR_INCREMENT_REQUIRED',
   ));
 test('holiday category cannot be used on a normal workday', () =>
   rejects(

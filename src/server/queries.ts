@@ -1,3 +1,4 @@
+import { bangkokDate } from '../domain/calendar';
 import { db } from './db';
 
 export interface RequestListRow {
@@ -54,6 +55,7 @@ export async function assignedApprovals(headId: string): Promise<
     employeeName: string;
   })[]
 > {
+  const date = bangkokDate(new Date());
   const rows = await db()`
     select
       r.id,
@@ -69,8 +71,20 @@ export async function assignedApprovals(headId: string): Promise<
       e.display_name
     from requests r
     join employees e on e.id = r.employee_id
-    where r.assigned_head_id = ${headId}
-      and r.workflow_state = 'pending_head'
+    where r.workflow_state = 'pending_head'
+      and (
+        r.assigned_head_id = ${headId}
+        or exists(
+          select 1
+          from approval_delegations d
+          where d.active
+            and d.scope='manager_approval'
+            and d.delegator_id=r.assigned_head_id
+            and d.delegate_id=${headId}
+            and d.effective_from <= ${date}::date
+            and d.effective_to >= ${date}::date
+        )
+      )
     order by r.created_at, r.id
     limit 100
   `;

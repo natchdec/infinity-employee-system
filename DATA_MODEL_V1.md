@@ -34,7 +34,7 @@ LeaveBalance is a projection of immutable LeaveLedger grants/debits/reversals an
 
 ## OT and payroll
 
-OTRequest detail references work date, project/task, description, wage/policy version and amount. OTLine(request/round/line, category_id, integer hours, multiplier, calculated_satang). No minute or start/end-time fields. Validate effective eligibility and daily/category/weekly limits.
+OTRequest detail references work date, project/task, description, wage/policy version and amount. OTLine(request/round/line, category_id, hours in 0.5-hour increments, multiplier, calculated_satang). Submitted OT does not retain a mutable start/end-time range; Calendar timestamps may exist only in the reviewed source-draft snapshot. Validate effective eligibility and daily/category/weekly limits.
 
 PayrollCycle(month key, nominal payday, exclusive cutoff, calendar/policy snapshot, state open/exported/closed, revision). PayrollItem(request/round, employee, frozen amount, cycle, state), uniquely allocated per accepted OT request. Central Bangkok cutoff and approval time determine cycle. Late approval moves forward; closed/exported membership cannot be silently edited. Expenses never enter this queue.
 
@@ -75,3 +75,11 @@ AuditEvent is append-only: timestamp, actor, action, entity, revision/round, cor
 ## Database acceptance
 
 Foreign keys, integer/nonnegative checks, allocation uniqueness and immutable-history guards supplement service validation. Verify real PostgreSQL clean/repeat migrations, constraints, concurrent duplicate commands, persistence and restart. In-memory mocks are not migration/runtime evidence. The implementation report must name any deferred entity/path instead of implying completion from this document.
+
+
+## Calendar worklog and monthly operations extension
+WorklogSync(employee/provider, cursor/delta token, bounded sync window, last_success_at, safe error state) tracks incremental provider progress without broad mailbox access. WorklogItem(employee, source_type outlook/excel/manual, external_event_id + occurrence identity, source revision/change key, intent ot/onsite/leave, event start/end, privacy-safe location snapshot, state suggested/confirmed/ignored/submitted/exception, confirmed_at/by, submitted request references) is deduplicated and auditable. Provider body/attendees are not retained unless a later explicit requirement justifies them.
+
+WorkingSchedule/Calendar policy is versioned and supplies weekdays, office start/end, lunch boundary, timezone and company holidays. Calendar OT suggestions intersect event time with non-working windows, then convert to 0.5-hour units for employee review. Onsite worklog items may compose a daily route chain before mileage is calculated; Home address remains outside broadly visible claim data.
+
+OperationalPeriod(month/family, state open/closing/locked, revision, closed_by/at, policy snapshot) fences monthly payroll/claim closing. Adjustment(source entity/round, reason, delta snapshot, target period, approval/payment/export state) is append-only and never rewrites locked history. ApprovalDelegation(delegator, delegate, effective_from/to, scope, audit state) remains subject to self-approval and Finance-independence guards. ReceiptInboxItem represents an owned unassigned document awaiting claim attachment. Exceptions and Notifications are projections over authoritative state, not alternate transaction truth.

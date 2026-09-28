@@ -183,27 +183,42 @@ if (mode === '--run-transaction') {
     STORAGE_ROOT: path.join(dir, 'documents'),
     UAT_SEED_ALLOWED: 'true',
   };
-  const check = spawn('/usr/local/bin/pnpm', ['exec', 'tsx', 'scripts/transaction-uat.ts'], {
-    cwd: root,
-    env: runtimeEnv,
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-  let checkOut = '';
-  let checkErr = '';
-  check.stdout.on('data', (chunk) => {
-    checkOut += chunk.toString();
-  });
-  check.stderr.on('data', (chunk) => {
-    checkErr += chunk.toString();
-  });
-  const checkCode = await new Promise((resolve, reject) => {
-    check.on('error', reject);
-    check.on('exit', (code) => resolve(code ?? 1));
-  });
-  if (checkOut) process.stdout.write(checkOut);
-  if (checkErr) process.stderr.write(checkErr);
-  child.kill('SIGTERM');
-  await new Promise((resolve) => child.once('exit', resolve));
+
+  async function runPnpm(args) {
+    const step = spawn('/usr/local/bin/pnpm', args, {
+      cwd: root,
+      env: runtimeEnv,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let stepOut = '';
+    let stepErr = '';
+    step.stdout.on('data', (chunk) => {
+      stepOut += chunk.toString();
+    });
+    step.stderr.on('data', (chunk) => {
+      stepErr += chunk.toString();
+    });
+    const code = await new Promise((resolve, reject) => {
+      step.on('error', reject);
+      step.on('exit', (value) => resolve(value ?? 1));
+    });
+    if (stepOut) process.stdout.write(stepOut);
+    if (stepErr) process.stderr.write(stepErr);
+    if (code !== 0) throw new Error(`UAT step failed (${code}): pnpm ${args.join(' ')}`);
+  }
+
+  let checkCode = 0;
+  try {
+    await runPnpm(['db:migrate']);
+    await runPnpm(['db:seed:test']);
+    await runPnpm(['exec', 'tsx', 'scripts/transaction-uat.ts']);
+  } catch (error) {
+    checkCode = 1;
+    console.error(error instanceof Error ? error.message : String(error));
+  } finally {
+    child.kill('SIGTERM');
+    await new Promise((resolve) => child.once('exit', resolve));
+  }
   if (checkCode !== 0) process.exitCode = checkCode;
 } else {
   let stopping = false;

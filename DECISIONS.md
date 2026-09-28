@@ -25,7 +25,7 @@ A Finance user cannot verify or mark paid their own claim.
 Leave is recorded in full-day units only. Policies follow legal defaults with versioned company overrides.
 
 ## D-009 OT
-OT is entered as whole hours by multiplier/category against a task/project. No start/end time and no minute-level input. OT is paid via payroll.
+Final OT requests store policy category and hours in 0.5-hour increments (minimum 0.5) against a task/project. Calendar start/end timestamps may be used to propose a draft, but submitted OT remains a reviewed hour quantity rather than a mutable time-range claim. OT is paid via payroll.
 
 ## D-010 Expense
 Entertainment is an Expense subtype, not a separate top-level module.
@@ -47,3 +47,13 @@ Use Quiet Enterprise / Modern Editorial design. Avoid AI-template aesthetics: ne
 
 ## D-016 OCI Role
 Agent Gateway OCI remains a separate automation and remote-connectivity platform. Its Docker VPN containers may connect AGW OCI to customer or remote networks, but Employee System production availability must not depend on the OCI VPN stack unless a later explicit architecture decision says otherwise.
+
+
+## D-017 Calendar-assisted worklog
+Outlook Calendar is a draft source, never proof or an auto-submit channel. Only events explicitly categorized with an Infinity Employee System category are eligible for ingestion. The system may derive OT, Onsite mileage, or full-day Leave suggestions, but the employee must review before creating requests. Submitted requests are immutable from later Calendar edits; source changes are surfaced as audited exceptions.
+
+## D-018 Monthly operations close and adjustments
+Operational periods may move Open -> Closing -> Locked. Locked payroll/claim history is not edited in place. Corrections use linked Adjustment records and follow the applicable approval/payment/export treatment in a later eligible period.
+
+## D-019 Delegation, exceptions and reminders
+Effective-dated approval delegation is allowed only when it preserves no-self-approval and Finance independence. Exception and notification queues surface work requiring human action; they do not bypass policy or approval.

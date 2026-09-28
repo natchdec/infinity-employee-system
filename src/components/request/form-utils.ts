@@ -58,7 +58,10 @@ export function buildRequestInput(
           categoryId: item.id,
           hours: Number(value(`ot_${item.id}`) || '0'),
         }))
-        .filter((line) => Number.isInteger(line.hours) && line.hours > 0),
+        .filter(
+          (line) =>
+            Number.isFinite(line.hours) && line.hours >= 0.5 && Number.isInteger(line.hours * 2),
+        ),
     };
   }
   if (kind === 'expense') {
@@ -70,28 +73,27 @@ export function buildRequestInput(
       documentIds,
     };
     if (categoryId === 'mileage') {
-      line.mileage = [
-        {
-          origin: value('leg1Origin'),
-          destination: value('leg1Destination'),
-          originLabel: value('leg1OriginLabel'),
-          destinationLabel: value('leg1DestinationLabel'),
-          distanceMetres: kmToMetres(value('leg1Km')),
-          source: 'manual_attested',
+      const requestedLegCount = Number(value('mileageLegCount') || '2');
+      const legCount =
+        Number.isInteger(requestedLegCount) && requestedLegCount >= 1 && requestedLegCount <= 20
+          ? requestedLegCount
+          : 2;
+      line.mileage = Array.from({ length: legCount }, (_, offset) => offset + 1).flatMap(
+        (index) => {
+          const kilometres = value(`leg${index}Km`);
+          if (!kilometres) return [];
+          return [
+            {
+              origin: value(`leg${index}Origin`),
+              destination: value(`leg${index}Destination`),
+              originLabel: value(`leg${index}OriginLabel`),
+              destinationLabel: value(`leg${index}DestinationLabel`),
+              distanceMetres: kmToMetres(kilometres),
+              source: 'manual_attested',
+            },
+          ];
         },
-        ...(value('leg2Km')
-          ? [
-              {
-                origin: value('leg2Origin'),
-                destination: value('leg2Destination'),
-                originLabel: value('leg2OriginLabel'),
-                destinationLabel: value('leg2DestinationLabel'),
-                distanceMetres: kmToMetres(value('leg2Km')),
-                source: 'manual_attested',
-              },
-            ]
-          : []),
-      ];
+      );
     } else {
       line.amount = value('amount');
     }

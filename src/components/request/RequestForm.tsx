@@ -24,6 +24,9 @@ interface Props {
   requestId?: string;
   expectedRevision?: number;
   initial?: Record<string, Json>;
+  sourceWorklogId?: string;
+  sourceWorklogRevision?: number;
+  sourceWorklogs?: { id: string; expectedRevision: number }[];
 }
 
 export function RequestForm({
@@ -34,6 +37,9 @@ export function RequestForm({
   requestId,
   expectedRevision,
   initial = {},
+  sourceWorklogId,
+  sourceWorklogRevision,
+  sourceWorklogs,
 }: Props) {
   const router = useRouter();
   const [documents, setDocuments] = useState<UploadedDocument[]>(
@@ -58,6 +64,11 @@ export function RequestForm({
       );
       const url =
         mode === 'resubmit' && requestId ? `/api/requests/${requestId}/commands` : '/api/requests';
+      const worklogSources = sourceWorklogs?.length
+        ? sourceWorklogs
+        : sourceWorklogId && sourceWorklogRevision
+          ? [{ id: sourceWorklogId, expectedRevision: sourceWorklogRevision }]
+          : [];
       const body =
         mode === 'resubmit'
           ? {
@@ -65,7 +76,12 @@ export function RequestForm({
               expectedRevision,
               input,
             }
-          : input;
+          : worklogSources.length
+            ? {
+                input,
+                sourceWorklogs: worklogSources,
+              }
+            : input;
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -94,6 +110,14 @@ export function RequestForm({
 
   return (
     <form className="request-form" onSubmit={submit}>
+      {sourceWorklogs?.length || sourceWorklogId ? (
+        <div className="notice">
+          <p>
+            คำขอนี้สร้างจาก Outlook Calendar Draft กรุณาตรวจข้อมูลก่อนส่ง
+            ระบบจะยังใช้ขั้นอนุมัติเดิมทุกขั้น
+          </p>
+        </div>
+      ) : null}
       {error ? (
         <div className="form-error" role="alert">
           {error}
@@ -106,6 +130,32 @@ export function RequestForm({
       {kind === 'expense' ? <ExpenseFields options={options} initial={initial} /> : null}
       {kind === 'trip' ? <TripFields initial={initial} /> : null}
       {kind === 'advance' ? <AdvanceFields options={options} initial={initial} /> : null}
+
+      {kind === 'expense' && options.receiptInbox.length ? (
+        <fieldset>
+          <legend>Receipt Inbox</legend>
+          <p className="field-note">เลือกใบเสร็จที่อัปโหลดไว้ก่อนหน้าเพื่อผูกกับคำขอนี้</p>
+          <div className="quick-list">
+            {options.receiptInbox.map((receipt) => {
+              const selected = documents.some((document) => document.id === receipt.id);
+              return (
+                <button
+                  className="quick-link"
+                  type="button"
+                  key={receipt.id}
+                  disabled={selected || documents.length >= 10}
+                  onClick={() =>
+                    setDocuments([...documents, { id: receipt.id, name: receipt.filename }])
+                  }
+                >
+                  <strong>{receipt.filename}</strong>
+                  <span>{selected ? 'เลือกแล้ว' : 'เลือกใช้ใบเสร็จนี้'}</span>
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
+      ) : null}
 
       {kind === 'leave' || kind === 'expense' ? (
         <DocumentUploader

@@ -27,6 +27,7 @@ interface Props {
   originalReceipt: { state: string; revision: number } | null;
   settlement: SettlementSummary | null;
   settlementCanStart: boolean;
+  canHeadDecide?: boolean;
 }
 
 export function RequestActions({
@@ -37,11 +38,13 @@ export function RequestActions({
   originalReceipt,
   settlement,
   settlementCanStart,
+  canHeadDecide = false,
 }: Props) {
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const owner = request.employeeId === actorId;
-  const isHead = roles.includes('head') && request.assignedHeadId === actorId && !owner;
+  const isHead =
+    roles.includes('head') && !owner && (canHeadDecide || request.assignedHeadId === actorId);
   const isFinance = roles.includes('finance') && !owner;
 
   async function command(action: string, extra: Record<string, unknown> = {}) {

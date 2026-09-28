@@ -1,6 +1,10 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { AppShell, Money, StateLabel } from '@/components/AppShell';
+import { ApprovalDelegationPanel } from '@/components/ApprovalDelegationPanel';
 import { requireActor, requirePageRole } from '@/server/auth-context';
+import { approvalDelegationOptions } from '@/server/approval-delegation-service';
+import { cookieNames } from '@/server/identity';
 import { assignedApprovals } from '@/server/queries';
 
 export const dynamic = 'force-dynamic';
@@ -8,7 +12,12 @@ export const dynamic = 'force-dynamic';
 export default async function ApprovalsPage() {
   const actor = await requireActor();
   requirePageRole(actor, 'head');
-  const requests = await assignedApprovals(actor.id);
+  const store = await cookies();
+  const csrf = store.get(cookieNames().csrf)?.value ?? '';
+  const [requests, delegation] = await Promise.all([
+    assignedApprovals(actor.id),
+    approvalDelegationOptions(actor),
+  ]);
 
   return (
     <AppShell
@@ -62,6 +71,11 @@ export default async function ApprovalsPage() {
           </div>
         )}
       </section>
+      <ApprovalDelegationPanel
+        csrf={csrf}
+        delegations={delegation.delegations}
+        candidates={delegation.candidates}
+      />
     </AppShell>
   );
 }

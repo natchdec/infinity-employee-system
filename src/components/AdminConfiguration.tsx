@@ -28,6 +28,7 @@ const adminSections = [
   ['/admin/employees', 'พนักงานและสิทธิ์'],
   ['/admin/organization', 'โครงสร้างองค์กร'],
   ['/admin/approval-rules', 'Approval Rules'],
+  ['/admin/policies', 'Policy Center'],
 ] as const;
 
 export function AdminSectionNav() {

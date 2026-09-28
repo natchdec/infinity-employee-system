@@ -6,11 +6,12 @@ import type { RequestKind } from '@/domain/requests';
 import { requireActor } from '@/server/auth-context';
 import { cookieNames } from '@/server/identity';
 import { requestFormOptions } from '@/server/request-view';
+import { worklogRequestDraft } from '@/server/worklog-review-service';
 
 export const dynamic = 'force-dynamic';
 
 interface Props {
-  searchParams: Promise<{ kind?: string }>;
+  searchParams: Promise<{ kind?: string; worklog?: string }>;
 }
 
 const choices: {
@@ -47,8 +48,9 @@ const choices: {
 
 export default async function NewRequestPage({ searchParams }: Props) {
   const actor = await requireActor();
-  const { kind } = await searchParams;
-  const selected = choices.find((choice) => choice.id === kind);
+  const { kind, worklog } = await searchParams;
+  const source = worklog ? await worklogRequestDraft(actor, worklog) : null;
+  const selected = choices.find((choice) => choice.id === (source?.kind ?? kind));
 
   if (!selected) {
     return (
@@ -80,7 +82,15 @@ export default async function NewRequestPage({ searchParams }: Props) {
 
   return (
     <AppShell actor={actor} title={selected.title} description={selected.description}>
-      <RequestForm kind={selected.id} csrf={csrf} options={options} />
+      <RequestForm
+        kind={selected.id}
+        csrf={csrf}
+        options={options}
+        initial={source?.initial}
+        sourceWorklogId={source?.sourceWorklogId}
+        sourceWorklogRevision={source?.sourceRevision}
+        sourceWorklogs={source?.sourceWorklogs}
+      />
     </AppShell>
   );
 }

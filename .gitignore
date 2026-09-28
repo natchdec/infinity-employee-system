@@ -41,3 +41,4 @@ test-results/
 
 # Local agent/worktree metadata
 .agentgw-git-auth/
+.transfer-runtime/

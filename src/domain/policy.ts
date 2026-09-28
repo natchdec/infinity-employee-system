@@ -12,14 +12,65 @@ export const dateSchema = z.string().refine((value) => {
 }, 'วันที่ไม่ถูกต้อง');
 const satang = z.string().regex(/^(0|[1-9]\d{0,10})$/);
 const positiveSatang = satang.refine((value) => BigInt(value) > 0n);
+const clockTime = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 
 export const calendarPolicySchema = z
   .object({
     workingWeekdays: z.array(z.number().int().min(0).max(6)).min(1).max(7),
     holidays: z.array(dateSchema).max(200),
+    workStart: clockTime.optional(),
+    workEnd: clockTime.optional(),
+    lunchStart: clockTime.optional(),
+    lunchEnd: clockTime.optional(),
+    timeZone: z.literal('Asia/Bangkok').optional(),
   })
   .strict()
-  .refine((value) => new Set(value.workingWeekdays).size === value.workingWeekdays.length);
+  .superRefine((value, context) => {
+    if (new Set(value.workingWeekdays).size !== value.workingWeekdays.length) {
+      context.addIssue({ code: 'custom', path: ['workingWeekdays'], message: 'วันทำงานซ้ำกัน' });
+    }
+    const configured = Boolean(
+      value.workStart || value.workEnd || value.lunchStart || value.lunchEnd || value.timeZone,
+    );
+    if (!configured) return;
+    if (!value.workStart || !value.workEnd || !value.timeZone) {
+      context.addIssue({
+        code: 'custom',
+        path: ['workStart'],
+        message: 'Working Schedule ต้องมีเวลาเริ่ม เลิก และ timezone ครบ',
+      });
+      return;
+    }
+    if (value.workStart >= value.workEnd) {
+      context.addIssue({
+        code: 'custom',
+        path: ['workEnd'],
+        message: 'เวลาเลิกงานต้องหลังเวลาเริ่มงาน',
+      });
+    }
+    if (Boolean(value.lunchStart) !== Boolean(value.lunchEnd)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['lunchStart'],
+        message: 'ช่วงพักต้องมีเวลาเริ่มและสิ้นสุดครบ',
+      });
+    }
+    if (
+      value.lunchStart &&
+      value.lunchEnd &&
+      !(
+        value.workStart < value.lunchStart &&
+        value.lunchStart < value.lunchEnd &&
+        value.lunchEnd < value.workEnd
+      )
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['lunchEnd'],
+        message: 'ช่วงพักต้องอยู่ภายในเวลาทำงาน',
+      });
+    }
+  });
 
 export const leaveTypeSchema = z
   .object({

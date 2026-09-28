@@ -19,6 +19,14 @@ const configSchema = z.object({
   ),
   ENTRA_CLIENT_PRIVATE_KEY_PATH: z.string().min(1).optional(),
   ENTRA_CLIENT_CERT_PATH: z.string().min(1).optional(),
+  OUTLOOK_CALENDAR_SYNC_ENABLED: booleanText,
+  OUTLOOK_CALENDAR_SYNC_INTERVAL_MINUTES: z.coerce.number().int().min(15).max(1440).default(60),
+  OUTLOOK_CALENDAR_TENANT_ID: z.string().uuid().optional(),
+  OUTLOOK_CALENDAR_CLIENT_ID: z.string().uuid().optional(),
+  OUTLOOK_CALENDAR_CLIENT_AUTH: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.string().min(1).optional(),
+  ),
   CLOUDFLARE_ACCESS_TEAM_DOMAIN: z.preprocess(
     (value) => (value === '' ? undefined : value),
     z
@@ -60,6 +68,16 @@ export function config(): AppConfig {
     throw new Error(`Invalid application configuration: ${names}`);
   }
   const value = parsed.data;
+  if (
+    value.OUTLOOK_CALENDAR_SYNC_ENABLED &&
+    (!value.OUTLOOK_CALENDAR_TENANT_ID ||
+      !value.OUTLOOK_CALENDAR_CLIENT_ID ||
+      !value.OUTLOOK_CALENDAR_CLIENT_AUTH)
+  ) {
+    throw new Error(
+      'Outlook Calendar sync requires tenant, application and client credential configuration',
+    );
+  }
   if (value.APP_ENV === 'production') {
     if (!value.APP_ORIGIN.startsWith('https://')) {
       throw new Error('Production APP_ORIGIN must use HTTPS');

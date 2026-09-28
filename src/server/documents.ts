@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import sharp from 'sharp';
+import { bangkokDate } from '../domain/calendar';
 import { invariant, type Actor, type Json } from '../domain/core';
 import { canViewRequest } from '../domain/requests';
 import { command, db } from './db';
@@ -151,6 +152,25 @@ export async function documentForActor(
         kind: row.kind,
       }),
     );
+    if (!allowed && actor.roles.includes('head')) {
+      const date = bangkokDate(new Date());
+      const delegated = await db()`
+        select 1
+        from document_links l
+        join requests r on r.id=l.request_id
+        join approval_delegations d on d.delegator_id=r.assigned_head_id
+        where l.document_id=${documentId}
+          and r.workflow_state='pending_head'
+          and d.active
+          and d.scope='manager_approval'
+          and d.delegate_id=${actor.id}
+          and d.effective_from <= ${date}::date
+          and d.effective_to >= ${date}::date
+          and r.employee_id <> ${actor.id}
+        limit 1
+      `;
+      allowed = delegated.length > 0;
+    }
   }
   invariant(allowed, 'DOCUMENT_NOT_FOUND', 'ไม่พบเอกสาร', 404);
   return {

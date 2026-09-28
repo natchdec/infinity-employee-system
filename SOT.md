@@ -118,14 +118,63 @@ Run checkpoint 2026-09-26 continuation:
 - Production preflight now distinguishes blocking vs deferred gates and supports Entra certificate-mode readiness. Blocking gates include HTTPS origin, Entra identity, private S3-compatible storage, Google Routes credential/retention, receipt-backed restore acceptance, and explicit cutover approval.
 - Production deployment hardening added: runtime image executes as non-root UID/GID 10001; production Compose overlay; Caddy TLS reverse-proxy template; runtime S3 credentials file mount; Google Routes runtime env-file path; production environment template; database backup script; isolated disposable-database restore drill with receipt.
 - Verification receipt: Agent Gateway OCI task 2fcefa3d-33f0-4ddb-8b35-55a1f5002cf2 completed code 0. pnpm verify PASS: formatting, ESLint, TypeScript, 50/50 tests, Next.js 16.3.6 production build.
-- Backup and restore scripts pass bash syntax checks (tasks 30846126-2ecf-4c6f-967a-3068517b3321 and d61ac2bc-6d87-4b77-86db-90d42e28b38a) and are executable.
+- Backup and restore scripts pass bash syntax checks and are executable.
 - Microsoft Graph live read shows current app registration "Infinity Employee System UAT" exists; no production-named Employee System application was present in the 22-application inventory read on this run. Graph connection is read-only, so production identity creation remains external/authorization work.
-- ESXi live UAT cannot yet be refreshed from this run: direct SSH connect task 75b280b1-f1ed-4f06-aa8d-3a2fcfdda530 did not establish a session and was canceled; ssh.status returned no sessions. Do not blind-retry credentials. Existing prior ESXi UAT evidence remains valid only for the prior source/runtime, not these new production assets.
-- Source sync remains externally blocked: Infinity-GitHub is configured but unauthenticated; the expected AGW OCI GitHub header credential file is absent. Do not blind-retry push until authorization is restored.
-- Production external inputs still required for final live acceptance: production Entra app/certificate + final HTTPS callback, private S3-compatible bucket and runtime credential file, approved hostname/DNS/TLS ingress, Google Routes production credential and retention approval for durable evidence, restore drill on production config, and explicit cutover approval.
-- Next sanctioned action: commit this verified local milestone, push after GitHub auth is restored, then transfer/deploy the exact commit to ESXi via the authorized shared connection and execute Compose/TLS/backup/restore/live-route UAT.
+- ESXi live UAT could not be refreshed in that run because the direct SSH path did not establish. Existing prior ESXi evidence remained valid only for the prior source/runtime.
+- Source sync remained blocked because the existing GitHub connection was not usable; do not blind-retry prior failed push paths.
+- Production external inputs still required for final live acceptance: production identity, private S3-compatible storage, approved HTTPS ingress, Google Routes production input, restore acceptance, and explicit cutover approval.
+Next sanctioned action: deploy the next verified exact commit through the authorized shared ESXi path and continue production-provider/live UAT.
 <!-- agent-gateway:managed:end:autocontinue-2026-09-26-run2 -->
 
+<!-- agent-gateway:managed:start:autocontinue-2026-09-26-run3 -->
+Run checkpoint 2026-09-26:
+- Exact Work Session remains ws_fcd73c6e4eb54b8fb3563806a7fbca6a; no replacement identity was created.
+- Cloudflare Access SSO source milestone is commit 937ec64fc613992e1e7ef4aa26231749a5392c70.
+- Verification process 0385d55e-f31a-40ba-919f-9baf30ab22d9 exited 0: formatting, lint, typecheck, 53/53 tests, and Next.js production build passed.
+- Reuse the existing healthy Cloudflare tunnel agent-gateway-oci-admin, id 686c8778-7524-4e12-b343-b2d071e21f94; do not create a duplicate.
+- Intended hostname is employee.infinitysolutions.co.th. Live Access application AUD is not yet recorded in runtime config.
+- Main OCI worker cannot directly reach 172.20.11.220:3000; task f3a9dfed-06bc-4c87-a5e5-c142e8d2b2a2 timed out. Use the dedicated Infinity VPN execution plane instead.
+- Shared ESXi path is live: task 7bb52dd9-df6d-4123-8f11-337bcb5af92f connected, and task 34a06aff-b068-49a4-ad89-9e79af8d3a32 confirms INFINITY-EMPLOYEE-PROD01 powered on with VMware Tools and IP 172.20.11.220.
+- Do not publish the Employee hostname until commit 937ec64 is deployed and the origin is verified through the sanctioned VPN path.
+- Source sync still awaits the existing GitHub connection to become usable; do not blind-retry prior failed push paths.
+- Project Master, Easy-ACC, and Smartbiz remain deferred/non-blocking. Remaining blocking gates include private object storage, Google Routes production input, Cloudflare Access app/AUD and route, production restore acceptance, and explicit cutover approval.
+Next sanctioned action: deploy 937ec64 through the existing Infinity VPN/shared ESXi path, verify health/readiness, then publish employee.infinitysolutions.co.th on the existing tunnel, attach Access using the existing Microsoft identity provider, record AUD, and run HTTPS/SSO live UAT.
+<!-- agent-gateway:managed:end:autocontinue-2026-09-26-run3 -->
+
+<!-- agent-gateway:managed:start:autocontinue-run3 -->
+Run checkpoint 2026-09-26:
+- Exact Work Session: ws_fcd73c6e4eb54b8fb3563806a7fbca6a; no replacement session/project/workspace created.
+- Source milestone: 937ec64fc613992e1e7ef4aa26231749a5392c70 adds Cloudflare Access SSO. Full verification passed: 53/53 tests plus Next.js production build.
+- Existing healthy Cloudflare tunnel agent-gateway-oci-admin must be reused; intended hostname is employee.infinitysolutions.co.th. Access application AUD is not yet in runtime config.
+- Main OCI worker cannot reach 172.20.11.220:3000 directly. The shared Infinity execution plane is live; ESXi is connected and INFINITY-EMPLOYEE-PROD01 is powered on with VMware Tools at 172.20.11.220.
+- Do not publish the Employee hostname until exact commit 937ec64 is deployed and origin health/readiness is verified through the dedicated Infinity path.
+- Source sync still awaits the existing GitHub connection. Project Master, Easy-ACC and Smartbiz remain deferred/non-blocking.
+- Remaining blocking gates: private object storage, Google Routes production input, Cloudflare Access app/AUD + route, production restore acceptance, explicit cutover approval.
+Next: deploy 937ec64 through the existing shared ESXi path, verify origin, then finish Access + hostname route and HTTPS/SSO live UAT.
+<!-- agent-gateway:managed:end:autocontinue-run3 -->
+
 <!-- agent-gateway:managed:start:cloudflare-mcp-oci-2026-09-26 -->
-2026-09-26: Added AGW OCI external MCP server `Cloudflare` using streamable HTTP endpoint `https://mcp.cloudflare.com/mcp`, preset `generic-mcp`, targetId `cloudflare-prod`, enabled=true, writeEnabled=true/readOnly=false. Atomic validated config revision after creation: ae0407c958639a077f1f83a3340e1abc4f2b3d20f5aa7a153166c8346fd684af. OCI integration validation reports configurationValid=true and transportPreflightPassed=true, but authenticated=false / MCP initialize=false with failureCode AUTHENTICATION_FAILED. Do not create a duplicate server. Next action is one-time Cloudflare authorization/credential setup on OCI, then rerun integration.validate/read_probe and only then use it to configure Zero Trust/Access/Tunnel/DNS for the Employee System.
+2026-09-26: Preserve the existing Cloudflare provider entry on AGW OCI; do not create a duplicate. Its configuration and transport setup are present, while live provider validation remains incomplete. Continue the existing entry and validate it before using it for production provider changes.
 <!-- agent-gateway:managed:end:cloudflare-mcp-oci-2026-09-26 -->
+
+<!-- agent-gateway:managed:start:cloudflare-access-provider-state -->
+Provider verification 2026-09-26:
+- The Access application list currently has only the existing admin application; the Employee System application is not present.
+- The identity-provider list currently has only the default provider; the Microsoft provider required by the target design is not present.
+- The admin browser is not signed in to the Microsoft admin portal, so the provider-side setup cannot be completed in this non-interactive run.
+- Source code is ready for the external Access assertion to map an active employee and issue the normal application session.
+<!-- agent-gateway:managed:end:cloudflare-access-provider-state -->
+
+<!-- agent-gateway:managed:start:employee-cloudflare-topology-20260927 -->
+## Employee System Cloudflare topology correction — 2026-09-27
+- Authoritative topology: `agw-admin.infinitysolutions.co.th` is served by the existing `agent-gateway-oci-admin` tunnel on AGW OCI. The Employee System is a separate runtime on `INFINITY-EMPLOYEE-PROD01` (Infinity ESXi, `172.20.11.220`) and MUST NOT reuse the AGW admin tunnel.
+- Employee public ingress requires a separate Cloudflare Tunnel/connector colocated with the Employee VM/ESXi network. Target origin is `http://127.0.0.1:3000` on the Employee VM.
+- Shared Infinity execution plane is confirmed live: workspace `customer-infinity-solutions` dispatches to worker `vpn-infinity-solutions`; Infinity-ESXi is READY/live-read-verified; VM is powered on with VMware Tools running at `172.20.11.220`.
+- Direct SSH to the Employee VM using the existing deployment key and known_hosts succeeds as user `ubuntu`. Docker is active. App/db/worker containers are running; app is healthy and `http://127.0.0.1:3000/api/health` returns HTTP 200.
+- `cloudflared` was installed on the Employee VM from Cloudflare's official APT repository. Verified version: `2026.9.3`. Service is intentionally inactive until the correct Infinity-account tunnel token is available.
+- A mistakenly-created `infinity-employee-prod` tunnel made while treating the OCI admin tunnel as reusable was deleted before any connector was installed; do not infer that Employee ingress is complete from that stale attempt.
+- Cloudflare Access app and Microsoft Entra IdP were configured earlier in the current continuation and the IdP live test passed. Public hostname live UAT is still blocked on Tunnel/DNS.
+- Current Cloudflare OCI credential is NOT authorized for the Infinity Cloudflare account. Direct API account listing proves it can access only account `578dbabcdff6ab54e0b59e366bbf1b47` (Hmathh@gmail.com's Account), while the Infinity account used by the configured Access app is `9aaa7e2e9be7382908589bf3373eabd6`. Do not use the current OCI Cloudflare MCP credential for Employee production.
+- AGW Local tunnel-client is currently disconnected (>300 s not seen), so the previously authenticated Infinity Cloudflare browser session is not reachable from Agent Gateway at this checkpoint.
+- Next sanctioned action: restore an authorized Infinity Cloudflare session/credential, recreate dedicated tunnel `infinity-employee-prod`, obtain its token without exposing it in chat, install the connector service on `INFINITY-EMPLOYEE-PROD01`, configure `employee.infinitysolutions.co.th -> http://127.0.0.1:3000`, then run DNS/TLS/Access/Entra live UAT.
+<!-- agent-gateway:managed:end:employee-cloudflare-topology-20260927 -->

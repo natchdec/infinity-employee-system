@@ -17,6 +17,9 @@ export function ExpenseFields({ options, initial }: Props) {
   const [category, setCategory] = useState(
     textValue(initialLine.categoryId) || options.expenseCategories[0]?.id || 'mileage',
   );
+  const [mileageLegCount, setMileageLegCount] = useState(
+    Math.min(20, Math.max(2, mileage.length || 2)),
+  );
 
   return (
     <fieldset>
@@ -62,8 +65,13 @@ export function ExpenseFields({ options, initial }: Props) {
       {category === 'mileage' ? (
         <div className="subsection">
           <h3>เที่ยวเดินทาง</h3>
-          {[1, 2].map((index) => {
+          <input type="hidden" name="mileageLegCount" value={mileageLegCount} />
+          {Array.from({ length: mileageLegCount }, (_, offset) => offset + 1).map((index) => {
             const initialLeg = mileage[index - 1] ?? {};
+            const routeLeg =
+              Boolean(textValue(initialLeg.originLabel)) ||
+              Boolean(textValue(initialLeg.destinationLabel));
+            const requiredLeg = index === 1 || routeLeg;
             return (
               <div className="mileage-leg" key={index}>
                 <strong>เที่ยว {index}</strong>
@@ -100,7 +108,7 @@ export function ExpenseFields({ options, initial }: Props) {
                     <span>ชื่อต้นทาง</span>
                     <input
                       name={`leg${index}OriginLabel`}
-                      required={index === 1}
+                      required={requiredLeg}
                       defaultValue={
                         textValue(initialLeg.originLabel) || (index === 1 ? 'บ้าน' : 'ลูกค้า')
                       }
@@ -110,7 +118,7 @@ export function ExpenseFields({ options, initial }: Props) {
                     <span>ชื่อปลายทาง</span>
                     <input
                       name={`leg${index}DestinationLabel`}
-                      required={index === 1}
+                      required={requiredLeg}
                       defaultValue={
                         textValue(initialLeg.destinationLabel) || (index === 1 ? 'ลูกค้า' : 'บ้าน')
                       }
@@ -118,11 +126,11 @@ export function ExpenseFields({ options, initial }: Props) {
                   </label>
                 </div>
                 <label>
-                  <span>ระยะทาง (กม.){index === 2 ? ' — ไม่บังคับ' : ''}</span>
+                  <span>ระยะทาง (กม.){requiredLeg ? '' : ' — ไม่บังคับ'}</span>
                   <input
                     name={`leg${index}Km`}
                     inputMode="decimal"
-                    required={index === 1}
+                    required={requiredLeg}
                     placeholder="55"
                     defaultValue={
                       typeof initialLeg.distanceMetres === 'number'
@@ -134,9 +142,27 @@ export function ExpenseFields({ options, initial }: Props) {
               </div>
             );
           })}
+          <div className="action-row">
+            <button
+              className="button button-secondary"
+              type="button"
+              disabled={mileageLegCount >= 20}
+              onClick={() => setMileageLegCount((count) => Math.min(20, count + 1))}
+            >
+              เพิ่มเที่ยว
+            </button>
+            <button
+              className="button button-quiet"
+              type="button"
+              disabled={mileageLegCount <= 2}
+              onClick={() => setMileageLegCount((count) => Math.max(2, count - 1))}
+            >
+              ลบเที่ยวสุดท้าย
+            </button>
+          </div>
           <p className="field-note">
-            ระยะทางที่กรอกเองจะแสดงเป็น Employee attested ไม่ใช่ Google-verified และระบบจะหัก Home →
-            Office ต่อเที่ยวที่เข้าเกณฑ์
+            รองรับสูงสุด 20 เที่ยวต่อรายการ · ระยะทางที่กรอกเองจะแสดงเป็น Employee attested ไม่ใช่
+            Google-verified และระบบจะหัก Home → Office ต่อเที่ยวที่เข้าเกณฑ์
           </p>
         </div>
       ) : (

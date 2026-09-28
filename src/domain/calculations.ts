@@ -44,15 +44,20 @@ export function calculateOT(
   const calculated = lines.map((line) => {
     const category = policy.categories.find((item) => item.id === line.categoryId);
     invariant(category, 'UNKNOWN_OT_CATEGORY', 'ประเภท OT ไม่มีในนโยบายนี้');
-    integer(line.hours, 1, category.maxHours, 'INTEGER_HOURS_REQUIRED');
+    const halfHourUnits = line.hours * 2;
+    invariant(
+      line.hours >= 0.5 && line.hours <= category.maxHours && Number.isInteger(halfHourUnits),
+      'HALF_HOUR_INCREMENT_REQUIRED',
+      'ชั่วโมง OT ต้องไม่น้อยกว่า 0.5 ชั่วโมงและเพิ่มทีละ 0.5 ชั่วโมง',
+    );
     invariant(
       category.dayKind === dayKind,
       'OT_DAY_CATEGORY',
       'ประเภท OT ไม่ตรงกับวันทำงานหรือวันหยุด',
     );
     const amount = roundRatio(
-      BigInt(wage.monthlySatang) * BigInt(line.hours) * BigInt(category.multiplierBasisPoints),
-      BigInt(policy.salaryDivisorDays * wage.normalDailyHours) * 10000n,
+      BigInt(wage.monthlySatang) * BigInt(halfHourUnits) * BigInt(category.multiplierBasisPoints),
+      BigInt(policy.salaryDivisorDays * wage.normalDailyHours * 2) * 10000n,
     );
     return {
       categoryId: category.id,

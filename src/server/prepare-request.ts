@@ -154,14 +154,14 @@ export async function prepareRequest(
     const result = calculateOT(date, input.lines, wageBasis, policy.body, calendar.body);
     const start = addDays(date, -(weekday(date) === 0 ? 6 : weekday(date) - 1));
     const [existing] =
-      await tx`select coalesce(sum(l.hours),0)::integer as weekly,coalesce(sum(case when l.work_date=${date}::date then l.hours else 0 end),0)::integer as daily from ot_lines l join requests r on r.id=l.request_id and r.submission_round=l.round where r.employee_id=${actor.id} and r.id<>${requestId} and r.workflow_state in ('pending_head','approved') and l.work_date between ${start}::date and ${addDays(start, 6)}::date`;
+      await tx`select coalesce(sum(l.hours),0)::double precision as weekly,coalesce(sum(case when l.work_date=${date}::date then l.hours else 0 end),0)::double precision as daily from ot_lines l join requests r on r.id=l.request_id and r.submission_round=l.round where r.employee_id=${actor.id} and r.id<>${requestId} and r.workflow_state in ('pending_head','approved') and l.work_date between ${start}::date and ${addDays(start, 6)}::date`;
     invariant(
-      existing!.daily + result.totalHours <= policy.body.maxDailyHours,
+      Number(existing!.daily) + result.totalHours <= policy.body.maxDailyHours,
       'OT_DAILY_LIMIT',
       'ชั่วโมง OT รวมทุกคำขอเกินเพดานต่อวัน',
     );
     invariant(
-      existing!.weekly + result.totalHours <= policy.body.maxWeeklyHours,
+      Number(existing!.weekly) + result.totalHours <= policy.body.maxWeeklyHours,
       'OT_WEEKLY_LIMIT',
       'ชั่วโมง OT และงานวันหยุดรวมเกินเพดานต่อสัปดาห์',
     );

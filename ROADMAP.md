@@ -32,6 +32,23 @@
 - [ ] Production Entra identity, S3-compatible object storage, domain/TLS, backup/restore and ESXi production rollout readiness.
 - [ ] Explicit cutover approval.
 
+## Phase 1.5 - Monthly Worklog and Operations Automation
+- [x] Outlook Calendar sync reads only events explicitly categorized with `IES · ...` and stores minimum claim metadata; no Mail access and no automatic submission.
+- [x] Calendar Inbox creates reviewable OT, Onsite mileage and full-day Thai Leave drafts with source event identity, occurrence/change metadata, dedupe and post-submit change detection.
+- [x] OT draft calculation uses versioned working schedule/holidays, excludes normal office hours, supports 0.5-hour increments, handles cross-midnight/overlap exceptions, and preserves existing approval/payroll flow.
+- [x] Onsite mileage defaults to round trip, distinguishes Online vs Onsite, supports Home commute deduction and multi-stop same-day route review before Google Routes calculation.
+- [x] Monthly Review lets each employee confirm/edit/ignore suggested items, then creates existing OT/Expense/Leave requests without bypassing approval.
+- [x] Monthly Closing / Payroll Cutoff Center adds Open -> Closing -> Locked periods and prevents silent edits after lock.
+- [x] Adjustment workflow records post-lock corrections as linked auditable adjustments instead of rewriting historical paid/exported requests.
+- [x] Exception Inbox centralizes overlapping OT, missing locations, invalid leave events, unresolved mileage routes, missing receipts, calendar source changes and configuration gaps.
+- [x] Approval Delegation supports effective-dated substitute approvers while preserving no-self-approval and Finance conflict-of-interest rules.
+- [x] Notification / Reminder Center covers unreviewed calendar drafts, pending approvals, receipt gaps, settlement deadlines, payroll cutoff and Finance work queues.
+- [x] Receipt Inbox supports mobile-first unassigned receipt capture and later attachment to claims, with duplicate-detection boundary.
+- [x] Employee Monthly Statement summarizes OT, mileage, expense, advance/settlement, leave and payment status for the period.
+- [x] Company Holiday / Working Schedule and unified Policy Center are versioned/effective-dated and feed OT/payroll calculations.
+- [x] Human-readable Audit Timeline exposes who did what and when without leaking private payloads.
+- [x] Hourly incremental Outlook sync plus manual Sync Now is idempotent and preserves submitted request immutability.
+
 ## Phase 2 - Project and Automation Enhancement
 - Project cost reporting.
 - Teams notifications.

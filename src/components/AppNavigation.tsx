@@ -2,20 +2,39 @@
 
 import {
   AirplaneTilt,
+  Bell,
+  CalendarDots,
+  ChartBar,
   Checks,
+  ClockCounterClockwise,
   FileText,
   GearSix,
   House,
   PlusSquare,
+  Receipt,
   UserCircle,
   Wallet,
+  WarningCircle,
 } from '@phosphor-icons/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { Role } from '@/domain/core';
 
 type NavIcon =
-  'home' | 'requests' | 'new' | 'trips' | 'profile' | 'approvals' | 'finance' | 'admin';
+  | 'home'
+  | 'requests'
+  | 'new'
+  | 'trips'
+  | 'profile'
+  | 'approvals'
+  | 'finance'
+  | 'admin'
+  | 'worklog'
+  | 'attention'
+  | 'notifications'
+  | 'receipts'
+  | 'statement'
+  | 'audit';
 
 interface NavItem {
   href: string;
@@ -29,6 +48,15 @@ const employeeNav: NavItem[] = [
   { href: '/requests/new', label: 'สร้างคำขอ', icon: 'new' },
   { href: '/trips', label: 'การเดินทาง', icon: 'trips' },
   { href: '/profile', label: 'โปรไฟล์', icon: 'profile' },
+];
+
+const operationsNav: NavItem[] = [
+  { href: '/worklog', label: 'Calendar Inbox', icon: 'worklog' },
+  { href: '/exceptions', label: 'Needs Attention', icon: 'attention' },
+  { href: '/notifications', label: 'การแจ้งเตือน', icon: 'notifications' },
+  { href: '/receipts', label: 'Receipt Inbox', icon: 'receipts' },
+  { href: '/statement', label: 'สรุปรายเดือน', icon: 'statement' },
+  { href: '/audit', label: 'Audit Timeline', icon: 'audit' },
 ];
 
 function Icon({ name, size = 19 }: { name: NavIcon; size?: number }) {
@@ -50,6 +78,18 @@ function Icon({ name, size = 19 }: { name: NavIcon; size?: number }) {
       return <Wallet {...props} />;
     case 'admin':
       return <GearSix {...props} />;
+    case 'worklog':
+      return <CalendarDots {...props} />;
+    case 'attention':
+      return <WarningCircle {...props} />;
+    case 'notifications':
+      return <Bell {...props} />;
+    case 'receipts':
+      return <Receipt {...props} />;
+    case 'statement':
+      return <ChartBar {...props} />;
+    case 'audit':
+      return <ClockCounterClockwise {...props} />;
   }
 }
 
@@ -95,6 +135,12 @@ export function PrimaryNavigation({ roles }: { roles: Role[] }) {
       <nav className="nav-group" aria-label="เมนูพนักงาน">
         <p className="nav-label">MY WORKSPACE</p>
         {employeeNav.map((item) => (
+          <NavLink item={item} key={item.href} />
+        ))}
+      </nav>
+      <nav className="nav-group" aria-label="งานรายเดือนและรายการที่ต้องตรวจสอบ">
+        <p className="nav-label">MONTHLY OPERATIONS</p>
+        {operationsNav.map((item) => (
           <NavLink item={item} key={item.href} />
         ))}
       </nav>

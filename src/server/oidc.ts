@@ -222,3 +222,7 @@ export async function completeSignIn(request: Request): Promise<NextResponse> {
   response.headers.set('Cache-Control', 'no-store');
   return response;
 }
+
+export async function entraClientCredentials(scope: string) {
+  return client.clientCredentialsGrant(await oidc(), { scope });
+}

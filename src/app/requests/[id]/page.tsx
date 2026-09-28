@@ -71,6 +71,7 @@ export default async function RequestDetailPage({ params }: Props) {
             : null
         }
         settlementCanStart={settlementCanStart}
+        canHeadDecide={detail.canHeadDecide}
       />
     </AppShell>
   );

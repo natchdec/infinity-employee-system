@@ -72,6 +72,14 @@ test('Easy-ACC OT mapping is explicit and never guesses a slot', () => {
     (error: unknown) =>
       error instanceof DomainError && error.code === 'EASY_ACC_OT_MAPPING_MISSING',
   );
+  assert.deepEqual(
+    aggregateEasyAccOt([{ categoryId: 'weekday_ot', hours: 1.5 }], { weekday_ot: 1 }),
+    [1.5, 0, 0, 0],
+  );
+  assert.throws(
+    () => aggregateEasyAccOt([{ categoryId: 'weekday_ot', hours: 1.25 }], { weekday_ot: 1 }),
+    (error: unknown) => error instanceof DomainError && error.code === 'EASY_ACC_OT_HOURS_INVALID',
+  );
 });
 
 test('Google mileage input requires a server-issued quote reference', () => {

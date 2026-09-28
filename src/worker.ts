@@ -1,7 +1,9 @@
-import { z } from 'zod';
 import { hostname } from 'node:os';
-import { db, closeDb } from './server/db';
+import { z } from 'zod';
+import { closeDb, db, safeJson } from './server/db';
 import { log } from './server/logging';
+import { queueOperationalReminders } from './server/reminder-service';
+import { queueDueOutlookCalendarSyncs, syncEmployeeOutlookCalendar } from './server/worklog';
 
 const noticeSchema = z
   .object({
@@ -11,8 +13,16 @@ const noticeSchema = z
   })
   .strict();
 
+const calendarSyncSchema = z
+  .object({
+    employeeId: z.string().uuid(),
+  })
+  .strict();
+
 const workerId = `${hostname()}:${process.pid}`;
 let stopping = false;
+let nextCalendarScheduleCheck = 0;
+let nextReminderScheduleCheck = 0;
 
 async function heartbeat(state: 'running' | 'stopping'): Promise<void> {
   await db()`
@@ -21,6 +31,47 @@ async function heartbeat(state: 'running' | 'stopping'): Promise<void> {
     on conflict(worker_id)
     do update set last_seen_at = excluded.last_seen_at, state = excluded.state
   `;
+}
+
+async function markJobSucceeded(id: string, result: unknown): Promise<void> {
+  await db()`
+    update jobs
+    set state='succeeded',
+        result=${db().json(safeJson(result))},
+        error_code=null,
+        locked_by=null,
+        locked_until=null,
+        updated_at=now()
+    where id=${id} and locked_by=${workerId}
+  `;
+}
+
+async function scheduleCalendarSyncs(): Promise<void> {
+  const now = Date.now();
+  if (now < nextCalendarScheduleCheck) return;
+  nextCalendarScheduleCheck = now + 60_000;
+  try {
+    const queued = await queueDueOutlookCalendarSyncs(new Date(now));
+    if (queued > 0) log('info', 'outlook_calendar_sync_queued', { queued });
+  } catch (error) {
+    log('error', 'outlook_calendar_schedule_failed', {
+      message: error instanceof Error ? error.message : 'unknown',
+    });
+  }
+}
+
+async function scheduleReminders(): Promise<void> {
+  const now = Date.now();
+  if (now < nextReminderScheduleCheck) return;
+  nextReminderScheduleCheck = now + 5 * 60_000;
+  try {
+    const queued = await queueOperationalReminders(new Date(now));
+    if (queued > 0) log('info', 'operational_reminders_created', { queued });
+  } catch (error) {
+    log('error', 'operational_reminder_schedule_failed', {
+      message: error instanceof Error ? error.message : 'unknown',
+    });
+  }
 }
 
 async function runOne(): Promise<boolean> {
@@ -41,7 +92,7 @@ async function runOne(): Promise<boolean> {
       set state = 'running',
           attempts = attempts + 1,
           locked_by = ${workerId},
-          locked_until = now() + interval '60 seconds',
+          locked_until = now() + interval '90 seconds',
           updated_at = now()
       where id = ${job.id}
     `;
@@ -69,6 +120,10 @@ async function runOne(): Promise<boolean> {
           where id = ${claimed.id} and locked_by = ${workerId}
         `;
       });
+    } else if (claimed.kind === 'outlook_calendar_sync') {
+      const value = calendarSyncSchema.parse(claimed.payload);
+      const result = await syncEmployeeOutlookCalendar(value.employeeId, new Date());
+      await markJobSucceeded(String(claimed.id), result);
     } else {
       await db()`
         update jobs
@@ -107,6 +162,8 @@ async function main(): Promise<void> {
   log('info', 'worker_started', { workerId });
   while (!stopping) {
     await heartbeat('running');
+    await scheduleCalendarSyncs();
+    await scheduleReminders();
     const worked = await runOne();
     if (!worked) await new Promise((resolve) => setTimeout(resolve, 1000));
   }

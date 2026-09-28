@@ -109,6 +109,11 @@ export function Money({ satang }: { satang: string }) {
 
 const stateLabels: Record<string, string> = {
   draft: 'ร่าง',
+  suggested: 'ระบบแนะนำ',
+  confirmed: 'ยืนยันแล้ว',
+  ignored: 'ไม่ใช้รายการนี้',
+  submitted: 'สร้างคำขอแล้ว',
+  exception: 'ต้องตรวจสอบ',
   pending_head: 'รอหัวหน้าอนุมัติ',
   approved: 'อนุมัติแล้ว',
   returned: 'ส่งกลับแก้ไข',
@@ -125,9 +130,14 @@ const stateLabels: Record<string, string> = {
 
 export function StateLabel({ value }: { value: string }) {
   const semantic =
-    value === 'approved' || value === 'verified' || value === 'paid' || value === 'received'
+    value === 'approved' ||
+    value === 'verified' ||
+    value === 'paid' ||
+    value === 'received' ||
+    value === 'confirmed' ||
+    value === 'submitted'
       ? 'success'
-      : value === 'returned' || value === 'outstanding'
+      : value === 'returned' || value === 'outstanding' || value === 'exception'
         ? 'warning'
         : value === 'rejected' || value === 'cancelled'
           ? 'danger'

@@ -5,6 +5,11 @@ export const BUSINESS_TIME_ZONE = 'Asia/Bangkok';
 export interface Calendar {
   workingWeekdays: number[];
   holidays: string[];
+  workStart?: string;
+  workEnd?: string;
+  lunchStart?: string;
+  lunchEnd?: string;
+  timeZone?: typeof BUSINESS_TIME_ZONE;
 }
 export interface PayrollRule {
   cutoffDay: number;
