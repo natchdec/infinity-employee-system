@@ -3,6 +3,7 @@ import type { CalendarWorkEvent } from '../../domain/worklog';
 
 interface GraphEvent {
   id?: unknown;
+  type?: unknown;
   changeKey?: unknown;
   subject?: unknown;
   categories?: unknown;
@@ -52,7 +53,7 @@ function parseEvent(raw: GraphEvent): CalendarWorkEvent | null {
     'Calendar event ไม่มีรหัส',
     503,
   );
-  if (raw['@removed']) return null;
+  if (raw['@removed'] || raw.type === 'seriesMaster') return null;
 
   const eventCategories = parseCategories(raw.categories);
   const isIES = eventCategories.some((category) => category.startsWith('IES · '));

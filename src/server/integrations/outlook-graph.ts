@@ -15,7 +15,7 @@ export function initialCalendarDeltaUrl(email: string, window: CalendarSyncWindo
   url.searchParams.set('endDateTime', `${window.end}T00:00:00+07:00`);
   url.searchParams.set(
     '$select',
-    'id,changeKey,subject,categories,start,end,isAllDay,location,isCancelled',
+    'id,type,changeKey,subject,categories,start,end,isAllDay,location,isCancelled',
   );
   return url.toString();
 }
