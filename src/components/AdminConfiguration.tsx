@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 interface ApprovalRuleRow {
   kind: string;
@@ -22,13 +23,29 @@ interface ApprovalPolicyView {
   hash: string;
 }
 
+const adminSections = [
+  ['/admin', 'ภาพรวม'],
+  ['/admin/employees', 'พนักงานและสิทธิ์'],
+  ['/admin/organization', 'โครงสร้างองค์กร'],
+  ['/admin/approval-rules', 'Approval Rules'],
+] as const;
+
 export function AdminSectionNav() {
+  const pathname = usePathname();
+
   return (
     <nav className="admin-subnav" aria-label="การตั้งค่าระบบ">
-      <Link href="/admin">ภาพรวม</Link>
-      <Link href="/admin/employees">พนักงานและสิทธิ์</Link>
-      <Link href="/admin/organization">โครงสร้างองค์กร</Link>
-      <Link href="/admin/approval-rules">Approval Rules</Link>
+      {adminSections.map(([href, label]) => {
+        const active =
+          href === '/admin'
+            ? pathname === href
+            : pathname === href || pathname.startsWith(`${href}/`);
+        return (
+          <Link href={href} key={href} aria-current={active ? 'page' : undefined}>
+            {label}
+          </Link>
+        );
+      })}
     </nav>
   );
 }
@@ -54,6 +71,13 @@ export function ApprovalRulesPanel({
         </div>
       </section>
       <section className="section">
+        <div className="section-header">
+          <div>
+            <h2>Approval matrix</h2>
+            <p>เส้นทางอนุมัติที่ใช้จริงแยกตามประเภทคำขอ</p>
+          </div>
+          <span className="state state-success">Policy v{current.version}</span>
+        </div>
         <div className="data-table-wrap" tabIndex={0}>
           <table className="data-table">
             <thead>
@@ -67,7 +91,9 @@ export function ApprovalRulesPanel({
             <tbody>
               {rows.map((row) => (
                 <tr key={row.kind}>
-                  <td>{row.label}</td>
+                  <td>
+                    <strong>{row.label}</strong>
+                  </td>
                   <td>{row.manager}</td>
                   <td>{row.finance}</td>
                   <td>{row.destination}</td>
@@ -77,42 +103,54 @@ export function ApprovalRulesPanel({
           </table>
         </div>
       </section>
-      <section className="section">
-        <h2>ข้อควบคุมที่บังคับใช้</h2>
-        <dl className="detail-grid">
-          <dt>Manager routing</dt>
-          <dd>Line Head</dd>
-          <dt>Head / Owner self-request</dt>
-          <dd>{current.body.ownerHeadSkip ? 'SYSTEM_SKIPPED' : 'ไม่ข้าม'}</dd>
-          <dt>Finance independence</dt>
-          <dd>{current.body.financeIndependent ? 'บังคับคนละคนกับผู้ขอ' : 'ไม่บังคับ'}</dd>
-          <dt>Project Manager</dt>
-          <dd>{current.body.projectManagerApproval ? 'ใช้' : 'ไม่ใช้'}</dd>
-        </dl>
-      </section>
-      <section className="section">
-        <h2>Published history</h2>
-        <div className="data-table-wrap" tabIndex={0}>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Version</th>
-                <th>Effective from</th>
-                <th>Fingerprint</th>
-              </tr>
-            </thead>
-            <tbody>
-              {history.map((item) => (
-                <tr key={item.version}>
-                  <td>v{item.version}</td>
-                  <td>{item.effectiveFrom}</td>
-                  <td>
-                    <code>{item.hash.slice(0, 16)}…</code>
-                  </td>
+      <section className="section admin-rule-grid">
+        <div>
+          <div className="section-header">
+            <div>
+              <h2>ข้อควบคุมที่บังคับใช้</h2>
+              <p>Guardrail เหล่านี้ไม่สามารถ bypass ผ่านหน้า Admin ได้</p>
+            </div>
+          </div>
+          <dl className="detail-grid detail-grid-surface">
+            <dt>Manager routing</dt>
+            <dd>Line Head</dd>
+            <dt>Head / Owner self-request</dt>
+            <dd>{current.body.ownerHeadSkip ? 'SYSTEM_SKIPPED' : 'ไม่ข้าม'}</dd>
+            <dt>Finance independence</dt>
+            <dd>{current.body.financeIndependent ? 'บังคับคนละคนกับผู้ขอ' : 'ไม่บังคับ'}</dd>
+            <dt>Project Manager</dt>
+            <dd>{current.body.projectManagerApproval ? 'ใช้' : 'ไม่ใช้'}</dd>
+          </dl>
+        </div>
+        <div>
+          <div className="section-header">
+            <div>
+              <h2>Published history</h2>
+              <p>ทุกเวอร์ชันเก็บ fingerprint เพื่อ audit ย้อนหลัง</p>
+            </div>
+          </div>
+          <div className="data-table-wrap" tabIndex={0}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Version</th>
+                  <th>Effective from</th>
+                  <th>Fingerprint</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {history.map((item) => (
+                  <tr key={item.version}>
+                    <td>v{item.version}</td>
+                    <td>{item.effectiveFrom}</td>
+                    <td>
+                      <code>{item.hash.slice(0, 16)}…</code>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
     </>

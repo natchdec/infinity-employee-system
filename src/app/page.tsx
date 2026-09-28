@@ -19,18 +19,49 @@ export default async function HomePage() {
   const attention = requests.filter(
     (item) => item.workflowState === 'returned' || item.financeState === 'returned',
   );
+  const activeCount = requests.filter(
+    (item) => !['approved', 'rejected', 'cancelled'].includes(item.workflowState),
+  ).length;
+  const approvedCount = requests.filter((item) => item.workflowState === 'approved').length;
+  const financePending = requests.filter((item) =>
+    ['pending', 'verified', 'unpaid', 'allocated'].includes(item.financeState ?? ''),
+  ).length;
 
   return (
     <AppShell
       actor={actor}
       title={`สวัสดี ${actor.displayName}`}
-      description="ส่งคำขอ ติดตามสถานะ และดูรายการที่ต้องดำเนินการจากหน้าเดียว"
+      description="ส่งคำขอ ติดตามสถานะ และดูงานที่ต้องดำเนินการจาก workspace เดียว"
     >
+      <section className="overview-strip" aria-label="ภาพรวมคำขอของฉัน">
+        <div className="overview-item">
+          <span className="overview-label">กำลังดำเนินการ</span>
+          <strong>{activeCount}</strong>
+          <span>จากรายการล่าสุด</span>
+        </div>
+        <div className="overview-item overview-item-attention">
+          <span className="overview-label">ต้องตรวจสอบ</span>
+          <strong>{attention.length}</strong>
+          <span>ส่งกลับในรายการล่าสุด</span>
+        </div>
+        <div className="overview-item">
+          <span className="overview-label">รอการเงิน</span>
+          <strong>{financePending}</strong>
+          <span>อยู่ในรายการล่าสุด</span>
+        </div>
+        <div className="overview-item">
+          <span className="overview-label">อนุมัติแล้ว</span>
+          <strong>{approvedCount}</strong>
+          <span>จากรายการล่าสุด</span>
+        </div>
+      </section>
+
       <section className="section">
         <div className="section-header">
           <div>
+            <span className="section-kicker">QUICK ACTIONS</span>
             <h2>สร้างคำขอ</h2>
-            <p>เลือกงานที่ต้องการทำ ระบบจะแสดงเฉพาะข้อมูลที่เกี่ยวข้อง</p>
+            <p>เลือกประเภทงาน ระบบจะแสดงเฉพาะข้อมูลและกฎที่เกี่ยวข้อง</p>
           </div>
           <Link className="button button-primary" href="/requests/new">
             สร้างคำขอ
@@ -59,8 +90,9 @@ export default async function HomePage() {
       <section className="section">
         <div className="section-header">
           <div>
+            <span className="section-kicker">ACTION REQUIRED</span>
             <h2>ต้องดำเนินการ</h2>
-            <p>รายการที่ถูกส่งกลับจะแสดงก่อนรายการทั่วไป</p>
+            <p>คำขอที่ถูกส่งกลับจะแสดงก่อนรายการทั่วไป</p>
           </div>
         </div>
         {attention.length ? (
@@ -100,7 +132,8 @@ export default async function HomePage() {
             </table>
           </div>
         ) : (
-          <div className="empty">
+          <div className="empty empty-calm">
+            <span className="empty-eyebrow">ALL CLEAR</span>
             <h2>ไม่มีรายการที่ต้องแก้ไข</h2>
             <p>คำขอที่ถูกส่งกลับหรือมีข้อยกเว้นจะปรากฏที่นี่</p>
           </div>
@@ -110,10 +143,11 @@ export default async function HomePage() {
       <section className="section">
         <div className="section-header">
           <div>
+            <span className="section-kicker">RECENT ACTIVITY</span>
             <h2>รายการล่าสุด</h2>
             <p>สถานะล่าสุดของคำขอที่คุณเป็นเจ้าของ</p>
           </div>
-          <Link className="text-link" href="/requests">
+          <Link className="text-link text-link-arrow" href="/requests">
             ดูทั้งหมด
           </Link>
         </div>

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { MobileNavigation, PrimaryNavigation } from '@/components/AppNavigation';
 import type { Actor } from '@/domain/core';
 
 interface Props {
@@ -9,87 +10,88 @@ interface Props {
   children: ReactNode;
 }
 
-const employeeNav = [
-  ['/', 'หน้าแรก'],
-  ['/requests', 'รายการของฉัน'],
-  ['/requests/new', 'สร้างคำขอ'],
-  ['/trips', 'การเดินทาง'],
-  ['/profile', 'โปรไฟล์'],
-] as const;
+function actorRoleLabel(actor: Actor) {
+  if (actor.isHeadOwner) return 'Owner / Head';
+  if (actor.roles.includes('finance') && actor.roles.includes('admin')) return 'Finance / Admin';
+  if (actor.roles.includes('finance')) return 'Finance';
+  if (actor.roles.includes('admin')) return 'Admin';
+  if (actor.roles.includes('head')) return 'Head';
+  return 'Employee';
+}
+
+function initials(name: string) {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => Array.from(part)[0] ?? '')
+    .join('')
+    .toUpperCase();
+}
 
 export function AppShell({ actor, title, description, children }: Props) {
-  const workNav: [string, string][] = [];
-  if (actor.roles.includes('head')) workNav.push(['/approvals', 'รออนุมัติ']);
-  if (actor.roles.includes('finance')) workNav.push(['/finance', 'งานการเงิน']);
-  if (actor.roles.includes('admin')) workNav.push(['/admin', 'จัดการระบบ']);
+  const roleLabel = actorRoleLabel(actor);
 
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">
         ข้ามไปเนื้อหา
       </a>
+
       <aside className="sidebar" aria-label="เมนูหลัก">
         <Link className="brand" href="/">
-          <span className="brand-mark">INFINITY</span>
-          <span className="brand-product">Employee</span>
+          <span className="brand-rail" aria-hidden="true" />
+          <span className="brand-copy">
+            <span className="brand-mark">INFINITY</span>
+            <span className="brand-product">People Operations</span>
+          </span>
         </Link>
-        <nav className="nav-group" aria-label="เมนูพนักงาน">
-          <p className="nav-label">ส่วนตัว</p>
-          {employeeNav.map(([href, label]) => (
-            <Link className="nav-link" href={href} key={href}>
-              {label}
-            </Link>
-          ))}
-        </nav>
-        {workNav.length > 0 ? (
-          <nav className="nav-group" aria-label="เมนูงานตามบทบาท">
-            <p className="nav-label">งานตามบทบาท</p>
-            {workNav.map(([href, label]) => (
-              <Link className="nav-link" href={href} key={href}>
-                {label}
-              </Link>
-            ))}
-          </nav>
-        ) : null}
-        <div className="sidebar-identity">
-          <strong>{actor.displayName}</strong>
-          <span>{actor.email}</span>
-        </div>
+
+        <PrimaryNavigation roles={actor.roles} />
+
+        <Link className="sidebar-identity" href="/profile">
+          <span className="avatar avatar-small" aria-hidden="true">
+            {initials(actor.displayName)}
+          </span>
+          <span className="sidebar-identity-copy">
+            <strong>{actor.displayName}</strong>
+            <span>{roleLabel}</span>
+          </span>
+        </Link>
       </aside>
 
       <div className="app-main">
         <header className="topbar">
-          <div>
-            <p className="topbar-company">Infinity Solution Service</p>
-            <p className="topbar-role">
-              {actor.isHeadOwner
-                ? 'Owner / Head'
-                : actor.roles.includes('finance')
-                  ? 'Finance / Admin'
-                  : 'Employee'}
-            </p>
+          <div className="topbar-context" aria-label="บริบทการทำงาน">
+            <span className="topbar-company">Infinity Solution Service</span>
+            <span className="topbar-separator" aria-hidden="true" />
+            <span className="topbar-role">{roleLabel}</span>
           </div>
-          <Link className="text-link" href="/profile">
-            บัญชีของฉัน
+
+          <Link className="topbar-account" href="/profile" aria-label="เปิดบัญชีของฉัน">
+            <span className="avatar" aria-hidden="true">
+              {initials(actor.displayName)}
+            </span>
+            <span className="topbar-account-copy">
+              <strong>{actor.displayName}</strong>
+              <span>{actor.email}</span>
+            </span>
           </Link>
         </header>
 
         <main id="main-content" className="page">
           <header className="page-header">
-            <h1>{title}</h1>
-            {description ? <p>{description}</p> : null}
+            <div className="page-header-copy">
+              <span className="page-kicker">EMPLOYEE WORKSPACE</span>
+              <h1>{title}</h1>
+              {description ? <p>{description}</p> : null}
+            </div>
           </header>
           {children}
         </main>
       </div>
 
-      <nav className="mobile-nav" aria-label="เมนูมือถือ">
-        {employeeNav.slice(0, 4).map(([href, label]) => (
-          <Link href={href} key={href}>
-            {label}
-          </Link>
-        ))}
-      </nav>
+      <MobileNavigation />
     </div>
   );
 }
