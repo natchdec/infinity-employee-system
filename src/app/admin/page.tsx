@@ -44,6 +44,10 @@ export default async function AdminPage() {
             <strong>พนักงานและสิทธิ์</strong>
             <span>Role, Head/Owner, Department และสถานะบัญชี</span>
           </Link>
+          <Link className="quick-link" href="/admin/directory">
+            <strong>Microsoft 365 Directory</strong>
+            <span>Sync บัญชีจาก Office 365 และตรวจการผูกกับ Employee</span>
+          </Link>
           <Link className="quick-link" href="/admin/organization">
             <strong>โครงสร้างองค์กร</strong>
             <span>Department และ Reporting Line แบบมี Effective Date</span>

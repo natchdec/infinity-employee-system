@@ -91,7 +91,7 @@ export function AppShell({ actor, title, description, children }: Props) {
         </main>
       </div>
 
-      <MobileNavigation />
+      <MobileNavigation roles={actor.roles} />
     </div>
   );
 }

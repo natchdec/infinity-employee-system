@@ -26,6 +26,7 @@ interface ApprovalPolicyView {
 const adminSections = [
   ['/admin', 'ภาพรวม'],
   ['/admin/employees', 'พนักงานและสิทธิ์'],
+  ['/admin/directory', 'Microsoft 365 Directory'],
   ['/admin/organization', 'โครงสร้างองค์กร'],
   ['/admin/approval-rules', 'Approval Rules'],
   ['/admin/policies', 'Policy Center'],

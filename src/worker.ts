@@ -3,6 +3,10 @@ import { z } from 'zod';
 import { closeDb, db, safeJson } from './server/db';
 import { log } from './server/logging';
 import { queueOperationalReminders } from './server/reminder-service';
+import {
+  queueDueMicrosoftDirectorySync,
+  syncMicrosoftDirectory,
+} from './server/microsoft-directory';
 import { queueDueOutlookCalendarSyncs, syncEmployeeOutlookCalendar } from './server/worklog';
 
 const noticeSchema = z
@@ -22,6 +26,7 @@ const calendarSyncSchema = z
 const workerId = `${hostname()}:${process.pid}`;
 let stopping = false;
 let nextCalendarScheduleCheck = 0;
+let nextDirectoryScheduleCheck = 0;
 let nextReminderScheduleCheck = 0;
 
 async function heartbeat(state: 'running' | 'stopping'): Promise<void> {
@@ -55,6 +60,20 @@ async function scheduleCalendarSyncs(): Promise<void> {
     if (queued > 0) log('info', 'outlook_calendar_sync_queued', { queued });
   } catch (error) {
     log('error', 'outlook_calendar_schedule_failed', {
+      message: error instanceof Error ? error.message : 'unknown',
+    });
+  }
+}
+
+async function scheduleDirectorySyncs(): Promise<void> {
+  const now = Date.now();
+  if (now < nextDirectoryScheduleCheck) return;
+  nextDirectoryScheduleCheck = now + 60_000;
+  try {
+    const queued = await queueDueMicrosoftDirectorySync(new Date(now));
+    if (queued > 0) log('info', 'microsoft_directory_sync_queued', { queued });
+  } catch (error) {
+    log('error', 'microsoft_directory_schedule_failed', {
       message: error instanceof Error ? error.message : 'unknown',
     });
   }
@@ -124,6 +143,9 @@ async function runOne(): Promise<boolean> {
       const value = calendarSyncSchema.parse(claimed.payload);
       const result = await syncEmployeeOutlookCalendar(value.employeeId, new Date());
       await markJobSucceeded(String(claimed.id), result);
+    } else if (claimed.kind === 'microsoft_directory_sync') {
+      const result = await syncMicrosoftDirectory(new Date());
+      await markJobSucceeded(String(claimed.id), result);
     } else {
       await db()`
         update jobs
@@ -163,6 +185,7 @@ async function main(): Promise<void> {
   while (!stopping) {
     await heartbeat('running');
     await scheduleCalendarSyncs();
+    await scheduleDirectorySyncs();
     await scheduleReminders();
     const worked = await runOne();
     if (!worked) await new Promise((resolve) => setTimeout(resolve, 1000));

@@ -156,12 +156,22 @@ export function PrimaryNavigation({ roles }: { roles: Role[] }) {
   );
 }
 
-export function MobileNavigation() {
+export function MobileNavigation({ roles }: { roles: Role[] }) {
   const pathname = usePathname();
+  const items: NavItem[] = [...employeeNav];
+  if (roles.includes('head')) {
+    items.push({ href: '/approvals', label: 'อนุมัติ', icon: 'approvals' });
+  }
+  if (roles.includes('finance')) {
+    items.push({ href: '/finance', label: 'การเงิน', icon: 'finance' });
+  }
+  if (roles.includes('admin')) {
+    items.push({ href: '/admin', label: 'Admin', icon: 'admin' });
+  }
 
   return (
     <nav className="mobile-nav" aria-label="เมนูมือถือ">
-      {employeeNav.map((item) => {
+      {items.map((item) => {
         const active = isActive(pathname, item.href);
         return (
           <Link href={item.href} key={item.href} aria-current={active ? 'page' : undefined}>

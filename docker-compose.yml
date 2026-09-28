@@ -10,6 +10,14 @@ x-app-env: &app-env
   ENTRA_CLIENT_AUTH: ${ENTRA_CLIENT_AUTH:-}
   ENTRA_CLIENT_PRIVATE_KEY_PATH: ${ENTRA_CLIENT_PRIVATE_KEY_PATH:-}
   ENTRA_CLIENT_CERT_PATH: ${ENTRA_CLIENT_CERT_PATH:-}
+  OUTLOOK_CALENDAR_SYNC_ENABLED: ${OUTLOOK_CALENDAR_SYNC_ENABLED:-false}
+  OUTLOOK_CALENDAR_SYNC_INTERVAL_MINUTES: ${OUTLOOK_CALENDAR_SYNC_INTERVAL_MINUTES:-60}
+  OUTLOOK_CALENDAR_TENANT_ID: ${OUTLOOK_CALENDAR_TENANT_ID:-}
+  OUTLOOK_CALENDAR_CLIENT_ID: ${OUTLOOK_CALENDAR_CLIENT_ID:-}
+  OUTLOOK_CALENDAR_CLIENT_AUTH_MODE: ${OUTLOOK_CALENDAR_CLIENT_AUTH_MODE:-secret}
+  OUTLOOK_CALENDAR_CLIENT_AUTH: ${OUTLOOK_CALENDAR_CLIENT_AUTH:-}
+  OUTLOOK_CALENDAR_CLIENT_PRIVATE_KEY_PATH: ${OUTLOOK_CALENDAR_CLIENT_PRIVATE_KEY_PATH:-}
+  OUTLOOK_CALENDAR_CLIENT_CERT_PATH: ${OUTLOOK_CALENDAR_CLIENT_CERT_PATH:-}
   CLOUDFLARE_ACCESS_TEAM_DOMAIN: ${CLOUDFLARE_ACCESS_TEAM_DOMAIN:-}
   CLOUDFLARE_ACCESS_AUD: ${CLOUDFLARE_ACCESS_AUD:-}
   DATABASE_URL: 'postgresql://infinity_app:${DB_APP_PASSWORD:?DB_APP_PASSWORD is required}@db:5432/infinity_employee'
@@ -66,6 +74,8 @@ services:
       - employee_documents:/data/documents
       - /etc/ssl/private/ssl-cert-snakeoil.key:/run/secrets/entra/client.key:ro
       - /etc/ssl/certs/ssl-cert-snakeoil.pem:/run/secrets/entra/client.crt:ro
+      - ./secrets/outlook/calendar-sync.key.pem:/run/secrets/outlook/client.key:ro
+      - ./secrets/outlook/calendar-sync.crt.pem:/run/secrets/outlook/client.crt:ro
     healthcheck:
       test:
         [
@@ -93,6 +103,8 @@ services:
     command: ['pnpm', 'worker']
     volumes:
       - employee_documents:/data/documents
+      - ./secrets/outlook/calendar-sync.key.pem:/run/secrets/outlook/client.key:ro
+      - ./secrets/outlook/calendar-sync.crt.pem:/run/secrets/outlook/client.crt:ro
     networks: [backend]
 
 networks:

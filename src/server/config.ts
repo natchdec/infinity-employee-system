@@ -27,6 +27,9 @@ const configSchema = z.object({
     (value) => (value === '' ? undefined : value),
     z.string().min(1).optional(),
   ),
+  OUTLOOK_CALENDAR_CLIENT_AUTH_MODE: z.enum(['secret', 'certificate']).default('secret'),
+  OUTLOOK_CALENDAR_CLIENT_PRIVATE_KEY_PATH: z.string().min(1).optional(),
+  OUTLOOK_CALENDAR_CLIENT_CERT_PATH: z.string().min(1).optional(),
   CLOUDFLARE_ACCESS_TEAM_DOMAIN: z.preprocess(
     (value) => (value === '' ? undefined : value),
     z
@@ -37,6 +40,11 @@ const configSchema = z.object({
   CLOUDFLARE_ACCESS_AUD: z.preprocess(
     (value) => (value === '' ? undefined : value),
     z.string().min(16).max(512).optional(),
+  ),
+  TEAMS_NOTIFICATIONS_ENABLED: booleanText,
+  TEAMS_NOTIFICATION_WEBHOOK_URL: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.string().url().optional(),
   ),
   STORAGE_DRIVER: z.enum(['filesystem', 's3']).default('filesystem'),
   STORAGE_ROOT: z.string().min(1).default('data/documents'),
@@ -68,15 +76,22 @@ export function config(): AppConfig {
     throw new Error(`Invalid application configuration: ${names}`);
   }
   const value = parsed.data;
-  if (
-    value.OUTLOOK_CALENDAR_SYNC_ENABLED &&
-    (!value.OUTLOOK_CALENDAR_TENANT_ID ||
-      !value.OUTLOOK_CALENDAR_CLIENT_ID ||
-      !value.OUTLOOK_CALENDAR_CLIENT_AUTH)
-  ) {
-    throw new Error(
-      'Outlook Calendar sync requires tenant, application and client credential configuration',
-    );
+  if (value.OUTLOOK_CALENDAR_SYNC_ENABLED) {
+    if (!value.OUTLOOK_CALENDAR_TENANT_ID || !value.OUTLOOK_CALENDAR_CLIENT_ID) {
+      throw new Error('Outlook Calendar sync requires tenant and application configuration');
+    }
+    if (
+      value.OUTLOOK_CALENDAR_CLIENT_AUTH_MODE === 'secret' &&
+      !value.OUTLOOK_CALENDAR_CLIENT_AUTH
+    ) {
+      throw new Error('Outlook Calendar sync requires a client credential');
+    }
+    if (
+      value.OUTLOOK_CALENDAR_CLIENT_AUTH_MODE === 'certificate' &&
+      (!value.OUTLOOK_CALENDAR_CLIENT_PRIVATE_KEY_PATH || !value.OUTLOOK_CALENDAR_CLIENT_CERT_PATH)
+    ) {
+      throw new Error('Outlook Calendar sync requires certificate paths');
+    }
   }
   if (value.APP_ENV === 'production') {
     if (!value.APP_ORIGIN.startsWith('https://')) {
