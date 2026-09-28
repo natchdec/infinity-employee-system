@@ -26,7 +26,10 @@ if [[ -f "$DUMP.sha256" ]]; then
   (cd "$(dirname "$DUMP")" && sha256sum -c "$(basename "$DUMP").sha256")
 fi
 
-COMPOSE=(docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.production.yml)
+# The restore drill exercises only the unchanged db service. Keep it
+# independent from app/worker S3 and Routes provider configuration so a
+# database recovery check remains runnable before external-provider cutover.
+COMPOSE=(docker compose --env-file "$ENV_FILE" -f docker-compose.yml)
 
 cleanup() {
   "${COMPOSE[@]}" exec -T db dropdb -U infinity_owner --if-exists "$RESTORE_DB" >/dev/null 2>&1 || true

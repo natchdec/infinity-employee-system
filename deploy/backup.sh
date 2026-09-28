@@ -13,7 +13,10 @@ DUMP="$OUT_DIR/postgres.dump"
 
 mkdir -p "$OUT_DIR"
 
-COMPOSE=(docker compose --env-file "$ENV_FILE" -f docker-compose.yml -f docker-compose.production.yml)
+# Database backup must not depend on app/worker provider configuration.
+# docker-compose.production.yml only overrides app/worker, so the base
+# Compose definition is authoritative for the unchanged db service.
+COMPOSE=(docker compose --env-file "$ENV_FILE" -f docker-compose.yml)
 
 "${COMPOSE[@]}" exec -T db pg_isready -U infinity_owner -d infinity_employee >/dev/null
 "${COMPOSE[@]}" exec -T db pg_dump -U infinity_owner -d infinity_employee -Fc > "$DUMP"
