@@ -45,6 +45,7 @@ export default async function FinancePage() {
           <Link href="/finance/payroll">OT / Payroll</Link>
           <Link href="/finance/projects">ต้นทุนตามโครงการ</Link>
           <Link href="/finance/reconciliation">Reconciliation</Link>
+          <Link href="/finance/operations">Operational Dashboard</Link>
           <Link href="/finance/monthly-close">Monthly Closing</Link>
           <Link href="/finance/exports">ส่งออก</Link>
         </div>

@@ -1,15 +1,19 @@
 import { addDays, bangkokDate } from '../domain/calendar';
-import { db } from './db';
+import { config } from './config';
+import { db, enqueue } from './db';
 
 interface ReminderInsert {
   employeeId: string;
   eventKey: string;
   title: string;
   href: string;
+  teamsDetail?: string;
+  teamsKey?: string;
 }
 
 async function insertReminders(rows: ReminderInsert[]): Promise<number> {
   if (!rows.length) return 0;
+  const teamsEnabled = config().TEAMS_NOTIFICATIONS_ENABLED;
   let inserted = 0;
   await db().begin(async (tx) => {
     for (const row of rows) {
@@ -19,7 +23,15 @@ async function insertReminders(rows: ReminderInsert[]): Promise<number> {
         on conflict(event_key) do nothing
         returning id
       `;
-      if (result.length) inserted++;
+      if (!result.length) continue;
+      inserted++;
+      if (teamsEnabled && row.teamsDetail && row.teamsKey) {
+        await enqueue(tx, 'teams_workflow_notification', `teams:${row.teamsKey}`, {
+          title: row.title,
+          detail: row.teamsDetail,
+          href: row.href,
+        });
+      }
     }
   });
   return inserted;
@@ -134,6 +146,8 @@ export async function queueOperationalReminders(now = new Date()): Promise<numbe
         eventKey: `reminder:finance:${date}:${user.id}`,
         title: `Finance queue: รอตรวจ ${verifyCount} · พร้อมจ่าย ${payCount}`,
         href: '/finance',
+        teamsDetail: `คิวรวมของ Finance: รอตรวจ ${verifyCount} รายการ และพร้อมจ่าย ${payCount} รายการ`,
+        teamsKey: `finance:${date}`,
       });
     }
   }
@@ -154,6 +168,9 @@ export async function queueOperationalReminders(now = new Date()): Promise<numbe
         eventKey: `reminder:payroll-cutoff:${date}:${user.id}`,
         title: `Payroll ${cutoff[0]!.month} ใกล้ถึง cutoff`,
         href: '/finance/payroll',
+        teamsDetail:
+          'Payroll cutoff อยู่ในช่วง 2 วันข้างหน้า กรุณาตรวจคิวอนุมัติและรายการ OT ก่อนปิดรอบ',
+        teamsKey: `payroll-cutoff:${date}:${cutoff[0]!.month}`,
       });
     }
   }

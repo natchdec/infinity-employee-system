@@ -5,6 +5,7 @@ import { requestSchemas } from '../src/domain/requests';
 import { aggregateEasyAccOt, formatEasyAccPrimport } from '../src/server/integrations/easy-acc';
 import { blockingReadiness, productionReadiness } from '../src/server/integrations/preflight';
 import { validateCloudflareAccessClaims } from '../src/server/cloudflare-access';
+import { teamsWorkflowPayload } from '../src/server/integrations/teams-workflow';
 
 test('Easy-ACC PRIMPORT uses six single-space-delimited fields and three decimals', () => {
   assert.equal(
@@ -241,4 +242,36 @@ test('Cloudflare Access can satisfy the production identity gate without direct 
     CLOUDFLARE_ACCESS_AUD: '0123456789abcdef',
   });
   assert.equal(gates.find((gate) => gate.id === 'identity_gateway')?.ready, true);
+});
+
+test('Teams workflow payload keeps links inside Employee System', () => {
+  assert.deepEqual(
+    teamsWorkflowPayload(
+      {
+        title: ' Finance queue ',
+        detail: ' Pending work ',
+        href: '/finance/operations',
+      },
+      'https://employee.infinity.example',
+    ),
+    {
+      text: 'Finance queue\nPending work\nhttps://employee.infinity.example/finance/operations',
+    },
+  );
+});
+
+test('Teams workflow payload rejects protocol-relative external links', () => {
+  assert.throws(
+    () =>
+      teamsWorkflowPayload(
+        {
+          title: 'Unsafe',
+          detail: 'Do not send',
+          href: '//external.example/phish',
+        },
+        'https://employee.infinity.example',
+      ),
+    (error: unknown) =>
+      error instanceof DomainError && error.code === 'TEAMS_NOTIFICATION_LINK_INVALID',
+  );
 });

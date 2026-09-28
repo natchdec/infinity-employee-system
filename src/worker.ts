@@ -1,18 +1,27 @@
 import { hostname } from 'node:os';
 import { z } from 'zod';
 import { closeDb, db, safeJson } from './server/db';
+import { sendTeamsWorkflowNotice } from './server/integrations/teams-workflow';
 import { log } from './server/logging';
-import { queueOperationalReminders } from './server/reminder-service';
 import {
   queueDueMicrosoftDirectorySync,
   syncMicrosoftDirectory,
 } from './server/microsoft-directory';
+import { queueOperationalReminders } from './server/reminder-service';
 import { queueDueOutlookCalendarSyncs, syncEmployeeOutlookCalendar } from './server/worklog';
 
 const noticeSchema = z
   .object({
     employeeId: z.string().uuid(),
     title: z.string().min(1).max(200),
+    href: z.string().startsWith('/').max(500),
+  })
+  .strict();
+
+const teamsNoticeSchema = z
+  .object({
+    title: z.string().min(1).max(200),
+    detail: z.string().min(1).max(1000),
     href: z.string().startsWith('/').max(500),
   })
   .strict();
@@ -139,6 +148,10 @@ async function runOne(): Promise<boolean> {
           where id = ${claimed.id} and locked_by = ${workerId}
         `;
       });
+    } else if (claimed.kind === 'teams_workflow_notification') {
+      const value = teamsNoticeSchema.parse(claimed.payload);
+      const result = await sendTeamsWorkflowNotice(value);
+      await markJobSucceeded(String(claimed.id), result);
     } else if (claimed.kind === 'outlook_calendar_sync') {
       const value = calendarSyncSchema.parse(claimed.payload);
       const result = await syncEmployeeOutlookCalendar(value.employeeId, new Date());
