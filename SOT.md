@@ -178,3 +178,13 @@ Provider verification 2026-09-26:
 - AGW Local tunnel-client is currently disconnected (>300 s not seen), so the previously authenticated Infinity Cloudflare browser session is not reachable from Agent Gateway at this checkpoint.
 - Next sanctioned action: restore an authorized Infinity Cloudflare session/credential, recreate dedicated tunnel `infinity-employee-prod`, obtain its token without exposing it in chat, install the connector service on `INFINITY-EMPLOYEE-PROD01`, configure `employee.infinitysolutions.co.th -> http://127.0.0.1:3000`, then run DNS/TLS/Access/Entra live UAT.
 <!-- agent-gateway:managed:end:employee-cloudflare-topology-20260927 -->
+
+<!-- agent-gateway:managed:start:phase2-2026-09-28 -->
+## Phase 2 engineering checkpoint — 2026-09-28
+- Current source branch is `feat/v1-implementation`.
+- Microsoft directory + Outlook runtime milestone is committed and synchronized as `9b5d3e5`. Source now contains 11 ordered migrations; migration 011 adds Microsoft 365 tenant-directory synchronization without automatically granting Employee System access.
+- Phase 2 source milestone is `54cc3e2`: project cost reporting/reconciliation is present; Teams Workflow notifications use validated in-app links, deduplicated reminder fan-out and retry-safe worker delivery; Finance exposes a role-gated Operational Dashboard for queues, exceptions, background jobs and worker freshness.
+- Source regression is green: 83/83 tests pass. The full `pnpm verify` worker execution completed with exit code 0 after its parent dispatch crossed the AGW watchdog deadline; the worker ledger and separate regression receipt reconcile the ambiguous parent state.
+- Phase 2 roadmap items are complete in source. Project Master, Easy-ACC and Smartbiz remain deferred/non-blocking by product decision.
+- Production is not yet approved for live cutover. Remaining blocking gates are private S3-compatible object storage, Google Routes production credential plus contractual retention confirmation for durable evidence, production restore acceptance, dedicated Cloudflare Tunnel/Access hostname+AUD live UAT, and explicit cutover approval.
+<!-- agent-gateway:managed:end:phase2-2026-09-28 -->

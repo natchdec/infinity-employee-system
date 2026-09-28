@@ -48,11 +48,12 @@
 - [x] Company Holiday / Working Schedule and unified Policy Center are versioned/effective-dated and feed OT/payroll calculations.
 - [x] Human-readable Audit Timeline exposes who did what and when without leaking private payloads.
 - [x] Hourly incremental Outlook sync plus manual Sync Now is idempotent and preserves submitted request immutability.
+- [x] Microsoft 365 Directory admin sync imports the tenant directory for visibility/linking without automatically granting Employee System access.
 
 ## Phase 2 - Project and Automation Enhancement
-- Project cost reporting.
-- Teams notifications.
-- Operational dashboards and finance reconciliation enhancements.
+- [x] Project cost reporting.
+- [x] Teams Workflow notifications with internal-link validation, retry-safe worker delivery, and disabled-by-default runtime configuration.
+- [x] Operational Dashboard and finance reconciliation enhancements.
 
 ## Phase 3 - Convenience Integrations
 - LINE OA rich menu.
