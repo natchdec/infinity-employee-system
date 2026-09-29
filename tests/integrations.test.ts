@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { DomainError } from '../src/domain/core';
 import { requestSchemas } from '../src/domain/requests';
 import { aggregateEasyAccOt, formatEasyAccPrimport } from '../src/server/integrations/easy-acc';
@@ -156,6 +157,26 @@ test('manual mileage attestation cannot smuggle a provider reference', () => {
     ],
   });
   assert.equal(result.success, false);
+});
+
+test('Project Master credentials are wired into app and worker containers', () => {
+  const baseCompose = readFileSync(new URL('../docker-compose.yml', import.meta.url), 'utf8');
+  const productionCompose = readFileSync(
+    new URL('../docker-compose.production.yml', import.meta.url),
+    'utf8',
+  );
+  const keys = [
+    'PROJECT_MASTER_TENANT_ID',
+    'PROJECT_MASTER_CLIENT_ID',
+    'PROJECT_MASTER_CLIENT_AUTH',
+    'PROJECT_MASTER_SITE_ID',
+    'PROJECT_MASTER_LIST_ID',
+    'PROJECT_MASTER_COLUMN_MAP',
+  ];
+  for (const key of keys) {
+    assert.ok(baseCompose.includes(key + ': ${' + key + ':-}'));
+    assert.equal(productionCompose.split(key + ': ${' + key + '}').length - 1, 2);
+  }
 });
 
 test('Project Master is production-blocking while Easy-ACC and Smartbiz remain deferred', () => {
