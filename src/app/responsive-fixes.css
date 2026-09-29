@@ -1,10 +1,9 @@
 /*
  * Responsive shell regression fixes.
  *
- * globals.css contains the original shell plus the later editorial redesign.
- * The redesign reintroduced tablet sidebar offsets after the earlier mobile
- * reset. Keep these overrides isolated and loaded last so mobile and compact
- * notebook layouts preserve the locked UX contract.
+ * globals.css contains the original shell plus a later editorial redesign.
+ * Keep these narrow overrides loaded last so the desktop sidebar remains
+ * scrollable and mobile never inherits the later desktop/tablet offset.
  */
 
 .sidebar {
@@ -43,11 +42,6 @@
     max-width: 100%;
   }
 
-  .page {
-    margin: 0;
-    padding: 24px 16px 36px;
-  }
-
   .topbar-context,
   .page-header-copy {
     min-width: 0;
@@ -64,11 +58,6 @@
     max-width: 100%;
     overflow-wrap: anywhere;
     word-break: normal;
-  }
-
-  .overview-strip,
-  .quick-list {
-    grid-template-columns: 1fr;
   }
 
   .overview-item,
