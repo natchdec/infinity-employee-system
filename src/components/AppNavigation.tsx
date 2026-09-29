@@ -26,6 +26,7 @@ type NavIcon =
   | 'new'
   | 'trips'
   | 'profile'
+  | 'projects'
   | 'approvals'
   | 'finance'
   | 'admin'
@@ -48,6 +49,7 @@ const employeeNav: NavItem[] = [
   { href: '/requests/new', label: 'สร้างคำขอ', icon: 'new' },
   { href: '/trips', label: 'การเดินทาง', icon: 'trips' },
   { href: '/profile', label: 'โปรไฟล์', icon: 'profile' },
+  { href: '/projects', label: 'โครงการ', icon: 'projects' },
 ];
 
 const operationsNav: NavItem[] = [
@@ -72,6 +74,8 @@ function Icon({ name, size = 19 }: { name: NavIcon; size?: number }) {
       return <AirplaneTilt {...props} />;
     case 'profile':
       return <UserCircle {...props} />;
+    case 'projects':
+      return <FileText {...props} />;
     case 'approvals':
       return <Checks {...props} />;
     case 'finance':

@@ -8,6 +8,8 @@ import {
   syncMicrosoftDirectory,
 } from './server/microsoft-directory';
 import { queueOperationalReminders } from './server/reminder-service';
+import { queueDueProjectMasterSync } from './server/project-master-jobs';
+import { syncProjectMaster } from './server/integrations/project-master';
 import { queueDueOutlookCalendarSyncs, syncEmployeeOutlookCalendar } from './server/worklog';
 
 const noticeSchema = z
@@ -37,6 +39,7 @@ let stopping = false;
 let nextCalendarScheduleCheck = 0;
 let nextDirectoryScheduleCheck = 0;
 let nextReminderScheduleCheck = 0;
+let nextProjectMasterScheduleCheck = 0;
 
 async function heartbeat(state: 'running' | 'stopping'): Promise<void> {
   await db()`
@@ -83,6 +86,20 @@ async function scheduleDirectorySyncs(): Promise<void> {
     if (queued > 0) log('info', 'microsoft_directory_sync_queued', { queued });
   } catch (error) {
     log('error', 'microsoft_directory_schedule_failed', {
+      message: error instanceof Error ? error.message : 'unknown',
+    });
+  }
+}
+
+async function scheduleProjectMasterSyncs(): Promise<void> {
+  const now = Date.now();
+  if (now < nextProjectMasterScheduleCheck) return;
+  nextProjectMasterScheduleCheck = now + 60_000;
+  try {
+    const queued = await queueDueProjectMasterSync(new Date(now));
+    if (queued > 0) log('info', 'project_master_sync_queued', { queued });
+  } catch (error) {
+    log('error', 'project_master_schedule_failed', {
       message: error instanceof Error ? error.message : 'unknown',
     });
   }
@@ -159,6 +176,9 @@ async function runOne(): Promise<boolean> {
     } else if (claimed.kind === 'microsoft_directory_sync') {
       const result = await syncMicrosoftDirectory(new Date());
       await markJobSucceeded(String(claimed.id), result);
+    } else if (claimed.kind === 'project_master_sync') {
+      const result = await syncProjectMaster(new Date());
+      await markJobSucceeded(String(claimed.id), result);
     } else {
       await db()`
         update jobs
@@ -199,6 +219,7 @@ async function main(): Promise<void> {
     await heartbeat('running');
     await scheduleCalendarSyncs();
     await scheduleDirectorySyncs();
+    await scheduleProjectMasterSyncs();
     await scheduleReminders();
     const worked = await runOne();
     if (!worked) await new Promise((resolve) => setTimeout(resolve, 1000));

@@ -143,3 +143,12 @@ Before implementation:
 - Receipt Inbox lets employees upload first and assign the receipt to a claim later.
 - Employee Monthly Statement provides a period summary without exposing another employee's salary or private claim data.
 - Audit Timeline uses human-readable events and redacted metadata.
+
+## Project Master
+- Microsoft Lists / SharePoint remains the authoritative source; Employee System is read-only and does not expose local project create/edit actions.
+- `/projects` is a searchable Project Master list for authenticated users with Project Code, Name, Customer, Sales Owner, dates and active/inactive state.
+- `/projects/[id]` shows source-backed detail, Last Sync and ETag. Missing Engineer Lead or Cost Center is displayed as unavailable rather than inferred.
+- New OT and Expense forms may select an active Project; Business Trip requires an active Project. Inactive projects remain readable on historical requests but are not selectable for new requests.
+- Admin `/admin/integrations/projects` shows connection readiness, authoritative source, Last Sync, inactive count, missing-field counts and a retry-safe Sync Now action.
+- Finance `/finance/projects` is the Project Cost Ledger. `/finance/projects/[id]` drills into Project metadata, OT, verified standalone Expense, Finance-verified Travel settlement, pending Head/Finance queues and recent linked request activity.
+- Project surfaces follow the existing Quiet Enterprise visual system and the 390/820/1440 responsive acceptance family; wide tables use local horizontal scrolling instead of document overflow.

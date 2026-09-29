@@ -22,7 +22,8 @@
 - [x] Responsive browser hardening and implemented-app UAT at 390/820/1440.
 - [x] PWA installability/offline-shell hardening with cache-privacy UAT.
 - [x] Microsoft Lists/SharePoint live source discovery, 458-row read snapshot, and available lookup mapping.
-- [ ] Project Master production sync activation after authoritative Engineer Lead and Cost Center sources are defined.
+- [x] Project Master read-only production adapter, searchable list/detail UX, request picker, Admin integration state and Finance cost drill-down implemented with missing Engineer Lead/Cost Center kept explicitly unavailable.
+- [ ] Activate and verify Project Master live sync on the ESXi production candidate using the real Microsoft Lists/SharePoint tenant/site/list/client/column mapping.
 - [x] Google Routes transient no-store mileage preview boundary with explicit non-evidence semantics.
 - [ ] Google Routes durable verified-evidence mode after API credential and contractual retention rights are confirmed.
 - [x] Implement and regression-test Easy-ACC PRIMPORT exact row shape and <=9-digit employee code constraint.

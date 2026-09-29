@@ -60,9 +60,9 @@ export function productionReadiness(env: NodeJS.ProcessEnv = process.env): Readi
         present(env.PROJECT_MASTER_SITE_ID) &&
         present(env.PROJECT_MASTER_LIST_ID) &&
         present(env.PROJECT_MASTER_COLUMN_MAP),
-      blocking: false,
+      blocking: true,
       detail:
-        'Deferred by product decision: Microsoft Lists/SharePoint Project Master can be activated later without blocking core production readiness',
+        'Microsoft Lists/SharePoint Project Master connection and authoritative column mapping are required for production; unavailable optional Engineer Lead/Cost Center fields must remain blank rather than invented',
     },
     {
       id: 'google_routes_preview',

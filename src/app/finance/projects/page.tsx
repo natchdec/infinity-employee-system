@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { AppShell, Money } from '@/components/AppShell';
 import { requireActor, requirePageRole } from '@/server/auth-context';
 import { financeProjectCosts } from '@/server/project-reporting';
@@ -76,9 +77,11 @@ export default async function ProjectCostsPage() {
                 {report.rows.map((row) => (
                   <tr key={row.projectId}>
                     <td>
-                      <strong>{row.code}</strong>
-                      <br />
-                      <span>{row.name}</span>
+                      <Link href={`/finance/projects/${row.projectId}`}>
+                        <strong>{row.code}</strong>
+                        <br />
+                        <span>{row.name}</span>
+                      </Link>
                     </td>
                     <td>{row.customer ?? '-'}</td>
                     <td>{row.costCenter ?? '-'}</td>

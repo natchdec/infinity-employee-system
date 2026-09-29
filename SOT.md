@@ -188,3 +188,13 @@ Provider verification 2026-09-26:
 - Phase 2 roadmap items are complete in source. Project Master, Easy-ACC and Smartbiz remain deferred/non-blocking by product decision.
 - Production is not yet approved for live cutover. Remaining blocking gates are private S3-compatible object storage, Google Routes production credential plus contractual retention confirmation for durable evidence, production restore acceptance, dedicated Cloudflare Tunnel/Access hostname+AUD live UAT, and explicit cutover approval.
 <!-- agent-gateway:managed:end:phase2-2026-09-28 -->
+
+<!-- agent-gateway:managed:start:project-master-reactivated-2026-09-30 -->
+## Project Master reactivated — 2026-09-30
+- Product decision supersedes earlier deferral: Project Master is active production scope.
+- Microsoft Lists/SharePoint remains authoritative. Employee System stores a read-only ProjectReference projection plus immutable request snapshots; no local project create/edit workflow is allowed.
+- Latest verified SharePoint snapshot evidence remains 458 projects: Customer, Sales Owner and Status 458/458; Start Date and End Date 405/458; Engineer Lead 0/458; Cost Center 0/458.
+- Engineer Lead and Cost Center are optional source semantics for this cut. Their absence must display as unavailable and must not block synchronization of fields that have authoritative mappings. They must never be inferred or invented.
+- Source implementation now includes searchable Project Master list/detail, Admin Project Integration/readiness and retry-safe queued sync, active-project request selection, hourly worker scheduling, stale/inactive preservation and Finance Project Cost Ledger/detail.
+- Live ESXi Project Master sync is not yet claimed PASS in this checkpoint. It still requires the real tenant/site/list/client credential and verified column mapping to be applied to the ESXi production candidate, followed by a fresh sync job and data/UAT verification.
+<!-- agent-gateway:managed:end:project-master-reactivated-2026-09-30 -->

@@ -10,7 +10,7 @@ Use Docker Compose and a modular monolith. Production runs inside a dedicated Li
 Use Microsoft Entra ID. Do not maintain a separate employee password database.
 
 ## D-004 Project Master
-Use Microsoft Lists/SharePoint as the authoritative Project Master and surface it in Microsoft Teams. Employee System references Project IDs rather than maintaining a duplicate master.
+Use Microsoft Lists/SharePoint as the authoritative Project Master and surface it in Microsoft Teams. Employee System keeps only a read-only `ProjectReference` projection and immutable request snapshots; it never maintains a duplicate writable master. As of 2026-09-30 Project Master is active production scope. Missing optional Engineer Lead or Cost Center semantics at the source are shown as unavailable and must never be invented; their absence does not block sync of the authoritative fields that do exist.
 
 ## D-005 Mobile Strategy
 Web/PWA is the primary UI. LINE OA is a later companion for deep links, notifications, and optional receipt inbox workflows.

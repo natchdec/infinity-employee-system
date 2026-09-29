@@ -26,6 +26,7 @@ Part of UX_UI_LOCKED_SPEC_V1.md. All routes inherit shared accessibility, role/o
 | E18 | /requests/[id]/edit | Returned reason, correction, prior round, resubmit | Stale revision; new review round; no old history deletion |
 | E19 | /profile | Corporate identity, department, Head, roles, support, sign-out | No own salary/role/Head edit; missing mapping escalation |
 | E20 | Global feedback | Loading, empty, validation, network, offline, success | Actual server outcome; no private cache/financial replay |
+| E21 | /projects and /projects/[id] | Searchable read-only Project Master, customer/Sales Owner/dates/status, source/ETag/Last Sync | Inactive remains historical; missing Engineer Lead/Cost Center displays unavailable; no local project edit |
 
 ## Head/Owner
 
@@ -57,6 +58,7 @@ Part of UX_UI_LOCKED_SPEC_V1.md. All routes inherit shared accessibility, role/o
 | F14 | /finance/accounting | Period/candidate filters, Smartbiz readiness and export history | No invented API/import format; immutable job/input hash |
 | F15 | /finance/reports | Project cost/reconciliation, date basis/currency, neutral export | Advances not double-counted as actual cost |
 | F16 | Conflict-of-interest | Explain another authorized Finance/Admin actor is required | No Admin override or role-switch bypass |
+| F17 | /finance/projects and /finance/projects/[id] | Project cost ledger and drill-down: OT, verified Expense, Travel settlement, pending queues, recent linked activity | Advances excluded from cost; missing source fields remain unavailable; no double count |
 
 ## Administration
 
@@ -69,7 +71,7 @@ Part of UX_UI_LOCKED_SPEC_V1.md. All routes inherit shared accessibility, role/o
 | A05 | /admin/expense-types | Types, evidence requirements, cost mapping | Historical inactive types readable; Entertainment remains subtype |
 | A06 | /admin/holidays | Versioned company calendar, observed dates, impact preview | Not automatically government holiday calendar |
 | A07 | /admin/approval-rules | Line-Head, Owner system skip, Finance independence | No Project Manager step; no historical reassignment |
-| A08 | /admin/integrations/projects | Tenant/site/list/column mapping, source/ETag/last sync, safe retry | Read-only; stale/inactive/missing credentials; no master duplication |
+| A08 | /admin/integrations/projects | Connection readiness, source/ETag/last sync, missing-field counts, inactive state, retry-safe Sync Now | Read-only; stale/inactive/missing credentials; no master duplication; no invented optional source semantics |
 | A09 | /admin/audit | Actor/entity/date/action filters and immutable events | Redact secrets, salary, private medical/home details |
 | A10 | /admin/settings | Identity/DB/storage/worker/adapters/backups/readiness | Show configured metadata only, never secret values |
 

@@ -28,7 +28,7 @@ Build a mobile-first employee self-service system for Infinity Solution Service 
 - Original receipt tracking after payment.
 - Payroll export adapter for Easy-ACC.
 - Accounting export adapter for Smartbiz.
-- Microsoft Lists / SharePoint Project Master integration.
+- Microsoft Lists / SharePoint Project Master integration as an active production feature: read-only sync, searchable list/detail, request selection, Admin sync/readiness and Finance project-cost drill-down.
 - Mobile-first PWA.
 - Audit trail and policy versioning.
 - Docker Compose deployment on a dedicated Linux VM hosted on Infinity ESXi. Agent Gateway OCI remains a separate automation/VPN platform and is not the Employee System production application host.
@@ -49,3 +49,4 @@ Build a mobile-first employee self-service system for Infinity Solution Service 
 - Finance can close payment and payroll batches with traceable audit evidence.
 - Policies can change without source-code edits.
 - Every material state change is auditable.
+- Project Master remains authoritative in Microsoft Lists/SharePoint; Employee System exposes source identity/freshness and never invents missing Engineer Lead or Cost Center values.

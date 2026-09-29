@@ -56,6 +56,10 @@ export default async function AdminPage() {
             <strong>Approval Rules</strong>
             <span>ดู Manager / Finance / Payroll routing และ policy version</span>
           </Link>
+          <Link className="quick-link" href="/admin/integrations/projects">
+            <strong>Project Integration</strong>
+            <span>ตรวจ Microsoft Lists / SharePoint source, sync freshness และข้อมูลที่ยังขาด</span>
+          </Link>
         </div>
       </section>
       <section className="section">

@@ -158,14 +158,15 @@ test('manual mileage attestation cannot smuggle a provider reference', () => {
   assert.equal(result.success, false);
 });
 
-test('deferred integrations remain visible but non-blocking', () => {
+test('Project Master is production-blocking while Easy-ACC and Smartbiz remain deferred', () => {
   const gates = productionReadiness({ NODE_ENV: 'test' });
-  assert.equal(gates.find((gate) => gate.id === 'project_master')?.blocking, false);
+  assert.equal(gates.find((gate) => gate.id === 'project_master')?.blocking, true);
+  assert.equal(gates.find((gate) => gate.id === 'project_master')?.ready, false);
   assert.equal(gates.find((gate) => gate.id === 'easy_acc')?.blocking, false);
   assert.equal(gates.find((gate) => gate.id === 'smartbiz')?.blocking, false);
 });
 
-test('blocking readiness ignores deferred false gates', () => {
+test('blocking readiness requires Project Master but ignores deferred false gates', () => {
   const gates = productionReadiness({ NODE_ENV: 'test' }).map((gate) =>
     gate.blocking ? { ...gate, ready: true } : gate,
   );
