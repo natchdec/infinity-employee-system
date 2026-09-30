@@ -6,6 +6,19 @@ const booleanText = z
   .default('false')
   .transform((value) => value === 'true');
 
+const optionalUuidText = z.preprocess(
+  (value) => (value === '' ? undefined : value),
+  z.string().uuid().optional(),
+);
+const optionalNonEmptyText = z.preprocess(
+  (value) => (value === '' ? undefined : value),
+  z.string().min(1).optional(),
+);
+const optionalColumnMapText = z.preprocess(
+  (value) => (value === '' ? undefined : value),
+  z.string().min(2).optional(),
+);
+
 const configSchema = z.object({
   APP_ENV: z.enum(['development', 'test', 'uat', 'production']).default('development'),
   APP_ORIGIN: z.string().url().default('http://127.0.0.1:3000'),
@@ -53,15 +66,15 @@ const configSchema = z.object({
   STORAGE_REGION: z.string().min(1).optional(),
   STORAGE_ENDPOINT: z.string().url().optional(),
   STORAGE_FORCE_PATH_STYLE: booleanText,
-  PROJECT_MASTER_TENANT_ID: z.string().uuid().optional(),
-  PROJECT_MASTER_CLIENT_ID: z.string().uuid().optional(),
+  PROJECT_MASTER_TENANT_ID: optionalUuidText,
+  PROJECT_MASTER_CLIENT_ID: optionalUuidText,
   PROJECT_MASTER_CLIENT_AUTH_MODE: z.enum(['secret', 'certificate']).default('secret'),
-  PROJECT_MASTER_CLIENT_AUTH: z.string().min(1).optional(),
-  PROJECT_MASTER_CLIENT_PRIVATE_KEY_PATH: z.string().min(1).optional(),
-  PROJECT_MASTER_CLIENT_CERT_PATH: z.string().min(1).optional(),
-  PROJECT_MASTER_SITE_ID: z.string().min(1).optional(),
-  PROJECT_MASTER_LIST_ID: z.string().min(1).optional(),
-  PROJECT_MASTER_COLUMN_MAP: z.string().min(2).optional(),
+  PROJECT_MASTER_CLIENT_AUTH: optionalNonEmptyText,
+  PROJECT_MASTER_CLIENT_PRIVATE_KEY_PATH: optionalNonEmptyText,
+  PROJECT_MASTER_CLIENT_CERT_PATH: optionalNonEmptyText,
+  PROJECT_MASTER_SITE_ID: optionalNonEmptyText,
+  PROJECT_MASTER_LIST_ID: optionalNonEmptyText,
+  PROJECT_MASTER_COLUMN_MAP: optionalColumnMapText,
   GOOGLE_ROUTES_API_KEY: z.string().min(1).optional(),
   GOOGLE_ROUTES_RETENTION_CONFIRMED: booleanText,
 });
