@@ -17,6 +17,18 @@ function entraAuthReady(env: NodeJS.ProcessEnv): boolean {
   return present(env.ENTRA_CLIENT_AUTH);
 }
 
+function graphReadAuthReady(env: NodeJS.ProcessEnv): boolean {
+  if (!present(env.OUTLOOK_CALENDAR_TENANT_ID) || !present(env.OUTLOOK_CALENDAR_CLIENT_ID))
+    return false;
+  if (env.OUTLOOK_CALENDAR_CLIENT_AUTH_MODE === 'certificate') {
+    return (
+      present(env.OUTLOOK_CALENDAR_CLIENT_PRIVATE_KEY_PATH) &&
+      present(env.OUTLOOK_CALENDAR_CLIENT_CERT_PATH)
+    );
+  }
+  return present(env.OUTLOOK_CALENDAR_CLIENT_AUTH);
+}
+
 function identityReady(env: NodeJS.ProcessEnv): boolean {
   if (env.AUTH_MODE === 'cloudflare_access') {
     return present(env.CLOUDFLARE_ACCESS_TEAM_DOMAIN) && present(env.CLOUDFLARE_ACCESS_AUD);
@@ -45,24 +57,26 @@ export function productionReadiness(env: NodeJS.ProcessEnv = process.env): Readi
         : 'Dedicated Entra tenant/client/auth and redirect registration are required',
     },
     {
-      id: 'object_storage',
+      id: 'document_storage',
       ready:
-        env.STORAGE_DRIVER === 's3' && present(env.STORAGE_BUCKET) && present(env.STORAGE_REGION),
+        env.STORAGE_DRIVER === 'filesystem' &&
+        present(env.STORAGE_ROOT) &&
+        (env.STORAGE_ROOT ?? '').startsWith('/'),
       blocking: true,
-      detail: 'Production documents require S3-compatible private object storage',
+      detail:
+        'Production documents require private ESXi-local filesystem storage on an absolute host-backed path',
     },
     {
       id: 'project_master',
       ready:
         present(env.PROJECT_MASTER_TENANT_ID) &&
-        present(env.PROJECT_MASTER_CLIENT_ID) &&
-        present(env.PROJECT_MASTER_CLIENT_AUTH) &&
         present(env.PROJECT_MASTER_SITE_ID) &&
         present(env.PROJECT_MASTER_LIST_ID) &&
-        present(env.PROJECT_MASTER_COLUMN_MAP),
+        present(env.PROJECT_MASTER_COLUMN_MAP) &&
+        graphReadAuthReady(env),
       blocking: true,
       detail:
-        'Microsoft Lists/SharePoint Project Master connection and authoritative column mapping are required for production; unavailable optional Engineer Lead/Cost Center fields must remain blank rather than invented',
+        'Microsoft Lists/SharePoint Project Master mapping plus the shared read-only Microsoft Graph certificate identity are required; unavailable optional Engineer Lead/Cost Center fields remain blank rather than invented',
     },
     {
       id: 'google_routes_preview',
@@ -76,7 +90,7 @@ export function productionReadiness(env: NodeJS.ProcessEnv = process.env): Readi
       ready: present(env.GOOGLE_ROUTES_API_KEY) && env.GOOGLE_ROUTES_RETENTION_CONFIRMED === 'true',
       blocking: true,
       detail:
-        'Durable Google-verified mileage evidence requires separately confirmed contractual retention rights',
+        'Durable Google-verified mileage evidence stays fail-closed until contractual retention rights are separately confirmed; transient no-store route preview remains available',
     },
     {
       id: 'easy_acc',

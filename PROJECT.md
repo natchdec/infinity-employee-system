@@ -50,3 +50,12 @@ Build a mobile-first employee self-service system for Infinity Solution Service 
 - Policies can change without source-code edits.
 - Every material state change is auditable.
 - Project Master remains authoritative in Microsoft Lists/SharePoint; Employee System exposes source identity/freshness and never invents missing Engineer Lead or Cost Center values.
+
+<!-- agent-gateway:managed:start:production-scope-20260930 -->
+## Production Scope Clarification — 2026-09-30
+- Project Master is active V1 production scope and uses Microsoft Lists/SharePoint as the authoritative read-only source.
+- Production identity is Cloudflare Access backed by Microsoft Entra. Directory, Outlook Calendar and Project Master synchronization use the approved read-only Microsoft Graph application identity.
+- Receipt/document binaries use private ESXi-local host-backed storage for this cut; S3 is not required.
+- Easy-ACC and Smartbiz production enablement remain deferred. Their existing adapters stay fail-closed until a later explicit decision.
+- Final acceptance still requires exact-commit ESXi deployment, fresh background sync validation, role/security UAT, backup/restore acceptance, domain/TLS/Access UAT and explicit cutover approval.
+<!-- agent-gateway:managed:end:production-scope-20260930 -->

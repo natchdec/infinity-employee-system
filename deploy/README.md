@@ -24,7 +24,7 @@ Production uses the same application image plus `docker-compose.production.yml`;
 
 1. Copy `deploy/production.env.example` to `.env.production` and chmod it to 0600.
 2. Provision a dedicated Entra application/certificate and register the final HTTPS callback.
-3. Provision a private S3-compatible bucket and runtime credentials. Keep public access disabled.
+3. Provision the private ESXi-local document directory (default `/srv/infinity-employee/documents`) with access limited to the deployment operator and application container.
 4. Point the approved hostname at the ESXi ingress path and ensure TCP 80/443 can reach the reverse proxy, or replace the proxy/TLS section with the approved corporate ingress.
 5. Keep `APP_BIND_IP=127.0.0.1`; only the reverse proxy should publish the application.
 6. Run `docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.production.yml config` and review the rendered configuration for secret leakage before deployment.
@@ -35,4 +35,4 @@ Production uses the same application image plus `docker-compose.production.yml`;
 
 `deploy/Caddyfile` is a default TLS reverse-proxy template. Automatic public certificate issuance requires the approved DNS name and reachable ACME path; otherwise use the organization's approved TLS ingress and do not claim the domain/TLS gate complete.
 
-Project Master is an active production gate. Configure the authoritative Microsoft Lists / SharePoint tenant, site, list, client credential and verified column mapping before cutover; Employee System remains a read-only projection and never creates or edits the source master. Missing optional Engineer Lead or Cost Center source fields remain visibly unavailable rather than invented. Easy-ACC and Smartbiz remain deferred/non-blocking. Google Routes remains fail-closed for durable provider evidence until both a production API credential and contractual retention approval are present.
+Project Master is an active production gate. Configure the authoritative Microsoft Lists / SharePoint tenant, site, list, verified column mapping and approved read-only Microsoft Graph application before cutover; Employee System remains a read-only projection and never creates or edits the source master. Missing optional Engineer Lead or Cost Center source fields remain visibly unavailable rather than invented. Easy-ACC and Smartbiz remain deferred/non-blocking. Google Routes remains fail-closed for durable provider evidence until both a production API credential and contractual retention approval are present.

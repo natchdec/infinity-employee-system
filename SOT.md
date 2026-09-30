@@ -226,3 +226,13 @@ Provider verification 2026-09-26:
 - deploy/production.env.example now carries the verified non-secret tenant/site/list identifiers and exact PROJECT_MASTER_COLUMN_MAP. Client identity/credential remains runtime-only and is not committed.
 - Remaining Project Master production gate is no longer column discovery. It is runtime authentication/configuration on the ESXi production candidate, then a fresh sync and verification of 458-row data, lookup resolution, ETag/Last Sync, stale/inactive behavior and audit evidence.
 <!-- agent-gateway:managed:end:project-master-mapping-2026-09-30 -->
+
+<!-- agent-gateway:managed:start:production-storage-graph-identity-20260930 -->
+## Production storage and shared Microsoft Graph identity — 2026-09-30
+- Supersedes the earlier S3-only production-storage baseline: receipt/document binaries for the current production cut use a private host-backed filesystem on INFINITY-EMPLOYEE-PROD01. The application container uses `/data/documents`; the default ESXi VM host path is `/srv/infinity-employee/documents`.
+- Production backup scope now includes both the PostgreSQL dump and a compressed document archive with SHA-256 receipts. Restore acceptance remains required before cutover.
+- Project Master reuses the existing read-only Microsoft Graph application identity used for Microsoft 365 directory / Outlook synchronization. Microsoft Lists/SharePoint remains authoritative and the Employee System performs no Project Master write-back.
+- Project Master source mapping remains the verified 2026-09-30 mapping. Engineer Lead and Cost Center remain unavailable because no authoritative source columns exist; they are not inferred.
+- Google Routes transient no-store preview is implemented, but durable Google-verified evidence remains a blocking production gate until the production credential and contractual retention rights are both verified.
+- Easy-ACC and Smartbiz production enablement remain explicitly deferred by product decision.
+<!-- agent-gateway:managed:end:production-storage-graph-identity-20260930 -->

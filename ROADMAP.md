@@ -27,10 +27,10 @@
 - [x] Google Routes transient no-store mileage preview boundary with explicit non-evidence semantics.
 - [ ] Google Routes durable verified-evidence mode after API credential and contractual retention rights are confirmed.
 - [x] Implement and regression-test Easy-ACC PRIMPORT exact row shape and <=9-digit employee code constraint.
-- [ ] Enable Easy-ACC production export after employee-code, workday and OT1-OT4 mappings are verified.
-- [ ] Verify and enable exact Smartbiz supported export/import format.
+- [ ] Deferred: Enable Easy-ACC production export after employee-code, workday and OT1-OT4 mappings are verified.
+- [ ] Deferred: Verify and enable exact Smartbiz supported export/import format.
 - [x] Provision the dedicated Infinity ESXi Linux VM and complete live Docker Compose build/start/restart/persistence/backup verification there.
-- [ ] Production Entra identity, S3-compatible object storage, domain/TLS, backup/restore and ESXi production rollout readiness.
+- [ ] Production Cloudflare Access + Microsoft Entra identity, ESXi-local private document storage, domain/TLS, backup/restore and ESXi production rollout readiness.
 - [ ] Explicit cutover approval.
 
 ## Phase 1.5 - Monthly Worklog and Operations Automation

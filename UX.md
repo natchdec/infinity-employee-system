@@ -152,3 +152,12 @@ Before implementation:
 - Admin `/admin/integrations/projects` shows connection readiness, authoritative source, Last Sync, inactive count, missing-field counts and a retry-safe Sync Now action.
 - Finance `/finance/projects` is the Project Cost Ledger. `/finance/projects/[id]` drills into Project metadata, OT, verified standalone Expense, Finance-verified Travel settlement, pending Head/Finance queues and recent linked request activity.
 - Project surfaces follow the existing Quiet Enterprise visual system and the 390/820/1440 responsive acceptance family; wide tables use local horizontal scrolling instead of document overflow.
+
+<!-- agent-gateway:managed:start:project-master-accepted-ux-20260930 -->
+## Project Master Accepted UX — 2026-09-30
+- Admin: dedicated Project Integration page with authoritative source identity, sync state, last sync, ETag/freshness, stale/inactive visibility, readiness diagnostics and retry-safe Sync Now.
+- Employee: searchable Project Master list/detail plus active-project picker in OT, Expense and Trip flows where project attribution applies.
+- Finance/Admin: Project Cost Ledger and project drill-down showing Customer, Sales Owner, Engineer Lead, Start/End, Status, Cost Center, linked OT/Expense/Travel totals, pending queues and recent activity.
+- Missing authoritative Engineer Lead or Cost Center values render as unavailable; the UI never infers them.
+- Project Master surfaces obey existing role gates and Quiet Enterprise responsive behavior on phone and notebook/browser layouts.
+<!-- agent-gateway:managed:end:project-master-accepted-ux-20260930 -->

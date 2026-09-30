@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { z } from 'zod';
 
 const booleanText = z
@@ -54,7 +55,10 @@ const configSchema = z.object({
   STORAGE_FORCE_PATH_STYLE: booleanText,
   PROJECT_MASTER_TENANT_ID: z.string().uuid().optional(),
   PROJECT_MASTER_CLIENT_ID: z.string().uuid().optional(),
+  PROJECT_MASTER_CLIENT_AUTH_MODE: z.enum(['secret', 'certificate']).default('secret'),
   PROJECT_MASTER_CLIENT_AUTH: z.string().min(1).optional(),
+  PROJECT_MASTER_CLIENT_PRIVATE_KEY_PATH: z.string().min(1).optional(),
+  PROJECT_MASTER_CLIENT_CERT_PATH: z.string().min(1).optional(),
   PROJECT_MASTER_SITE_ID: z.string().min(1).optional(),
   PROJECT_MASTER_LIST_ID: z.string().min(1).optional(),
   PROJECT_MASTER_COLUMN_MAP: z.string().min(2).optional(),
@@ -117,8 +121,8 @@ export function config(): AppConfig {
         throw new Error('Production Microsoft Entra certificate paths are required');
       }
     }
-    if (value.STORAGE_DRIVER !== 's3') {
-      throw new Error('Production document storage must use the s3 driver');
+    if (value.STORAGE_DRIVER === 'filesystem' && !path.isAbsolute(value.STORAGE_ROOT)) {
+      throw new Error('Production filesystem document storage requires an absolute STORAGE_ROOT');
     }
   }
   if (value.STORAGE_DRIVER === 's3' && (!value.STORAGE_BUCKET || !value.STORAGE_REGION)) {

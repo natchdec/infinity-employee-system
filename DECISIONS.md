@@ -57,3 +57,11 @@ Operational periods may move Open -> Closing -> Locked. Locked payroll/claim his
 
 ## D-019 Delegation, exceptions and reminders
 Effective-dated approval delegation is allowed only when it preserves no-self-approval and Finance independence. Exception and notification queues surface work requiring human action; they do not bypass policy or approval.
+
+<!-- agent-gateway:managed:start:production-storage-and-shared-graph-20260930 -->
+## D-020 Production Document Storage
+For the current production cut, keep receipt/document binaries on private host-backed storage inside the dedicated Infinity ESXi application VM. The application container uses `/data/documents` backed by the VM host directory (default `/srv/infinity-employee/documents`). S3-compatible storage is not a production requirement for this cut. Database and document storage are both included in backup/restore acceptance.
+
+## D-021 Shared Read-only Microsoft Graph Identity
+Microsoft 365 Directory, Outlook Calendar and Project Master use the same approved read-only Microsoft Graph application identity/certificate where tenant scope permits. Project Master source identifiers and verified column/lookup mapping remain independent configuration. The Employee System never writes Project Master data back to Microsoft Lists/SharePoint.
+<!-- agent-gateway:managed:end:production-storage-and-shared-graph-20260930 -->

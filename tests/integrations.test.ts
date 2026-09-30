@@ -159,24 +159,35 @@ test('manual mileage attestation cannot smuggle a provider reference', () => {
   assert.equal(result.success, false);
 });
 
-test('Project Master credentials are wired into app and worker containers', () => {
+test('Project Master source and shared Graph read identity are wired into production app and worker', () => {
   const baseCompose = readFileSync(new URL('../docker-compose.yml', import.meta.url), 'utf8');
   const productionCompose = readFileSync(
     new URL('../docker-compose.production.yml', import.meta.url),
     'utf8',
   );
-  const keys = [
+  for (const key of [
     'PROJECT_MASTER_TENANT_ID',
-    'PROJECT_MASTER_CLIENT_ID',
-    'PROJECT_MASTER_CLIENT_AUTH',
     'PROJECT_MASTER_SITE_ID',
     'PROJECT_MASTER_LIST_ID',
     'PROJECT_MASTER_COLUMN_MAP',
-  ];
-  for (const key of keys) {
+  ]) {
     assert.ok(baseCompose.includes(key + ': ${' + key + ':-}'));
     assert.equal(productionCompose.split(key + ': ${' + key + '}').length - 1, 2);
   }
+  for (const key of [
+    'OUTLOOK_CALENDAR_TENANT_ID',
+    'OUTLOOK_CALENDAR_CLIENT_ID',
+    'OUTLOOK_CALENDAR_CLIENT_AUTH_MODE',
+    'OUTLOOK_CALENDAR_CLIENT_PRIVATE_KEY_PATH',
+    'OUTLOOK_CALENDAR_CLIENT_CERT_PATH',
+  ]) {
+    assert.ok(baseCompose.includes(key + ': ${' + key));
+  }
+  assert.equal(
+    productionCompose.split('OUTLOOK_CALENDAR_CLIENT_PRIVATE_KEY_HOST_PATH').length - 1,
+    2,
+  );
+  assert.equal(productionCompose.split('OUTLOOK_CALENDAR_CLIENT_CERT_HOST_PATH').length - 1, 2);
 });
 
 test('Project Master is production-blocking while Easy-ACC and Smartbiz remain deferred', () => {

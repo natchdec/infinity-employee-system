@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { invariant, type Json } from '../../domain/core';
 import { config } from '../config';
 import { db } from '../db';
+import { outlookGraphJson } from './outlook-auth';
 
 type Fields = Record<string, unknown>;
 interface LookupSource {
@@ -24,8 +25,6 @@ interface ColumnMap {
 }
 interface Runtime {
   tenantId: string;
-  clientId: string;
-  clientAuth: string;
   siteId: string;
   listId: string;
   columns: ColumnMap;
@@ -67,11 +66,12 @@ function runtime(): Runtime {
   const c = config();
   invariant(
     c.PROJECT_MASTER_TENANT_ID &&
-      c.PROJECT_MASTER_CLIENT_ID &&
-      c.PROJECT_MASTER_CLIENT_AUTH &&
       c.PROJECT_MASTER_SITE_ID &&
       c.PROJECT_MASTER_LIST_ID &&
-      c.PROJECT_MASTER_COLUMN_MAP,
+      c.PROJECT_MASTER_COLUMN_MAP &&
+      c.OUTLOOK_CALENDAR_SYNC_ENABLED &&
+      c.OUTLOOK_CALENDAR_TENANT_ID === c.PROJECT_MASTER_TENANT_ID &&
+      c.OUTLOOK_CALENDAR_CLIENT_ID,
     'PROJECT_MASTER_NOT_CONFIGURED',
     'ยังไม่ได้ตั้งค่า Microsoft Project Master สำหรับ production',
     503,
@@ -109,8 +109,6 @@ function runtime(): Runtime {
 
   return {
     tenantId: c.PROJECT_MASTER_TENANT_ID,
-    clientId: c.PROJECT_MASTER_CLIENT_ID,
-    clientAuth: c.PROJECT_MASTER_CLIENT_AUTH,
     siteId: c.PROJECT_MASTER_SITE_ID,
     listId: c.PROJECT_MASTER_LIST_ID,
     columns: {
@@ -127,39 +125,6 @@ function runtime(): Runtime {
     },
   };
 }
-async function bearer(value: Runtime): Promise<string> {
-  const body = new URLSearchParams({
-    client_id: value.clientId,
-    grant_type: 'client_credentials',
-    scope: 'https://graph.microsoft.com/.default',
-  });
-  body.set(['client', 'secret'].join('_'), value.clientAuth!);
-  const response = await fetch(
-    `https://login.microsoftonline.com/${value.tenantId}/oauth2/v2.0/token`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body,
-      signal: AbortSignal.timeout(15_000),
-      cache: 'no-store',
-    },
-  );
-  invariant(
-    response.ok,
-    'PROJECT_MASTER_AUTH_FAILED',
-    'เชื่อมต่อ Microsoft Project Master ไม่สำเร็จ',
-    503,
-  );
-  const payload = (await response.json()) as Record<string, unknown>;
-  const access = payload[['access', 'token'].join('_')];
-  invariant(
-    typeof access === 'string' && access.length > 0,
-    'PROJECT_MASTER_AUTH_FAILED',
-    'เชื่อมต่อ Microsoft Project Master ไม่สำเร็จ',
-    503,
-  );
-  return access;
-}
 function textField(fields: Fields, name?: string): string | null {
   if (!name) return null;
   const value = fields[name];
@@ -173,22 +138,14 @@ function dateField(fields: Fields, name?: string): string | null {
   const date = value.slice(0, 10);
   return /^20\d{2}-\d{2}-\d{2}$/.test(date) ? date : null;
 }
-async function readListItems(access: string, siteId: string, listId: string) {
+async function readListItems(siteId: string, listId: string) {
   let url = `https://graph.microsoft.com/v1.0/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(listId)}/items?$expand=fields&$top=200`;
   const rows: Array<{ id: string; etag: string | null; fields: Fields }> = [];
   for (let page = 0; page < 100; page++) {
-    const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${access}` },
-      signal: AbortSignal.timeout(20_000),
-      cache: 'no-store',
-    });
-    invariant(
-      response.ok,
-      'PROJECT_MASTER_READ_FAILED',
-      'อ่าน Microsoft Project Master ไม่สำเร็จ',
-      503,
-    );
-    const payload = (await response.json()) as { value?: unknown; '@odata.nextLink'?: unknown };
+    const payload = (await outlookGraphJson(url)) as {
+      value?: unknown;
+      '@odata.nextLink'?: unknown;
+    };
     invariant(
       Array.isArray(payload.value),
       'PROJECT_MASTER_RESPONSE_INVALID',
@@ -243,14 +200,14 @@ function lookupSources(value: Runtime): LookupSource[] {
   );
 }
 
-async function lookupTables(value: Runtime, access: string) {
+async function lookupTables(value: Runtime) {
   const tables = new Map<string, Map<string, string>>();
   const seen = new Set<string>();
   for (const source of lookupSources(value)) {
     const key = lookupKey(source);
     if (seen.has(key)) continue;
     seen.add(key);
-    const items = await readListItems(access, value.siteId, source.listId);
+    const items = await readListItems(value.siteId, source.listId);
     const table = new Map<string, string>();
     for (const item of items) {
       const resolved = textField(item.fields, source.valueField);
@@ -281,10 +238,9 @@ function mappedTextField(
 }
 export async function syncProjectMaster(now = new Date()) {
   const value = runtime();
-  const access = await bearer(value);
   const [items, lookups] = await Promise.all([
-    readListItems(access, value.siteId, value.listId),
-    lookupTables(value, access),
+    readListItems(value.siteId, value.listId),
+    lookupTables(value),
   ]);
   const activeValues = new Set(value.columns.activeValues.map((item) => item.trim().toLowerCase()));
   const rows = items.map((item) => {

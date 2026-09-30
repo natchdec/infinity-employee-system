@@ -8,22 +8,18 @@ services:
       CLOUDFLARE_ACCESS_TEAM_DOMAIN: ${CLOUDFLARE_ACCESS_TEAM_DOMAIN}
       CLOUDFLARE_ACCESS_AUD: ${CLOUDFLARE_ACCESS_AUD}
       PROJECT_MASTER_TENANT_ID: ${PROJECT_MASTER_TENANT_ID}
-      PROJECT_MASTER_CLIENT_ID: ${PROJECT_MASTER_CLIENT_ID}
-      PROJECT_MASTER_CLIENT_AUTH: ${PROJECT_MASTER_CLIENT_AUTH}
       PROJECT_MASTER_SITE_ID: ${PROJECT_MASTER_SITE_ID}
       PROJECT_MASTER_LIST_ID: ${PROJECT_MASTER_LIST_ID}
       PROJECT_MASTER_COLUMN_MAP: ${PROJECT_MASTER_COLUMN_MAP}
-      STORAGE_DRIVER: s3
-      STORAGE_BUCKET: ${STORAGE_BUCKET}
-      STORAGE_REGION: ${STORAGE_REGION}
-      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT}
-      STORAGE_FORCE_PATH_STYLE: ${STORAGE_FORCE_PATH_STYLE:-false}
-      AWS_SHARED_CREDENTIALS_FILE: /app/.aws/credentials
+      STORAGE_DRIVER: filesystem
+      STORAGE_ROOT: /data/documents
       GOOGLE_ROUTES_RETENTION_CONFIRMED: ${GOOGLE_ROUTES_RETENTION_CONFIRMED:-false}
       PRODUCTION_RESTORE_ACCEPTED: ${PRODUCTION_RESTORE_ACCEPTED:-false}
       PRODUCTION_CUTOVER_APPROVED: ${PRODUCTION_CUTOVER_APPROVED:-false}
     volumes:
-      - ${S3_CREDENTIALS_HOST_PATH}:/app/.aws/credentials:ro
+      - ${DOCUMENTS_HOST_PATH:-/srv/infinity-employee/documents}:/data/documents
+      - ${OUTLOOK_CALENDAR_CLIENT_PRIVATE_KEY_HOST_PATH:-/home/ubuntu/ies-secrets/outlook/calendar-sync.key.pem}:/run/secrets/outlook/client.key:ro
+      - ${OUTLOOK_CALENDAR_CLIENT_CERT_HOST_PATH:-/home/ubuntu/ies-secrets/outlook/calendar-sync.crt.pem}:/run/secrets/outlook/client.crt:ro
 
   worker:
     env_file:
@@ -31,17 +27,13 @@ services:
     environment:
       APP_ENV: production
       PROJECT_MASTER_TENANT_ID: ${PROJECT_MASTER_TENANT_ID}
-      PROJECT_MASTER_CLIENT_ID: ${PROJECT_MASTER_CLIENT_ID}
-      PROJECT_MASTER_CLIENT_AUTH: ${PROJECT_MASTER_CLIENT_AUTH}
       PROJECT_MASTER_SITE_ID: ${PROJECT_MASTER_SITE_ID}
       PROJECT_MASTER_LIST_ID: ${PROJECT_MASTER_LIST_ID}
       PROJECT_MASTER_COLUMN_MAP: ${PROJECT_MASTER_COLUMN_MAP}
-      STORAGE_DRIVER: s3
-      STORAGE_BUCKET: ${STORAGE_BUCKET}
-      STORAGE_REGION: ${STORAGE_REGION}
-      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT}
-      STORAGE_FORCE_PATH_STYLE: ${STORAGE_FORCE_PATH_STYLE:-false}
-      AWS_SHARED_CREDENTIALS_FILE: /app/.aws/credentials
+      STORAGE_DRIVER: filesystem
+      STORAGE_ROOT: /data/documents
       GOOGLE_ROUTES_RETENTION_CONFIRMED: ${GOOGLE_ROUTES_RETENTION_CONFIRMED:-false}
     volumes:
-      - ${S3_CREDENTIALS_HOST_PATH}:/app/.aws/credentials:ro
+      - ${DOCUMENTS_HOST_PATH:-/srv/infinity-employee/documents}:/data/documents
+      - ${OUTLOOK_CALENDAR_CLIENT_PRIVATE_KEY_HOST_PATH:-/home/ubuntu/ies-secrets/outlook/calendar-sync.key.pem}:/run/secrets/outlook/client.key:ro
+      - ${OUTLOOK_CALENDAR_CLIENT_CERT_HOST_PATH:-/home/ubuntu/ies-secrets/outlook/calendar-sync.crt.pem}:/run/secrets/outlook/client.crt:ro
