@@ -78,9 +78,16 @@ export default async function ProjectCostsPage() {
                   <tr key={row.projectId}>
                     <td>
                       <Link href={`/finance/projects/${row.projectId}`}>
-                        <strong>{row.code}</strong>
+                        <strong>{row.poNumber ? `PO ${row.poNumber}` : row.code}</strong>
                         <br />
                         <span>{row.name}</span>
+                        {row.lineCount > 1 ? (
+                          <span className="cell-secondary">
+                            {row.lineCount} source lines · {row.code}
+                          </span>
+                        ) : row.poNumber ? (
+                          <span className="cell-secondary">{row.code}</span>
+                        ) : null}
                       </Link>
                     </td>
                     <td>{row.customer ?? '-'}</td>

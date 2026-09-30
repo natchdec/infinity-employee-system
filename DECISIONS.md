@@ -10,7 +10,7 @@ Use Docker Compose and a modular monolith. Production runs inside a dedicated Li
 Use Microsoft Entra ID. Do not maintain a separate employee password database.
 
 ## D-004 Project Master
-Use Microsoft Lists/SharePoint as the authoritative Project Master and surface it in Microsoft Teams. Employee System keeps only a read-only `ProjectReference` projection and immutable request snapshots; it never maintains a duplicate writable master. As of 2026-09-30 Project Master is active production scope. Missing optional Engineer Lead or Cost Center semantics at the source are shown as unavailable and must never be invented; their absence does not block sync of the authoritative fields that do exist.
+Use Microsoft Lists/SharePoint as the authoritative Project Master and surface it in Microsoft Teams. Employee System keeps only a read-only `ProjectReference` projection and immutable request snapshots; it never maintains a duplicate writable master. As of 2026-09-30 Project Master is active production scope. Multiple SharePoint source rows with the same normalized PO Number are one business Project for selection, Project Master UX, and project-cost reporting; the original source rows, source IDs, ETags, and line-specific descriptions remain separate for audit and synchronization. Rows without a PO Number remain independent Projects. Missing optional Engineer Lead or Cost Center semantics at the source are shown as unavailable and must never be invented; their absence does not block sync of the authoritative fields that do exist.
 
 ## D-005 Mobile Strategy
 Web/PWA is the primary UI. LINE OA is a later companion for deep links, notifications, and optional receipt inbox workflows.
@@ -65,3 +65,7 @@ For the current production cut, keep receipt/document binaries on private host-b
 ## D-021 Shared Read-only Microsoft Graph Identity
 Microsoft 365 Directory, Outlook Calendar and Project Master use the same approved read-only Microsoft Graph application identity/certificate where tenant scope permits. Project Master source identifiers and verified column/lookup mapping remain independent configuration. The Employee System never writes Project Master data back to Microsoft Lists/SharePoint.
 <!-- agent-gateway:managed:end:production-storage-and-shared-graph-20260930 -->
+
+
+## D-022 Microsoft 365 Directory Review
+Microsoft 365 Directory synchronization remains a read-only tenant identity inventory and never grants Employee System access automatically. Admin explicitly promotes an enabled Microsoft 365 Member to an Employee with a verified department and hire date, or marks an unlinked directory identity as not an employee. Non-employee classification is local review state rather than deletion from Microsoft 365, so subsequent directory synchronization preserves the decision. Linked Employees continue to use the existing Admin Employee controls for department, roles, Head/Owner state, reporting line, and activation.

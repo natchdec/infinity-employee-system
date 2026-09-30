@@ -44,7 +44,7 @@ export default async function ProjectsPage({ searchParams }: Props) {
           </button>
         </form>
         <p className="field-note">
-          {summary.total} projects · sync ล่าสุด{' '}
+          {summary.total} projects · {summary.sourceItems} source lines · sync ล่าสุด{' '}
           {summary.lastSyncedAt
             ? summary.lastSyncedAt.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })
             : 'ยังไม่มี'}
@@ -68,9 +68,18 @@ export default async function ProjectsPage({ searchParams }: Props) {
                   <tr key={project.id}>
                     <td>
                       <Link href={`/projects/${project.id}`}>
-                        <strong>{project.code}</strong>
+                        <strong>
+                          {project.poNumber ? `PO ${project.poNumber}` : project.code}
+                        </strong>
                         <br />
                         <span>{project.name}</span>
+                        {project.lineCount > 1 ? (
+                          <span className="cell-secondary">
+                            {project.lineCount} รายการย่อย · {project.code}
+                          </span>
+                        ) : project.poNumber ? (
+                          <span className="cell-secondary">{project.code}</span>
+                        ) : null}
                       </Link>
                     </td>
                     <td>{project.customer ?? '-'}</td>

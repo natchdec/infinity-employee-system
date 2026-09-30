@@ -6,6 +6,8 @@ import { requireActor, requirePageRole } from '@/server/auth-context';
 import { config } from '@/server/config';
 import { cookieNames } from '@/server/identity';
 import { microsoftDirectoryAdminState } from '@/server/microsoft-directory';
+import { adminDepartments } from '@/server/admin-config';
+import { DirectoryAccountActions } from './DirectoryAccountActions';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +23,10 @@ function bangkokDateTime(value: Date | null): string {
 export default async function AdminDirectoryPage() {
   const actor = await requireActor();
   requirePageRole(actor, 'admin');
-  const state = await microsoftDirectoryAdminState();
+  const [state, departments] = await Promise.all([
+    microsoftDirectoryAdminState(),
+    adminDepartments(),
+  ]);
   const store = await cookies();
   const csrf = store.get(cookieNames().csrf)?.value ?? '';
   const enabled = config().OUTLOOK_CALENDAR_SYNC_ENABLED;
@@ -57,8 +62,10 @@ export default async function AdminDirectoryPage() {
         <div className="notice">
           <p>
             ระบบเก็บบัญชี Microsoft 365 ทั้งหมด รวม Guest, service account และ resource account
-            แต่จะไม่สร้าง Employee หรือให้สิทธิ์เข้าใช้งานอัตโนมัติ บัญชีพนักงานที่มี Entra Object
-            ID ตรงกันจะถูกผูกให้อัตโนมัติ
+            แต่จะไม่สร้าง Employee หรือให้สิทธิ์เข้าใช้งานอัตโนมัติ Admin สามารถเลือก Enabled Member
+            เป็นพนักงาน กำหนดแผนกและวันเริ่มงาน หรือทำเครื่องหมาย “ไม่ใช่พนักงาน”
+            เพื่อไม่ให้ค้างในคิวตรวจ บัญชีที่มี Entra Object ID ตรงกับ Employee
+            เดิมจะถูกผูกให้อัตโนมัติ
           </p>
           <p>
             Sync ล่าสุด {bangkokDateTime(state.sync?.lastSuccessAt ?? null)}
@@ -73,7 +80,9 @@ export default async function AdminDirectoryPage() {
             <h2>บัญชีจาก Microsoft 365</h2>
             <p>ข้อมูลนี้เป็น Directory identity ไม่ใช่ Employee master โดยอัตโนมัติ</p>
           </div>
-          <span className="state state-neutral">Guests {state.summary.guests}</span>
+          <span className="state state-neutral">
+            Guests {state.summary.guests} · ไม่ใช่พนักงาน {state.summary.ignored}
+          </span>
         </div>
         {state.accounts.length ? (
           <div className="data-table-wrap" tabIndex={0}>
@@ -85,6 +94,7 @@ export default async function AdminDirectoryPage() {
                   <th>สถานะ</th>
                   <th>Department / Job</th>
                   <th>Employee link</th>
+                  <th>จัดการ</th>
                   <th>Sync</th>
                 </tr>
               </thead>
@@ -117,11 +127,36 @@ export default async function AdminDirectoryPage() {
                     </td>
                     <td>
                       {account.linkedEmployeeId ? (
-                        <span className="state state-success">
+                        <span
+                          className={
+                            account.linkedEmployeeActive === false
+                              ? 'state state-neutral'
+                              : 'state state-success'
+                          }
+                        >
                           {account.linkedEmployeeName ?? 'Linked'}
+                          {account.linkedEmployeeActive === false ? ' · ปิดใช้งาน' : ''}
                         </span>
+                      ) : account.reviewState === 'ignored' ? (
+                        <span className="state state-neutral">ไม่ใช่พนักงาน</span>
                       ) : (
                         <span className="state state-warning">ยังไม่ใช่ Employee</span>
+                      )}
+                    </td>
+                    <td>
+                      {account.linkedEmployeeId ? (
+                        <a className="button button-secondary" href="/admin/employees">
+                          ตั้งค่า Employee
+                        </a>
+                      ) : (
+                        <DirectoryAccountActions
+                          csrf={csrf}
+                          objectId={account.objectId}
+                          reviewState={account.reviewState}
+                          accountEnabled={account.accountEnabled}
+                          userType={account.userType}
+                          departments={departments}
+                        />
                       )}
                     </td>
                     <td>{bangkokDateTime(account.lastSyncedAt)}</td>

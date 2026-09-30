@@ -26,7 +26,7 @@ export default async function ProjectIntegrationPage() {
         <div className="metric-row" aria-label="Project Master sync summary">
           <div className="metric">
             <strong>{summary.total}</strong>
-            <span>โครงการทั้งหมด</span>
+            <span>Projects ({summary.sourceItems} source lines)</span>
           </div>
           <div className="metric">
             <strong>{summary.active}</strong>

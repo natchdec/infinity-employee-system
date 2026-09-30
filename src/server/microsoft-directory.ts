@@ -48,6 +48,8 @@ export interface MicrosoftDirectoryAccount {
   officeLocation: string | null;
   linkedEmployeeId: string | null;
   linkedEmployeeName: string | null;
+  linkedEmployeeActive: boolean | null;
+  reviewState: 'unreviewed' | 'employee' | 'ignored';
   present: boolean;
   lastSyncedAt: Date;
 }
@@ -59,6 +61,7 @@ export interface MicrosoftDirectoryAdminState {
     enabledMembers: number;
     guests: number;
     linked: number;
+    ignored: number;
     review: number;
   };
   sync: {
@@ -196,14 +199,16 @@ export async function syncMicrosoftDirectory(
           insert into microsoft_directory_accounts(
             tenant_id,entra_object_id,user_principal_name,email,display_name,
             account_enabled,user_type,job_title,department_name,office_location,
-            created_date_time,linked_employee_id,source_hash,present,last_seen_at,last_synced_at
+            created_date_time,linked_employee_id,source_hash,present,last_seen_at,last_synced_at,
+            review_state,reviewed_at
           )
           values(
             ${tenantId}::uuid,${user.id}::uuid,${upn},${email},${safeDisplayName(user)},
             ${user.accountEnabled},${user.userType ?? ''},${user.jobTitle ?? null},
             ${user.department ?? null},${user.officeLocation ?? null},
             ${user.createdDateTime ?? null}::timestamptz,${employeeId}::uuid,
-            ${sourceHash(user)},true,${now},${now}
+            ${sourceHash(user)},true,${now},${now},
+            ${employeeId ? 'employee' : 'unreviewed'},${employeeId ? now : null}
           )
           on conflict(tenant_id,entra_object_id)
           do update set
@@ -218,6 +223,15 @@ export async function syncMicrosoftDirectory(
             created_date_time=excluded.created_date_time,
             linked_employee_id=excluded.linked_employee_id,
             source_hash=excluded.source_hash,
+            review_state=case
+              when excluded.linked_employee_id is not null then 'employee'
+              when microsoft_directory_accounts.review_state='ignored' then 'ignored'
+              else 'unreviewed'
+            end,
+            reviewed_at=case
+              when excluded.linked_employee_id is not null then excluded.last_synced_at
+              else microsoft_directory_accounts.reviewed_at
+            end,
             present=true,
             last_seen_at=excluded.last_seen_at,
             last_synced_at=excluded.last_synced_at
@@ -264,7 +278,7 @@ export async function microsoftDirectoryAdminState(): Promise<MicrosoftDirectory
   if (!tenantId) {
     return {
       accounts: [],
-      summary: { total: 0, enabledMembers: 0, guests: 0, linked: 0, review: 0 },
+      summary: { total: 0, enabledMembers: 0, guests: 0, linked: 0, ignored: 0, review: 0 },
       sync: null,
     };
   }
@@ -274,8 +288,8 @@ export async function microsoftDirectoryAdminState(): Promise<MicrosoftDirectory
       select
         a.entra_object_id::text,a.user_principal_name,a.email,a.display_name,
         a.account_enabled,a.user_type,a.job_title,a.department_name,a.office_location,
-        a.linked_employee_id,e.display_name as linked_employee_name,
-        a.present,a.last_synced_at
+        a.linked_employee_id,e.display_name as linked_employee_name,e.active as linked_employee_active,
+        a.review_state,a.present,a.last_synced_at
       from microsoft_directory_accounts a
       left join employees e on e.id=a.linked_employee_id
       where a.tenant_id=${tenantId}::uuid
@@ -300,6 +314,14 @@ export async function microsoftDirectoryAdminState(): Promise<MicrosoftDirectory
     officeLocation: row.office_location ? String(row.office_location) : null,
     linkedEmployeeId: row.linked_employee_id ? String(row.linked_employee_id) : null,
     linkedEmployeeName: row.linked_employee_name ? String(row.linked_employee_name) : null,
+    linkedEmployeeActive:
+      row.linked_employee_active === null || row.linked_employee_active === undefined
+        ? null
+        : Boolean(row.linked_employee_active),
+    reviewState:
+      row.review_state === 'employee' || row.review_state === 'ignored'
+        ? row.review_state
+        : 'unreviewed',
     present: Boolean(row.present),
     lastSyncedAt: row.last_synced_at as Date,
   }));
@@ -312,6 +334,10 @@ export async function microsoftDirectoryAdminState(): Promise<MicrosoftDirectory
   const guests = accounts.filter(
     (item) => item.present && item.userType.toLowerCase() === 'guest',
   ).length;
+  const ignored = accounts.filter((item) => item.present && item.reviewState === 'ignored').length;
+  const review = accounts.filter(
+    (item) => item.present && !item.linkedEmployeeId && item.reviewState === 'unreviewed',
+  ).length;
   const sync = syncRows[0]
     ? {
         lastSuccessAt: syncRows[0].last_success_at as Date | null,
@@ -323,7 +349,7 @@ export async function microsoftDirectoryAdminState(): Promise<MicrosoftDirectory
 
   return {
     accounts,
-    summary: { total, enabledMembers, guests, linked, review: Math.max(0, total - linked) },
+    summary: { total, enabledMembers, guests, linked, ignored, review },
     sync,
   };
 }

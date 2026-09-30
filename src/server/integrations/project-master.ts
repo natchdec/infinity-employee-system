@@ -19,6 +19,9 @@ interface ColumnMap {
   engineerLead?: TextSource;
   startDate?: string;
   endDate?: string;
+  poNumber?: string;
+  poDate?: string;
+  poCreateDate?: string;
   status: string;
   costCenter?: TextSource;
   activeValues: string[];
@@ -121,6 +124,9 @@ function runtime(): Runtime {
       engineerLead: textSource(map, 'engineerLead'),
       startDate: optionalString(map, 'startDate'),
       endDate: optionalString(map, 'endDate'),
+      poNumber: optionalString(map, 'poNumber'),
+      poDate: optionalString(map, 'poDate'),
+      poCreateDate: optionalString(map, 'poCreateDate'),
       costCenter: textSource(map, 'costCenter'),
     },
   };
@@ -263,6 +269,9 @@ export async function syncProjectMaster(now = new Date()) {
       engineerLead: mappedTextField(item.fields, value.columns.engineerLead, lookups),
       startDate: dateField(item.fields, value.columns.startDate),
       endDate: dateField(item.fields, value.columns.endDate),
+      poNumber: textField(item.fields, value.columns.poNumber),
+      poDate: dateField(item.fields, value.columns.poDate),
+      poCreateDate: dateField(item.fields, value.columns.poCreateDate),
       status: activeValues.has(sourceStatus.toLowerCase()) ? 'active' : 'inactive',
       costCenter: mappedTextField(item.fields, value.columns.costCenter, lookups),
     };
@@ -274,13 +283,15 @@ export async function syncProjectMaster(now = new Date()) {
     for (const row of rows) {
       const changed = await tx`
         insert into project_references(source,source_tenant_id,source_site_id,source_list_id,source_item_id,
-          code,name,customer,sales_owner,engineer_lead,start_date,end_date,status,cost_center,source_etag,last_synced_at)
+          code,name,customer,sales_owner,engineer_lead,start_date,end_date,po_number,po_date,po_create_date,
+          status,cost_center,source_etag,last_synced_at)
         values('microsoft_lists',${value.tenantId},${value.siteId},${value.listId},${row.sourceItemId},
           ${row.code},${row.name},${row.customer},${row.salesOwner},${row.engineerLead},${row.startDate},${row.endDate},
-          ${row.status},${row.costCenter},${row.sourceEtag},${now})
+          ${row.poNumber},${row.poDate},${row.poCreateDate},${row.status},${row.costCenter},${row.sourceEtag},${now})
         on conflict(source_tenant_id,source_site_id,source_list_id,source_item_id)
         do update set code=excluded.code,name=excluded.name,customer=excluded.customer,sales_owner=excluded.sales_owner,
-          engineer_lead=excluded.engineer_lead,start_date=excluded.start_date,end_date=excluded.end_date,status=excluded.status,
+          engineer_lead=excluded.engineer_lead,start_date=excluded.start_date,end_date=excluded.end_date,
+          po_number=excluded.po_number,po_date=excluded.po_date,po_create_date=excluded.po_create_date,status=excluded.status,
           cost_center=excluded.cost_center,source_etag=excluded.source_etag,last_synced_at=excluded.last_synced_at
         returning (xmax=0) as inserted`;
       if (changed[0]?.inserted) inserted++;

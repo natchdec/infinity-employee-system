@@ -20,13 +20,25 @@ export default async function ProjectDetailPage({ params }: Props) {
   return (
     <AppShell
       actor={actor}
-      title={`${project.code} · ${project.name}`}
+      title={
+        project.poNumber
+          ? `PO ${project.poNumber} · ${project.name}`
+          : `${project.code} · ${project.name}`
+      }
       description={project.customer ?? 'Project Master'}
     >
       <section className="section">
         <dl className="detail-grid detail-grid-surface">
+          <dt>PO Number</dt>
+          <dd>{project.poNumber ?? '-'}</dd>
           <dt>Project Code</dt>
           <dd>{project.code}</dd>
+          <dt>Source Lines</dt>
+          <dd>{project.lineCount}</dd>
+          <dt>PO Date</dt>
+          <dd>{project.poDate ?? '-'}</dd>
+          <dt>PO Create Date</dt>
+          <dd>{project.poCreateDate ?? '-'}</dd>
           <dt>Customer</dt>
           <dd>{project.customer ?? '-'}</dd>
           <dt>Sales Owner</dt>
@@ -51,6 +63,43 @@ export default async function ProjectDetailPage({ params }: Props) {
           </dd>
         </dl>
       </section>
+      {project.lines.length > 1 ? (
+        <section className="section">
+          <div className="section-header">
+            <div>
+              <h2>รายการภายใต้ PO เดียวกัน</h2>
+              <p>
+                Software / Hardware / Service หรือรายการอื่นจาก SharePoint ยังคงแยกเป็น source line
+                เพื่อ audit
+              </p>
+            </div>
+          </div>
+          <div className="data-table-wrap" tabIndex={0}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Project Code</th>
+                  <th>รายการ</th>
+                  <th>ช่วงเวลา</th>
+                  <th>สถานะ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {project.lines.map((line) => (
+                  <tr key={line.id}>
+                    <td>{line.code}</td>
+                    <td>{line.name}</td>
+                    <td>
+                      {line.startDate ?? '-'} → {line.endDate ?? '-'}
+                    </td>
+                    <td>{line.status}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : null}
       {actor.roles.includes('finance') ? (
         <section className="section">
           <Link className="button button-secondary" href={`/finance/projects/${project.id}`}>

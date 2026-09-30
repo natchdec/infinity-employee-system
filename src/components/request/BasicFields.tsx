@@ -38,7 +38,9 @@ export function BasicRequestFields({ kind, options, initial }: Props) {
             <option value="">ไม่ผูกโครงการ</option>
             {options.projects.map((project) => (
               <option key={project.id} value={project.id}>
+                {project.poNumber ? `PO ${project.poNumber} · ` : ''}
                 {project.code} — {project.name}
+                {project.lineCount > 1 ? ` · ${project.lineCount} รายการ` : ''}
                 {project.customer ? ` · ${project.customer}` : ''}
               </option>
             ))}

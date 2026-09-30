@@ -75,7 +75,7 @@ export async function prepareRequest(
     invariant(input.projectId, 'TRIP_PROJECT_REQUIRED', 'เลือกโครงการสำหรับการเดินทาง');
   if (input.projectId) {
     const [row] =
-      await tx`select id,source,code,name,customer,status,cost_center,last_synced_at from project_references where id=${input.projectId}`;
+      await tx`select id,source,code,name,customer,status,cost_center,po_number,po_date,po_create_date,last_synced_at from project_references where id=${input.projectId}`;
     invariant(
       row && row.status === 'active',
       'PROJECT_NOT_AVAILABLE',

@@ -6,7 +6,14 @@ import { db, policyFor, safeJson } from './db';
 import { requestFromRow } from './request-record';
 
 export interface RequestFormOptions {
-  projects: { id: string; code: string; name: string; customer: string | null }[];
+  projects: {
+    id: string;
+    code: string;
+    name: string;
+    customer: string | null;
+    poNumber: string | null;
+    lineCount: number;
+  }[];
   leaveTypes: {
     id: string;
     label: string;
@@ -53,14 +60,26 @@ export async function requestFormOptions(actor: Actor): Promise<RequestFormOptio
     policyFor<ExpensePolicy>(db(), 'expense', date),
     policyFor<PerDiemPolicy>(db(), 'per_diem', date),
   ]);
-  const projects = await db()`
-    select id,code,name,customer
-    from project_references
-    where status='active'
-      and (${process.env.APP_ENV === 'production'} = false or source='microsoft_lists')
-    order by code,name
-    limit 500
-  `;
+  const projects = await db().unsafe(
+    `
+      select
+        (array_agg(id order by source_item_id,id))[1] as id,
+        (array_agg(code order by source_item_id,id))[1] as code,
+        (array_agg(name order by source_item_id,id))[1] as name,
+        (array_agg(customer order by source_item_id,id))[1] as customer,
+        (array_agg(po_number order by source_item_id,id))[1] as po_number,
+        count(*)::integer as line_count
+      from project_references
+      where status='active'
+        and ($1 = false or source='microsoft_lists')
+      group by coalesce(nullif(upper(btrim(po_number)),''),'ITEM:' || id::text)
+      order by
+        coalesce((array_agg(po_number order by source_item_id,id))[1],(array_agg(code order by source_item_id,id))[1]),
+        (array_agg(name order by source_item_id,id))[1]
+      limit 500
+    `,
+    [process.env.APP_ENV === 'production'],
+  );
   const trips = await db()`
     select r.id,r.reference,r.title,r.business_date::text
     from requests r
@@ -90,6 +109,8 @@ export async function requestFormOptions(actor: Actor): Promise<RequestFormOptio
       code: row.code,
       name: row.name,
       customer: row.customer,
+      poNumber: row.po_number ? String(row.po_number) : null,
+      lineCount: Number(row.line_count ?? 1),
     })),
     leaveTypes: leave.body.types.map((type) => ({
       id: type.id,
