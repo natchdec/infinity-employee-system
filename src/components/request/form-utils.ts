@@ -22,6 +22,13 @@ export function kmToMetres(value: string): number {
   return Number(whole) * 1000 + Number(fraction.padEnd(3, '0'));
 }
 
+function formStrings(data: FormData, name: string): string[] {
+  return data
+    .getAll(name)
+    .filter((value): value is string => typeof value === 'string')
+    .filter(Boolean);
+}
+
 export function buildRequestInput(
   kind: RequestKind,
   data: FormData,
@@ -65,51 +72,66 @@ export function buildRequestInput(
     };
   }
   if (kind === 'expense') {
-    const categoryId = value('categoryId');
-    const line: Record<string, unknown> = {
-      categoryId,
-      date: value('date'),
-      description: value('lineDescription'),
-      documentIds,
-    };
-    if (categoryId === 'mileage') {
-      const requestedLegCount = Number(value('mileageLegCount') || '2');
-      const legCount =
-        Number.isInteger(requestedLegCount) && requestedLegCount >= 1 && requestedLegCount <= 20
-          ? requestedLegCount
-          : 2;
-      line.mileage = Array.from({ length: legCount }, (_, offset) => offset + 1).flatMap(
-        (index) => {
-          const kilometres = value(`leg${index}Km`);
-          if (!kilometres) return [];
-          return [
-            {
-              origin: value(`leg${index}Origin`),
-              destination: value(`leg${index}Destination`),
-              originLabel: value(`leg${index}OriginLabel`),
-              destinationLabel: value(`leg${index}DestinationLabel`),
-              distanceMetres: kmToMetres(kilometres),
-              source: 'manual_attested',
-            },
-          ];
-        },
-      );
-    } else {
-      line.amount = value('amount');
-    }
-    if (categoryId === 'entertainment') {
-      line.entertainment = {
-        purpose: value('purpose'),
-        customer: value('customer'),
-        attendeeCount: Number(value('attendeeCount')),
-        attendeeContext: value('attendeeContext'),
+    const configuredCount = Number(value('expenseLineCount') || '1');
+    const lineCount =
+      Number.isInteger(configuredCount) && configuredCount >= 1 && configuredCount <= 50
+        ? configuredCount
+        : 1;
+    const legacy = !value('expenseLineCount');
+    const lines = Array.from({ length: lineCount }, (_, offset) => offset + 1).map((index) => {
+      const prefix = `expenseLine${index}`;
+      const pick = (field: string, legacyName: string) =>
+        value(`${prefix}${field}`) || (legacy && index === 1 ? value(legacyName) : '');
+      const categoryId = pick('CategoryId', 'categoryId');
+      const line: Record<string, unknown> = {
+        categoryId,
+        date: pick('Date', 'date'),
+        description: pick('Description', 'lineDescription'),
+        documentIds: legacy && index === 1 ? documentIds : formStrings(data, `${prefix}DocumentId`),
       };
-    }
+      if (categoryId === 'mileage') {
+        const requestedLegCount = Number(pick('MileageLegCount', 'mileageLegCount') || '2');
+        const legCount =
+          Number.isInteger(requestedLegCount) && requestedLegCount >= 1 && requestedLegCount <= 20
+            ? requestedLegCount
+            : 2;
+        line.mileage = Array.from({ length: legCount }, (_, legOffset) => legOffset + 1).flatMap(
+          (legIndex) => {
+            const kilometres = pick(`Leg${legIndex}Km`, `leg${legIndex}Km`);
+            if (!kilometres) return [];
+            return [
+              {
+                origin: pick(`Leg${legIndex}Origin`, `leg${legIndex}Origin`),
+                destination: pick(`Leg${legIndex}Destination`, `leg${legIndex}Destination`),
+                originLabel: pick(`Leg${legIndex}OriginLabel`, `leg${legIndex}OriginLabel`),
+                destinationLabel: pick(
+                  `Leg${legIndex}DestinationLabel`,
+                  `leg${legIndex}DestinationLabel`,
+                ),
+                distanceMetres: kmToMetres(kilometres),
+                source: 'manual_attested',
+              },
+            ];
+          },
+        );
+      } else {
+        line.amount = pick('Amount', 'amount');
+      }
+      if (categoryId === 'entertainment') {
+        line.entertainment = {
+          purpose: pick('Purpose', 'purpose'),
+          customer: pick('Customer', 'customer'),
+          attendeeCount: Number(pick('AttendeeCount', 'attendeeCount')),
+          attendeeContext: pick('AttendeeContext', 'attendeeContext'),
+        };
+      }
+      return line;
+    });
     return {
       ...common,
       kind,
       parentTripId: value('parentTripId') || null,
-      lines: [line],
+      lines,
     };
   }
   if (kind === 'trip') {
@@ -139,6 +161,8 @@ export function initialDocumentIds(kind: RequestKind, initial: Record<string, Js
   const source =
     kind === 'leave'
       ? arrayValue(initial.documentIds)
-      : arrayValue(objectValue(arrayValue(initial.lines)[0]).documentIds);
-  return source.filter((value): value is string => typeof value === 'string');
+      : kind === 'expense'
+        ? arrayValue(initial.lines).flatMap((line) => arrayValue(objectValue(line).documentIds))
+        : [];
+  return [...new Set(source.filter((value): value is string => typeof value === 'string'))];
 }

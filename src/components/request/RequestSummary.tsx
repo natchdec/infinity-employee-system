@@ -145,6 +145,7 @@ export function RequestSummary({ detail }: { detail: RequestDetail }) {
                   <th>ประเภท</th>
                   <th>วันที่</th>
                   <th>รายละเอียด</th>
+                  <th>หลักฐาน</th>
                   <th className="amount">ยอด</th>
                 </tr>
               </thead>
@@ -156,6 +157,27 @@ export function RequestSummary({ detail }: { detail: RequestDetail }) {
                       <td>{stringValue(line.categoryLabel)}</td>
                       <td>{stringValue(line.date)}</td>
                       <td>{stringValue(line.description)}</td>
+                      <td>
+                        {arr(line.documentIds).length ? (
+                          <div className="inline-document-links">
+                            {arr(line.documentIds).map((value, documentIndex) =>
+                              typeof value === 'string' ? (
+                                <a
+                                  key={value}
+                                  className="text-link"
+                                  href={`/api/documents/${value}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                >
+                                  ใบ {documentIndex + 1}
+                                </a>
+                              ) : null,
+                            )}
+                          </div>
+                        ) : (
+                          '-'
+                        )}
+                      </td>
                       <td className="amount">
                         <Money satang={stringValue(line.amountSatang) || '0'} />
                       </td>
@@ -207,7 +229,7 @@ export function RequestSummary({ detail }: { detail: RequestDetail }) {
         ) : null}
       </section>
 
-      {docs.length ? (
+      {request.kind !== 'expense' && docs.length ? (
         <section className="section">
           <div className="section-header">
             <div>

@@ -36,7 +36,13 @@ export interface RequestFormOptions {
     title: string;
     businessDate: string;
   }[];
-  receiptInbox: { id: string; filename: string }[];
+  receiptInbox: {
+    id: string;
+    filename: string;
+    mediaType: string;
+    byteSize: number;
+    uploadedAt: string;
+  }[];
 }
 
 export async function requestFormOptions(actor: Actor): Promise<RequestFormOptions> {
@@ -69,7 +75,7 @@ export async function requestFormOptions(actor: Actor): Promise<RequestFormOptio
     limit 100
   `;
   const receiptInbox = await db()`
-    select d.id,d.filename
+    select d.id,d.filename,d.media_type,d.byte_size,d.uploaded_at
     from documents d
     where d.owner_id=${actor.id}
       and d.scan_state='clean'
@@ -119,6 +125,9 @@ export async function requestFormOptions(actor: Actor): Promise<RequestFormOptio
     receiptInbox: receiptInbox.map((row) => ({
       id: String(row.id),
       filename: String(row.filename),
+      mediaType: String(row.media_type),
+      byteSize: Number(row.byte_size),
+      uploadedAt: new Date(row.uploaded_at).toISOString(),
     })),
   };
 }

@@ -47,6 +47,13 @@ export async function prepareExpense(
   requestId: string,
   now: Date,
 ) {
+  const inputDocumentIds = input.lines.flatMap((line) => line.documentIds);
+  invariant(
+    new Set(inputDocumentIds).size === inputDocumentIds.length,
+    'RECEIPT_LINE_CONFLICT',
+    'ใบเสร็จหนึ่งใบใช้ได้กับรายการค่าใช้จ่ายเดียวในคำขอนี้',
+  );
+
   const snapshots: VersionedPolicy[] = [];
   const lines: Record<string, Json>[] = [];
   let total = 0n;
@@ -75,7 +82,7 @@ export async function prepareExpense(
     invariant(
       !category.evidenceRequired || line.documentIds.length > 0,
       'RECEIPT_REQUIRED',
-      'ต้องแนบหลักฐานก่อนส่งรายการนี้',
+      `รายการที่ ${index + 1} ต้องแนบหลักฐานก่อนส่ง`,
     );
     await validateDocuments(tx, actor, line.documentIds, requestId, 'expense');
     let amount: bigint;

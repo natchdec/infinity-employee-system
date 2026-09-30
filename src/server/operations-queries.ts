@@ -33,20 +33,55 @@ export interface ReceiptInboxRow {
   mediaType: string;
   byteSize: number;
   uploadedAt: Date;
+  usage: {
+    requestId: string;
+    reference: string;
+    workflowState: string;
+    line: number | null;
+    categoryId: string | null;
+    description: string | null;
+  } | null;
 }
 
-export async function unassignedReceiptInbox(employeeId: string): Promise<ReceiptInboxRow[]> {
+export async function receiptInbox(employeeId: string): Promise<ReceiptInboxRow[]> {
   const rows = await db()`
-    select d.id, d.filename, d.media_type, d.byte_size, d.uploaded_at
+    select
+      d.id,
+      d.filename,
+      d.media_type,
+      d.byte_size,
+      d.uploaded_at,
+      usage.request_id,
+      usage.reference,
+      usage.workflow_state,
+      usage.expense_line,
+      usage.category_id,
+      usage.description
     from documents d
+    left join lateral (
+      select
+        l.request_id,
+        r.reference,
+        r.workflow_state,
+        l.expense_line,
+        el.category_id,
+        el.description
+      from document_links l
+      join requests r on r.id=l.request_id
+      join request_revisions rr on rr.request_id=l.request_id and rr.round=l.round
+      left join expense_lines el
+        on el.request_id=l.request_id
+       and el.round=l.round
+       and el.line=l.expense_line
+      where l.document_id=d.id
+      order by rr.submitted_at desc
+      limit 1
+    ) usage on true
     where d.owner_id=${employeeId}
       and d.scan_state='clean'
       and d.evidence_class='expense'
-      and not exists (
-        select 1 from document_links l where l.document_id=d.id
-      )
-    order by d.uploaded_at desc, d.id desc
-    limit 100
+    order by (usage.request_id is null) desc,d.uploaded_at desc,d.id desc
+    limit 200
   `;
   return rows.map((row) => ({
     id: String(row.id),
@@ -54,7 +89,21 @@ export async function unassignedReceiptInbox(employeeId: string): Promise<Receip
     mediaType: String(row.media_type),
     byteSize: Number(row.byte_size),
     uploadedAt: new Date(row.uploaded_at),
+    usage: row.request_id
+      ? {
+          requestId: String(row.request_id),
+          reference: String(row.reference),
+          workflowState: String(row.workflow_state),
+          line: row.expense_line === null ? null : Number(row.expense_line),
+          categoryId: row.category_id === null ? null : String(row.category_id),
+          description: row.description === null ? null : String(row.description),
+        }
+      : null,
   }));
+}
+
+export async function unassignedReceiptInbox(employeeId: string): Promise<ReceiptInboxRow[]> {
+  return (await receiptInbox(employeeId)).filter((row) => row.usage === null).slice(0, 100);
 }
 
 export interface ExceptionInboxRow {

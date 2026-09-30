@@ -23,15 +23,23 @@ export async function persistSubmission(
     for (const [index, line] of lines.entries())
       await tx`insert into ot_lines(request_id,round,line,work_date,category_id,hours,multiplier_basis_points,amount_satang) values(${request.id},${round},${index + 1},${input.date},${String(line.categoryId)},${Number(line.hours)},${Number(line.multiplierBasisPoints)},${String(line.amountSatang)})`;
   } else if (input.kind === 'expense') {
-    for (const line of calculation.lines as Record<string, Json>[])
-      await tx`insert into expense_lines(request_id,round,line,category_id,expense_date,amount_satang,description,detail) values(${request.id},${round},${Number(line.line)},${String(line.categoryId)},${String(line.date)},${String(line.amountSatang)},${String(line.description)},${tx.json(line.detail!)})`;
+    for (const line of calculation.lines as Record<string, Json>[]) {
+      const expenseLine = Number(line.line);
+      await tx`insert into expense_lines(request_id,round,line,category_id,expense_date,amount_satang,description,detail) values(${request.id},${round},${expenseLine},${String(line.categoryId)},${String(line.date)},${String(line.amountSatang)},${String(line.description)},${tx.json(line.detail!)})`;
+      const documentIds = Array.isArray(line.documentIds)
+        ? line.documentIds.filter((value): value is string => typeof value === 'string')
+        : [];
+      for (const documentId of documentIds)
+        await tx`insert into document_links(document_id,request_id,round,expense_line) values(${documentId},${request.id},${round},${expenseLine})`;
+    }
     await tx`insert into original_receipts(request_id,state) values(${request.id},${prepared.originalRequired ? 'outstanding' : 'not_required'}) on conflict(request_id) do update set state=excluded.state,received_by=null,received_at=null,note='Resubmission requires evidence recheck',revision=original_receipts.revision+1`;
   } else if (input.kind === 'trip') {
     const perDiem = calculation.perDiem as Record<string, Json>;
     await tx`insert into trip_details(request_id,round,start_date,end_date,destination,region,per_diem_satang,due_date,detail) values(${request.id},${round},${input.start},${input.end},${input.destination},${input.region},${String(perDiem.totalSatang)},${String(calculation.dueDate)},${tx.json(calculation)})`;
   }
-  for (const documentId of evidenceIds(input))
-    await tx`insert into document_links(document_id,request_id,round) values(${documentId},${request.id},${round})`;
+  if (input.kind !== 'expense')
+    for (const documentId of evidenceIds(input))
+      await tx`insert into document_links(document_id,request_id,round) values(${documentId},${request.id},${round})`;
 }
 
 export async function releaseLeave(

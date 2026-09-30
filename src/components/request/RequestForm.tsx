@@ -43,10 +43,12 @@ export function RequestForm({
 }: Props) {
   const router = useRouter();
   const [documents, setDocuments] = useState<UploadedDocument[]>(
-    initialDocumentIds(kind, initial).map((id, index) => ({
-      id,
-      name: `หลักฐานเดิม ${index + 1}`,
-    })),
+    kind === 'leave'
+      ? initialDocumentIds(kind, initial).map((id, index) => ({
+          id,
+          name: `หลักฐานเดิม ${index + 1}`,
+        }))
+      : [],
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -62,6 +64,25 @@ export function RequestForm({
         options,
         documents.map((document) => document.id),
       );
+
+      if (kind === 'expense') {
+        const lines = Array.isArray(input.lines) ? input.lines : [];
+        const missingEvidence = lines.flatMap((value, index) => {
+          if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
+          const line = value as Record<string, unknown>;
+          const category =
+            typeof line.categoryId === 'string'
+              ? options.expenseCategories.find((item) => item.id === line.categoryId)
+              : undefined;
+          const lineDocuments = Array.isArray(line.documentIds) ? line.documentIds : [];
+          return category?.evidenceRequired && lineDocuments.length === 0 ? [index + 1] : [];
+        });
+        if (missingEvidence.length)
+          throw new Error(
+            `รายการที่ ${missingEvidence.join(', ')} ต้องเลือกหรืออัปโหลดหลักฐานก่อนส่ง`,
+          );
+      }
+
       const url =
         mode === 'resubmit' && requestId ? `/api/requests/${requestId}/commands` : '/api/requests';
       const worklogSources = sourceWorklogs?.length
@@ -127,40 +148,16 @@ export function RequestForm({
       <BasicRequestFields kind={kind} options={options} initial={initial} />
       {kind === 'leave' ? <LeaveFields options={options} initial={initial} /> : null}
       {kind === 'ot' ? <OTFields options={options} initial={initial} /> : null}
-      {kind === 'expense' ? <ExpenseFields options={options} initial={initial} /> : null}
+      {kind === 'expense' ? (
+        <ExpenseFields csrf={csrf} options={options} initial={initial} />
+      ) : null}
       {kind === 'trip' ? <TripFields initial={initial} /> : null}
       {kind === 'advance' ? <AdvanceFields options={options} initial={initial} /> : null}
 
-      {kind === 'expense' && options.receiptInbox.length ? (
-        <fieldset>
-          <legend>Receipt Inbox</legend>
-          <p className="field-note">เลือกใบเสร็จที่อัปโหลดไว้ก่อนหน้าเพื่อผูกกับคำขอนี้</p>
-          <div className="quick-list">
-            {options.receiptInbox.map((receipt) => {
-              const selected = documents.some((document) => document.id === receipt.id);
-              return (
-                <button
-                  className="quick-link"
-                  type="button"
-                  key={receipt.id}
-                  disabled={selected || documents.length >= 10}
-                  onClick={() =>
-                    setDocuments([...documents, { id: receipt.id, name: receipt.filename }])
-                  }
-                >
-                  <strong>{receipt.filename}</strong>
-                  <span>{selected ? 'เลือกแล้ว' : 'เลือกใช้ใบเสร็จนี้'}</span>
-                </button>
-              );
-            })}
-          </div>
-        </fieldset>
-      ) : null}
-
-      {kind === 'leave' || kind === 'expense' ? (
+      {kind === 'leave' ? (
         <DocumentUploader
           csrf={csrf}
-          evidenceClass={kind === 'leave' ? 'medical' : 'expense'}
+          evidenceClass="medical"
           documents={documents}
           onChange={setDocuments}
         />

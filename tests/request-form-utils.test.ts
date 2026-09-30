@@ -78,3 +78,42 @@ test('expense form preserves a three-leg onsite route chain', () => {
     },
   ]);
 });
+
+test('expense form keeps receipts mapped to their own lines', () => {
+  const data = new FormData();
+  data.set('title', 'Onsite expenses');
+  data.set('projectId', '');
+  data.set('description', 'Toll and parking');
+  data.set('parentTripId', '');
+  data.set('expenseLineCount', '2');
+
+  data.set('expenseLine1CategoryId', 'toll');
+  data.set('expenseLine1Date', '2026-09-29');
+  data.set('expenseLine1Description', 'Expressway toll');
+  data.set('expenseLine1Amount', '90');
+  data.append('expenseLine1DocumentId', '11111111-1111-4111-8111-111111111111');
+
+  data.set('expenseLine2CategoryId', 'parking');
+  data.set('expenseLine2Date', '2026-09-29');
+  data.set('expenseLine2Description', 'Customer parking');
+  data.set('expenseLine2Amount', '60');
+  data.append('expenseLine2DocumentId', '22222222-2222-4222-8222-222222222222');
+
+  const result = buildRequestInput('expense', data, options, []);
+  assert.deepEqual(result.lines, [
+    {
+      categoryId: 'toll',
+      date: '2026-09-29',
+      description: 'Expressway toll',
+      documentIds: ['11111111-1111-4111-8111-111111111111'],
+      amount: '90',
+    },
+    {
+      categoryId: 'parking',
+      date: '2026-09-29',
+      description: 'Customer parking',
+      documentIds: ['22222222-2222-4222-8222-222222222222'],
+      amount: '60',
+    },
+  ]);
+});

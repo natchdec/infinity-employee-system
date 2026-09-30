@@ -8,7 +8,7 @@ import {
 } from '../domain/worklog';
 import { sourceChangeTransition, type WorklogReviewState } from '../domain/worklog-review';
 import { config } from './config';
-import { audit, db, enqueue, policyFor, safeJson, type Transaction } from './db';
+import { audit, db, policyFor, safeJson, type Transaction } from './db';
 import { calendarSyncWindow, shouldResetCalendarDelta } from './integrations/outlook-calendar';
 import { parseCalendarDeltaPage, safeGraphDeltaLink } from './integrations/outlook-calendar-parser';
 import { initialCalendarDeltaUrl } from './integrations/outlook-graph';
@@ -33,6 +33,7 @@ export interface CalendarSyncResult {
   suggestions: number;
   removedEvents: number;
   deltaStored: boolean;
+  deltaReset: boolean;
 }
 
 function localInstant(value: string): Date {
@@ -339,17 +340,22 @@ export async function syncEmployeeOutlookCalendar(
     where employee_id=${employeeId}
   `;
 
-  let nextUrl =
+  const storedDeltaLink =
     syncState?.delta_link &&
     !shouldResetCalendarDelta(syncState.window_start, syncState.window_end, expected)
-      ? safeGraphDeltaLink(String(syncState.delta_link))
-      : initialCalendarDeltaUrl(String(employee.email), expected);
+      ? String(syncState.delta_link)
+      : null;
+  const storedDeltaUsable = Boolean(storedDeltaLink);
+  let nextUrl = storedDeltaLink
+    ? safeGraphDeltaLink(storedDeltaLink)
+    : initialCalendarDeltaUrl(String(employee.email), expected);
 
   let pages = 0;
   let sourceEvents = 0;
   let suggestions = 0;
   let removedEvents = 0;
   let finalDelta: string | null = null;
+  let deltaReset = false;
 
   try {
     while (nextUrl) {
@@ -359,7 +365,28 @@ export async function syncEmployeeOutlookCalendar(
         'Calendar sync มีจำนวนหน้ามากเกินไป',
         503,
       );
-      const page = parseCalendarDeltaPage(await outlookGraphJson(nextUrl));
+      let payload: unknown;
+      try {
+        payload = await outlookGraphJson(nextUrl);
+      } catch (error) {
+        if (
+          storedDeltaUsable &&
+          !deltaReset &&
+          error instanceof DomainError &&
+          error.code === 'OUTLOOK_CALENDAR_GRAPH_FAILED'
+        ) {
+          deltaReset = true;
+          nextUrl = initialCalendarDeltaUrl(String(employee.email), expected);
+          pages = 0;
+          sourceEvents = 0;
+          suggestions = 0;
+          removedEvents = 0;
+          finalDelta = null;
+          continue;
+        }
+        throw error;
+      }
+      const page = parseCalendarDeltaPage(payload);
       sourceEvents += page.events.length;
       removedEvents += page.removedEventIds.length;
 
@@ -422,6 +449,7 @@ export async function syncEmployeeOutlookCalendar(
           sourceEvents,
           suggestions,
           removedEvents,
+          deltaReset,
           windowStart: expected.start,
           windowEnd: expected.end,
         },
@@ -436,6 +464,7 @@ export async function syncEmployeeOutlookCalendar(
       suggestions,
       removedEvents,
       deltaStored: true,
+      deltaReset,
     };
   } catch (error) {
     await recordSyncError(employeeId, errorCode(error), now);
@@ -480,7 +509,7 @@ export async function queueDueOutlookCalendarSyncs(now = new Date()): Promise<nu
 export async function enqueueManualOutlookCalendarSync(
   actor: Actor,
   idempotencyKey: string,
-): Promise<{ queued: true; jobKey: string }> {
+): Promise<{ queued: boolean; jobKey: string; jobId: string }> {
   invariant(actor.active, 'FORBIDDEN', 'บัญชีพนักงานไม่พร้อมใช้งาน', 403);
   invariant(
     config().OUTLOOK_CALENDAR_SYNC_ENABLED,
@@ -489,8 +518,62 @@ export async function enqueueManualOutlookCalendarSync(
     503,
   );
   const jobKey = `outlook-calendar-manual:${actor.id}:${idempotencyKey}`;
-  await db().begin(async (tx) => {
-    await enqueue(tx, 'outlook_calendar_sync', jobKey, { employeeId: actor.id });
+  return db().begin(async (tx) => {
+    const inserted = await tx`
+      insert into jobs(kind,dedupe_key,payload)
+      values('outlook_calendar_sync',${jobKey},${tx.json({ employeeId: actor.id })})
+      on conflict(dedupe_key) do nothing
+      returning id
+    `;
+    const [job] = inserted.length
+      ? inserted
+      : await tx`
+          select id
+          from jobs
+          where dedupe_key=${jobKey}
+            and kind='outlook_calendar_sync'
+            and payload->>'employeeId'=${actor.id}
+          limit 1
+        `;
+    invariant(job, 'CALENDAR_SYNC_JOB_MISSING', 'ไม่พบงาน Sync ที่เพิ่งสร้าง', 500);
+    return { queued: inserted.length > 0, jobKey, jobId: String(job.id) };
   });
-  return { queued: true, jobKey };
+}
+
+export async function manualOutlookCalendarSyncStatus(
+  actor: Actor,
+  jobId: string,
+): Promise<{
+  state: 'queued' | 'running' | 'succeeded' | 'failed' | 'blocked';
+  attempts: number;
+  result: Json | null;
+  lastErrorCode: string | null;
+}> {
+  invariant(actor.active, 'FORBIDDEN', 'บัญชีพนักงานไม่พร้อมใช้งาน', 403);
+  invariant(
+    /^[0-9a-fA-F-]{36}$/.test(jobId),
+    'CALENDAR_SYNC_JOB_INVALID',
+    'รหัสงาน Sync ไม่ถูกต้อง',
+    400,
+  );
+  const [job] = await db()`
+    select state,attempts,result
+    from jobs
+    where id=${jobId}::uuid
+      and kind='outlook_calendar_sync'
+      and payload->>'employeeId'=${actor.id}
+    limit 1
+  `;
+  invariant(job, 'CALENDAR_SYNC_JOB_NOT_FOUND', 'ไม่พบงาน Sync นี้', 404);
+  const [syncState] = await db()`
+    select last_error_code
+    from calendar_sync_states
+    where employee_id=${actor.id}
+  `;
+  return {
+    state: job.state,
+    attempts: Number(job.attempts),
+    result: job.result ? safeJson(job.result) : null,
+    lastErrorCode: syncState?.last_error_code ?? null,
+  };
 }
