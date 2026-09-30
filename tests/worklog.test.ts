@@ -131,3 +131,35 @@ test('holiday Calendar time is preserved for later OT category mapping', () => {
   assert.equal(day?.dayKind, 'holiday');
   assert.equal(day?.suggestedHours, 3.5);
 });
+
+test('zero-duration IES event becomes a review exception instead of breaking calendar sync', () => {
+  const suggestions = classifyCalendarEvent(
+    {
+      ...baseEvent,
+      categories: [OUTLOOK_WORK_CATEGORIES.onsite, OUTLOOK_WORK_CATEGORIES.ot],
+      localStart: '2026-09-16T17:00:00',
+      localEnd: '2026-09-16T17:00:00',
+    },
+    calendar,
+  );
+
+  assert.deepEqual(
+    suggestions.map((item) => ({
+      intent: item.intent,
+      status: item.status,
+      exceptionCode: item.exceptionCode,
+    })),
+    [
+      {
+        intent: 'ot',
+        status: 'exception',
+        exceptionCode: 'CALENDAR_TIME_RANGE_REVIEW',
+      },
+      {
+        intent: 'onsite',
+        status: 'exception',
+        exceptionCode: 'CALENDAR_TIME_RANGE_REVIEW',
+      },
+    ],
+  );
+});

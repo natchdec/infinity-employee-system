@@ -17,6 +17,7 @@ const intentLabel = {
 } as const;
 
 const exceptionLabels: Record<string, string> = {
+  CALENDAR_TIME_RANGE_REVIEW: 'เวลาเริ่ม/สิ้นสุด Calendar ต้องตรวจสอบ',
   OT_ALL_DAY_REVIEW: 'OT แบบ All-day ต้องตรวจสอบ',
   OT_DURATION_REVIEW: 'เวลา OT ต้องตรวจสอบ',
   OT_OVERLAP: 'OT Calendar ซ้อนเวลา ต้องตรวจสอบ',

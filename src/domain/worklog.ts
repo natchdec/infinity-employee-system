@@ -179,6 +179,43 @@ export function classifyCalendarEvent(
   const selected = new Set(event.categories.filter((category) => category.startsWith('IES · ')));
   if (selected.size === 0) return [];
 
+  const start = localParts(event.localStart);
+  const end = localParts(event.localEnd);
+  const invalidRange =
+    end.date < start.date || (end.date === start.date && end.minutes <= start.minutes);
+  if (invalidRange) {
+    const review: WorklogSuggestion[] = [];
+    if (selected.has(OUTLOOK_WORK_CATEGORIES.ot)) {
+      review.push({
+        intent: 'ot',
+        status: 'exception',
+        exceptionCode: 'CALENDAR_TIME_RANGE_REVIEW',
+        days: [],
+        totalSuggestedHours: 0,
+      });
+    }
+    if (selected.has(OUTLOOK_WORK_CATEGORIES.onsite)) {
+      review.push({
+        intent: 'onsite',
+        status: 'exception',
+        exceptionCode: 'CALENDAR_TIME_RANGE_REVIEW',
+        locationLabel: event.locationLabel?.trim() || null,
+      });
+    }
+    for (const [category, leaveTypeId] of leaveCategoryMap) {
+      if (!selected.has(category)) continue;
+      review.push({
+        intent: 'leave',
+        status: 'exception',
+        exceptionCode: 'CALENDAR_TIME_RANGE_REVIEW',
+        leaveTypeId,
+        start: start.date,
+        end: end.date,
+      });
+    }
+    return review;
+  }
+
   const suggestions: WorklogSuggestion[] = [];
   if (selected.has(OUTLOOK_WORK_CATEGORIES.ot)) {
     if (event.isAllDay) {
