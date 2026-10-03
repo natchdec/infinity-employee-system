@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { AppShell } from '@/components/AppShell';
+import { CommuteDistanceForm } from '@/components/profile/CommuteDistanceForm';
 import { HomeAddressForm } from '@/components/profile/HomeAddressForm';
 import { requireActor } from '@/server/auth-context';
 import { cookieNames } from '@/server/identity';
@@ -46,6 +47,15 @@ export default async function ProfilePage() {
           </div>
         </div>
         <HomeAddressForm csrf={antiForgery} initialHomeAddress={settings.homeAddress} />
+        <div className="subsection">
+          <h3>Commute baseline</h3>
+          <CommuteDistanceForm
+            csrf={antiForgery}
+            homeAddressConfigured={Boolean(settings.homeAddress)}
+            initialDistanceMetres={settings.commuteDistanceMetres}
+            initialEffectiveFrom={settings.commuteEffectiveFrom}
+          />
+        </div>
       </section>
       <section className="section">
         <form action="/auth/sign-out" method="post">
