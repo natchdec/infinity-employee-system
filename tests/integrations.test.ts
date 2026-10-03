@@ -205,9 +205,9 @@ test('blocking readiness requires Project Master but ignores deferred false gate
   assert.equal(blockingReadiness(gates), true);
 });
 
-test('Google Routes durable evidence and cutover approval remain blocking gates', () => {
+test('Google Routes durable evidence stays fail-closed but non-blocking', () => {
   const gates = productionReadiness({ NODE_ENV: 'test' });
-  assert.equal(gates.find((gate) => gate.id === 'google_routes')?.blocking, true);
+  assert.equal(gates.find((gate) => gate.id === 'google_routes')?.blocking, false);
   assert.equal(gates.find((gate) => gate.id === 'google_routes')?.ready, false);
   assert.equal(gates.find((gate) => gate.id === 'cutover_approval')?.blocking, true);
   assert.equal(gates.find((gate) => gate.id === 'cutover_approval')?.ready, false);

@@ -19,6 +19,12 @@ interface EditorLine {
   documents: UploadedDocument[];
 }
 
+interface RoutePreviewState {
+  busy: boolean;
+  message?: string;
+  error?: string;
+}
+
 function initialDocuments(line: Record<string, unknown>): UploadedDocument[] {
   return arrayValue(line.documentIds).flatMap((value, index) =>
     typeof value === 'string' ? [{ id: value, name: `หลักฐานเดิม ${index + 1}` }] : [],
@@ -36,6 +42,15 @@ function uploadedWhen(value: string): string {
     timeZone: 'Asia/Bangkok',
     dateStyle: 'medium',
   }).format(new Date(value));
+}
+
+function metresToKm(value: number): string {
+  return (value / 1000).toFixed(3).replace(/\\.?0+$/, '');
+}
+
+function durationLabel(seconds: number | null | undefined): string {
+  if (!Number.isFinite(seconds) || seconds === null || seconds === undefined) return '';
+  return ` · ประมาณ ${Math.max(1, Math.round(seconds / 60))} นาที`;
 }
 
 export function ExpenseFields({ csrf, options, initial }: Props) {
@@ -157,8 +172,93 @@ function ExpenseLineCard({
   const [mileageLegCount, setMileageLegCount] = useState(
     Math.min(20, Math.max(2, mileage.length || 2)),
   );
+  const [routePreviews, setRoutePreviews] = useState<Record<number, RoutePreviewState>>({});
   const categoryPolicy = options.expenseCategories.find((item) => item.id === category);
   const evidenceRequired = categoryPolicy?.evidenceRequired ?? false;
+
+  function formField(name: string): HTMLInputElement | HTMLSelectElement | null {
+    const form = document.querySelector<HTMLFormElement>('form.request-form');
+    const field = form?.elements.namedItem(name);
+    return field instanceof HTMLInputElement || field instanceof HTMLSelectElement ? field : null;
+  }
+
+  async function previewMileageLeg(legIndex: number) {
+    const originKind = formField(`${prefix}Leg${legIndex}Origin`)?.value.trim() ?? '';
+    const destinationKind = formField(`${prefix}Leg${legIndex}Destination`)?.value.trim() ?? '';
+    const originAddress = formField(`${prefix}Leg${legIndex}OriginLabel`)?.value.trim() ?? '';
+    const destinationAddress =
+      formField(`${prefix}Leg${legIndex}DestinationLabel`)?.value.trim() ?? '';
+
+    if (originAddress.length < 3 || destinationAddress.length < 3) {
+      setRoutePreviews((current) => ({
+        ...current,
+        [legIndex]: {
+          busy: false,
+          error: 'กรอกต้นทางและปลายทางให้ละเอียดพอสำหรับ Google Maps ก่อนคำนวณ',
+        },
+      }));
+      return;
+    }
+
+    setRoutePreviews((current) => ({ ...current, [legIndex]: { busy: true } }));
+    try {
+      const response = await fetch('/api/routes/preview', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-csrf-token': csrf,
+          'idempotency-key': crypto.randomUUID(),
+        },
+        body: JSON.stringify({
+          originKind,
+          destinationKind,
+          originLabel: originAddress,
+          destinationLabel: destinationAddress,
+          origin: { address: originAddress },
+          destination: { address: destinationAddress },
+        }),
+      });
+      const result = (await response.json()) as {
+        preview?: { distanceMetres?: unknown; durationSeconds?: unknown };
+        error?: { message?: unknown };
+      };
+      if (!response.ok) {
+        throw new Error(
+          typeof result.error?.message === 'string'
+            ? result.error.message
+            : 'Google Maps คำนวณเส้นทางไม่สำเร็จ',
+        );
+      }
+      const distanceMetres = Number(result.preview?.distanceMetres);
+      const durationSeconds =
+        result.preview?.durationSeconds === null ? null : Number(result.preview?.durationSeconds);
+      if (!Number.isSafeInteger(distanceMetres) || distanceMetres <= 0) {
+        throw new Error('ผลระยะทางจาก Google Maps ไม่ถูกต้อง');
+      }
+      const distanceField = formField(`${prefix}Leg${legIndex}Km`);
+      if (!(distanceField instanceof HTMLInputElement)) {
+        throw new Error('ไม่พบช่องระยะทางสำหรับเที่ยวนี้');
+      }
+      distanceField.value = metresToKm(distanceMetres);
+      setRoutePreviews((current) => ({
+        ...current,
+        [legIndex]: {
+          busy: false,
+          message: `Google Maps: ${metresToKm(distanceMetres)} กม.${durationLabel(
+            Number.isFinite(durationSeconds) ? durationSeconds : null,
+          )}`,
+        },
+      }));
+    } catch (value) {
+      setRoutePreviews((current) => ({
+        ...current,
+        [legIndex]: {
+          busy: false,
+          error: value instanceof Error ? value.message : 'Google Maps คำนวณเส้นทางไม่สำเร็จ',
+        },
+      }));
+    }
+  }
 
   return (
     <fieldset className="expense-line-card">
@@ -256,24 +356,21 @@ function ExpenseLineCard({
                     </select>
                   </label>
                   <label>
-                    <span>ชื่อต้นทาง</span>
+                    <span>ต้นทาง / ที่อยู่</span>
                     <input
                       name={`${prefix}Leg${legIndex}OriginLabel`}
                       required={requiredLeg}
-                      defaultValue={
-                        textValue(initialLeg.originLabel) || (legIndex === 1 ? 'บ้าน' : 'ลูกค้า')
-                      }
+                      placeholder="เช่น Infinity Solution Service, Bangkok"
+                      defaultValue={textValue(initialLeg.originLabel)}
                     />
                   </label>
                   <label>
-                    <span>ชื่อปลายทาง</span>
+                    <span>ปลายทาง / ที่อยู่</span>
                     <input
                       name={`${prefix}Leg${legIndex}DestinationLabel`}
                       required={requiredLeg}
-                      defaultValue={
-                        textValue(initialLeg.destinationLabel) ||
-                        (legIndex === 1 ? 'ลูกค้า' : 'บ้าน')
-                      }
+                      placeholder="เช่น ชื่อลูกค้าและที่อยู่"
+                      defaultValue={textValue(initialLeg.destinationLabel)}
                     />
                   </label>
                 </div>
@@ -291,6 +388,26 @@ function ExpenseLineCard({
                     }
                   />
                 </label>
+                <div className="action-row mileage-route-actions">
+                  <button
+                    className="button button-secondary"
+                    type="button"
+                    disabled={routePreviews[legIndex]?.busy}
+                    onClick={() => void previewMileageLeg(legIndex)}
+                  >
+                    {routePreviews[legIndex]?.busy ? 'กำลังคำนวณ…' : 'คำนวณด้วย Google Maps'}
+                  </button>
+                  {routePreviews[legIndex]?.message ? (
+                    <span className="field-note" role="status">
+                      {routePreviews[legIndex]?.message}
+                    </span>
+                  ) : null}
+                  {routePreviews[legIndex]?.error ? (
+                    <span className="field-warning" role="alert">
+                      {routePreviews[legIndex]?.error}
+                    </span>
+                  ) : null}
+                </div>
               </div>
             );
           })}
@@ -314,6 +431,10 @@ function ExpenseLineCard({
           </div>
           <p className="field-note">
             Mileage คำนวณจากระยะทาง × อัตรานโยบาย และแยกจาก Toll / Parking / Fuel / Taxi / Grab เสมอ
+          </p>
+          <p className="field-note">
+            Google Maps ใช้สำหรับ preview แบบ no-store เพื่อช่วยกรอกระยะทางเท่านั้น เมื่อส่งคำขอ
+            ระบบจะบันทึกระยะทางที่พนักงานตรวจและรับรอง ไม่เก็บผล Routes API เป็นหลักฐานถาวร
           </p>
         </div>
       ) : (

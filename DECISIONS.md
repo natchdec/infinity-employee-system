@@ -34,7 +34,7 @@ Entertainment is an Expense subtype, not a separate top-level module.
 Business Trip and Cash Advance are included in V1. Settlement is due within 3 days of trip end.
 
 ## D-012 Mileage
-Mileage rate starts at 8 THB/km. Normal commute is deducted per eligible leg. Google Maps is the target distance source.
+Mileage rate starts at 8 THB/km. Normal commute is deducted per eligible leg. Google Maps Routes is the target distance source for transient, no-store route previews. Under the standard Google Maps Platform terms, preview distance/duration is not retained as permanent provider evidence; the employee reviews the previewed distance and the submitted mileage remains employee-attested. Durable Google provider evidence stays fail-closed unless separate documented licensing grants the required retention rights.
 
 ## D-013 Finance Systems
 Use adapters for Easy-ACC payroll and Smartbiz accounting. Do not hard-couple the core system to undocumented direct APIs.
