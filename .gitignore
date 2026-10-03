@@ -8,6 +8,7 @@ out/
 dist/
 build/
 coverage/
+tsconfig.tsbuildinfo
 
 # Environment / secrets
 .env
@@ -40,3 +41,4 @@ test-results/
 
 # Local agent/worktree metadata
 .agentgw-git-auth/
+.transfer-runtime/

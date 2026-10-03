@@ -1,0 +1,310 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { DomainError } from '../src/domain/core';
+import { requestSchemas } from '../src/domain/requests';
+import { aggregateEasyAccOt, formatEasyAccPrimport } from '../src/server/integrations/easy-acc';
+import { blockingReadiness, productionReadiness } from '../src/server/integrations/preflight';
+import { validateCloudflareAccessClaims } from '../src/server/cloudflare-access';
+import { teamsWorkflowPayload } from '../src/server/integrations/teams-workflow';
+
+test('Easy-ACC PRIMPORT uses six single-space-delimited fields and three decimals', () => {
+  assert.equal(
+    formatEasyAccPrimport([
+      {
+        employeeCode: '000123',
+        workDays: '22',
+        ot1Hours: '3',
+        ot2Hours: '0',
+        ot3Hours: '4.5',
+        ot4Hours: '0',
+      },
+    ]),
+    '000123 22.000 3.000 0.000 4.500 0.000\r\n',
+  );
+});
+
+test('Easy-ACC export rejects unverified employee code shape', () => {
+  assert.throws(
+    () =>
+      formatEasyAccPrimport([
+        {
+          employeeCode: 'EMP-1',
+          workDays: '22',
+          ot1Hours: '0',
+          ot2Hours: '0',
+          ot3Hours: '0',
+          ot4Hours: '0',
+        },
+      ]),
+    (error: unknown) =>
+      error instanceof DomainError && error.code === 'EASY_ACC_EMPLOYEE_CODE_INVALID',
+  );
+});
+
+test('Easy-ACC PRIMPORT rejects employee codes longer than 9 digits', () => {
+  const row = {
+    employeeCode: '1'.repeat(10),
+    workDays: '22',
+    ot1Hours: '0',
+    ot2Hours: '0',
+    ot3Hours: '0',
+    ot4Hours: '0',
+  };
+  assert.throws(
+    () => formatEasyAccPrimport([row]),
+    (error: unknown) =>
+      error instanceof DomainError && error.code === 'EASY_ACC_EMPLOYEE_CODE_INVALID',
+  );
+});
+
+test('Easy-ACC OT mapping is explicit and never guesses a slot', () => {
+  assert.deepEqual(
+    aggregateEasyAccOt(
+      [
+        { categoryId: 'weekday_ot', hours: 3 },
+        { categoryId: 'holiday_work', hours: 2 },
+      ],
+      { weekday_ot: 1, holiday_work: 3 },
+    ),
+    [3, 0, 2, 0],
+  );
+  assert.throws(
+    () => aggregateEasyAccOt([{ categoryId: 'unknown', hours: 1 }], {}),
+    (error: unknown) =>
+      error instanceof DomainError && error.code === 'EASY_ACC_OT_MAPPING_MISSING',
+  );
+  assert.deepEqual(
+    aggregateEasyAccOt([{ categoryId: 'weekday_ot', hours: 1.5 }], { weekday_ot: 1 }),
+    [1.5, 0, 0, 0],
+  );
+  assert.throws(
+    () => aggregateEasyAccOt([{ categoryId: 'weekday_ot', hours: 1.25 }], { weekday_ot: 1 }),
+    (error: unknown) => error instanceof DomainError && error.code === 'EASY_ACC_OT_HOURS_INVALID',
+  );
+});
+
+test('Google mileage input requires a server-issued quote reference', () => {
+  const base = {
+    title: 'Mileage',
+    projectId: null,
+    description: 'Customer visit',
+    kind: 'expense' as const,
+    parentTripId: null,
+    lines: [
+      {
+        categoryId: 'mileage' as const,
+        date: '2026-09-25',
+        description: 'Office to customer',
+        documentIds: [],
+        mileage: [
+          {
+            origin: 'office' as const,
+            destination: 'customer' as const,
+            originLabel: 'Office',
+            destinationLabel: 'Customer',
+            distanceMetres: 10000,
+            source: 'google_routes' as const,
+          },
+        ],
+      },
+    ],
+  };
+  assert.equal(requestSchemas.expense.safeParse(base).success, false);
+  assert.equal(
+    requestSchemas.expense.safeParse({
+      ...base,
+      lines: [
+        {
+          ...base.lines[0],
+          mileage: [
+            {
+              ...base.lines[0]!.mileage[0]!,
+              providerReference: '00000000-0000-4000-8000-000000000001',
+            },
+          ],
+        },
+      ],
+    }).success,
+    true,
+  );
+});
+
+test('manual mileage attestation cannot smuggle a provider reference', () => {
+  const leg = {
+    origin: 'office' as const,
+    destination: 'customer' as const,
+    originLabel: 'Office',
+    destinationLabel: 'Customer',
+    distanceMetres: 10000,
+    source: 'manual_attested' as const,
+    providerReference: '00000000-0000-4000-8000-000000000001',
+  };
+  const result = requestSchemas.expense.safeParse({
+    title: 'Mileage',
+    projectId: null,
+    description: 'Customer visit',
+    kind: 'expense',
+    parentTripId: null,
+    lines: [
+      {
+        categoryId: 'mileage',
+        date: '2026-09-25',
+        description: 'Visit',
+        documentIds: [],
+        mileage: [leg],
+      },
+    ],
+  });
+  assert.equal(result.success, false);
+});
+
+test('Project Master source and shared Graph read identity are wired into production app and worker', () => {
+  const baseCompose = readFileSync(new URL('../docker-compose.yml', import.meta.url), 'utf8');
+  const productionCompose = readFileSync(
+    new URL('../docker-compose.production.yml', import.meta.url),
+    'utf8',
+  );
+  for (const key of [
+    'PROJECT_MASTER_TENANT_ID',
+    'PROJECT_MASTER_SITE_ID',
+    'PROJECT_MASTER_LIST_ID',
+    'PROJECT_MASTER_COLUMN_MAP',
+  ]) {
+    assert.ok(baseCompose.includes(key + ': ${' + key + ':-}'));
+    assert.equal(productionCompose.split(key + ': ${' + key + '}').length - 1, 2);
+  }
+  for (const key of [
+    'OUTLOOK_CALENDAR_TENANT_ID',
+    'OUTLOOK_CALENDAR_CLIENT_ID',
+    'OUTLOOK_CALENDAR_CLIENT_AUTH_MODE',
+    'OUTLOOK_CALENDAR_CLIENT_PRIVATE_KEY_PATH',
+    'OUTLOOK_CALENDAR_CLIENT_CERT_PATH',
+  ]) {
+    assert.ok(baseCompose.includes(key + ': ${' + key));
+  }
+  assert.equal(
+    productionCompose.split('OUTLOOK_CALENDAR_CLIENT_PRIVATE_KEY_HOST_PATH').length - 1,
+    2,
+  );
+  assert.equal(productionCompose.split('OUTLOOK_CALENDAR_CLIENT_CERT_HOST_PATH').length - 1, 2);
+});
+
+test('Project Master is production-blocking while Easy-ACC and Smartbiz remain deferred', () => {
+  const gates = productionReadiness({ NODE_ENV: 'test' });
+  assert.equal(gates.find((gate) => gate.id === 'project_master')?.blocking, true);
+  assert.equal(gates.find((gate) => gate.id === 'project_master')?.ready, false);
+  assert.equal(gates.find((gate) => gate.id === 'easy_acc')?.blocking, false);
+  assert.equal(gates.find((gate) => gate.id === 'smartbiz')?.blocking, false);
+});
+
+test('blocking readiness requires Project Master but ignores deferred false gates', () => {
+  const gates = productionReadiness({ NODE_ENV: 'test' }).map((gate) =>
+    gate.blocking ? { ...gate, ready: true } : gate,
+  );
+  assert.equal(blockingReadiness(gates), true);
+});
+
+test('Google Routes durable evidence stays fail-closed but non-blocking', () => {
+  const gates = productionReadiness({ NODE_ENV: 'test' });
+  assert.equal(gates.find((gate) => gate.id === 'google_routes')?.blocking, false);
+  assert.equal(gates.find((gate) => gate.id === 'google_routes')?.ready, false);
+  assert.equal(gates.find((gate) => gate.id === 'cutover_approval')?.blocking, true);
+  assert.equal(gates.find((gate) => gate.id === 'cutover_approval')?.ready, false);
+  assert.equal(blockingReadiness(gates), false);
+});
+
+test('production restore acceptance remains a blocking gate', () => {
+  const gates = productionReadiness({ NODE_ENV: 'test' });
+  assert.equal(gates.find((gate) => gate.id === 'restore_acceptance')?.blocking, true);
+  assert.equal(gates.find((gate) => gate.id === 'restore_acceptance')?.ready, false);
+});
+
+test('Cloudflare Access claims require issuer, audience and active employee identity claims', () => {
+  const identity = validateCloudflareAccessClaims(
+    { alg: 'RS256', kid: 'key-1' },
+    {
+      iss: 'https://steep-scene-b973.cloudflareaccess.com',
+      aud: ['0123456789abcdef'],
+      email: 'User@InfinitySolutions.co.th',
+      sub: 'cloudflare-subject',
+      exp: 1100,
+      nbf: 900,
+      iat: 950,
+    },
+    {
+      teamDomain: 'steep-scene-b973.cloudflareaccess.com',
+      audience: '0123456789abcdef',
+      nowSeconds: 1000,
+    },
+  );
+  assert.deepEqual(identity, {
+    email: 'user@infinitysolutions.co.th',
+    subject: 'cloudflare-subject',
+  });
+});
+
+test('Cloudflare Access claims reject a different application audience', () => {
+  assert.throws(
+    () =>
+      validateCloudflareAccessClaims(
+        { alg: 'RS256', kid: 'key-1' },
+        {
+          iss: 'https://steep-scene-b973.cloudflareaccess.com',
+          aud: 'different-audience',
+          email: 'user@infinitysolutions.co.th',
+          sub: 'cloudflare-subject',
+          exp: 1100,
+        },
+        {
+          teamDomain: 'steep-scene-b973.cloudflareaccess.com',
+          audience: '0123456789abcdef',
+          nowSeconds: 1000,
+        },
+      ),
+    (error: unknown) =>
+      error instanceof DomainError && error.code === 'ACCESS_TOKEN_AUDIENCE_REJECTED',
+  );
+});
+
+test('Cloudflare Access can satisfy the production identity gate without direct Entra app auth', () => {
+  const gates = productionReadiness({
+    NODE_ENV: 'test',
+    AUTH_MODE: 'cloudflare_access',
+    CLOUDFLARE_ACCESS_TEAM_DOMAIN: 'steep-scene-b973.cloudflareaccess.com',
+    CLOUDFLARE_ACCESS_AUD: '0123456789abcdef',
+  });
+  assert.equal(gates.find((gate) => gate.id === 'identity_gateway')?.ready, true);
+});
+
+test('Teams workflow payload keeps links inside Employee System', () => {
+  assert.deepEqual(
+    teamsWorkflowPayload(
+      {
+        title: ' Finance queue ',
+        detail: ' Pending work ',
+        href: '/finance/operations',
+      },
+      'https://employee.infinity.example',
+    ),
+    {
+      text: 'Finance queue\nPending work\nhttps://employee.infinity.example/finance/operations',
+    },
+  );
+});
+
+test('Teams workflow payload rejects protocol-relative external links', () => {
+  assert.throws(
+    () =>
+      teamsWorkflowPayload(
+        {
+          title: 'Unsafe',
+          detail: 'Do not send',
+          href: '//external.example/phish',
+        },
+        'https://employee.infinity.example',
+      ),
+    (error: unknown) =>
+      error instanceof DomainError && error.code === 'TEAMS_NOTIFICATION_LINK_INVALID',
+  );
+});

@@ -51,7 +51,7 @@ Quiet Enterprise / Modern Editorial.
 - Date.
 - Project.
 - Task / work description.
-- Whole-hour inputs grouped by applicable OT category/multiplier.
+- 0.5-hour increment inputs grouped by applicable OT category/multiplier.
 - Calculated summary.
 - Submit.
 
@@ -126,3 +126,38 @@ Before implementation:
 - Validate hierarchy, density, touch targets, and form length.
 - Reject any screen that resembles a generic AI dashboard/template.
 - Lock components, spacing, typography, statuses, and navigation before coding.
+
+
+## Calendar Inbox and Monthly Review
+- Outlook integration only considers events explicitly categorized with an `IES · ...` category.
+- Supported draft intents: `IES · OT`, `IES · Onsite`, and Thai leave categories.
+- Online meetings never create mileage unless the employee explicitly marks the event Onsite.
+- Calendar data creates Suggested items only. Employee actions are Review/Edit, Ignore, and Create Monthly Requests.
+- The monthly summary shows OT hours, mileage distance/amount, Leave days and items needing review.
+- Same-day multiple Onsite events are proposed as one route chain (for example Office -> Customer A -> Customer B -> Office) and require employee confirmation when ambiguous.
+- Calendar edits update only unsubmitted drafts. Changes after submission create a visible exception and audit event; they never silently rewrite the request.
+
+## Finance Operations
+- Monthly Closing shows pending approvals, Finance verification gaps, receipt gaps, payroll readiness and period state.
+- Exception Inbox groups blocking/ambiguous items instead of hiding them across individual screens.
+- Receipt Inbox lets employees upload first and assign the receipt to a claim later.
+- Employee Monthly Statement provides a period summary without exposing another employee's salary or private claim data.
+- Audit Timeline uses human-readable events and redacted metadata.
+
+## Project Master
+- Microsoft Lists / SharePoint remains the authoritative source; Employee System is read-only and does not expose local project create/edit actions.
+- `/projects` is a searchable Project Master list for authenticated users with Project Code, Name, Customer, Sales Owner, dates and active/inactive state.
+- `/projects/[id]` shows source-backed detail, Last Sync and ETag. Missing Engineer Lead or Cost Center is displayed as unavailable rather than inferred.
+- New OT and Expense forms may select an active Project; Business Trip requires an active Project. Inactive projects remain readable on historical requests but are not selectable for new requests.
+- Admin `/admin/integrations/projects` shows connection readiness, authoritative source, Last Sync, inactive count, missing-field counts and a retry-safe Sync Now action.
+- Finance `/finance/projects` is the Project Cost Ledger. `/finance/projects/[id]` drills into Project metadata, OT, verified standalone Expense, Finance-verified Travel settlement, pending Head/Finance queues and recent linked request activity.
+- Project surfaces follow the existing Quiet Enterprise visual system and the 390/820/1440 responsive acceptance family; wide tables use local horizontal scrolling instead of document overflow.
+
+<!-- agent-gateway:managed:start:project-master-accepted-ux-20260930 -->
+## Project Master Accepted UX — 2026-09-30
+- Admin: dedicated Project Integration page with authoritative source identity, sync state, last sync, ETag/freshness, stale/inactive visibility, readiness diagnostics and retry-safe Sync Now.
+- Employee: searchable Project Master list/detail plus active-project picker in OT, Expense and Trip flows where project attribution applies.
+- Finance/Admin: Project Cost Ledger and project drill-down showing Customer, Sales Owner, Engineer Lead, Start/End, Status, Cost Center, linked OT/Expense/Travel totals, pending queues and recent activity.
+- Missing authoritative Engineer Lead or Cost Center values render as unavailable; the UI never infers them.
+- Project Master surfaces obey existing role gates and Quiet Enterprise responsive behavior on phone and notebook/browser layouts.
+<!-- agent-gateway:managed:end:project-master-accepted-ux-20260930 -->

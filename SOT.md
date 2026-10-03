@@ -41,4 +41,198 @@
 - PostgreSQL primary transactional database.
 - Object storage for receipt/document binaries.
 - Microsoft Entra ID for authentication.
-- OCI is the target initial production hosting environment.
+- Infinity ESXi is the target initial production hosting environment. Run Docker Compose inside a dedicated Linux VM on ESXi; do not run the Employee System application on Agent Gateway OCI.
+
+## Verified Implementation State
+- Active branch: feat/v1-implementation.
+- M0 foundation and M1/M2 transaction engine are already committed and synchronized to origin.
+- Next.js App Router, Entra OIDC boundary, role-aware server pages, PostgreSQL access, structured logging, health/readiness routes, and PostgreSQL-backed worker exist.
+- Isolated OCI UAT uses PostgreSQL 18.4 over a private Unix-domain socket with no TCP listener.
+- Database migrations: 5 total. Migration 005 (`identity_bootstrap`) was applied on the isolated PostgreSQL 18.4 UAT with checksum verification; the post-migration transaction UAT passed.
+- Synthetic UAT seed contains 6 non-production identities and 8 policy families; real employee data is not seeded.
+- Source verification passes the full `pnpm verify` gate: format, lint with zero warnings, typecheck, 46/46 tests, and Next production build.
+- Request workflows implement submit/resubmit/cancel, Head approve/return/reject, Owner/Head system-skip, Finance verify/return, optimistic revision fencing, idempotency receipts, immutable approval history, and Finance conflict-of-interest enforcement.
+- Leave, OT, Expense, Mileage, Entertainment, Trip, Per Diem, Cash Advance and settlement calculations/persistence are policy-versioned and transactional.
+- OT approval allocates to the centralized payroll-cycle cutoff logic; late approval moves to the next eligible cycle.
+- Document storage abstraction supports private filesystem in non-production and S3-compatible object storage in production; production refuses filesystem document storage.
+- UAT image evidence accepts JPEG/PNG/WebP after magic/decode checks; PDF intake is fail-closed until malware scanning is configured.
+- Finance implements original-receipt tracking, independent verification, payable obligations, petty-cash/transfer payment batches, idempotent payment completion and immutable paid-state guards.
+- Trip-linked Expense does not create a standalone payable; it is reconciled through Trip settlement to prevent duplicate payment.
+- Finance/Travel UAT passes standalone payment, original-receipt independence, document authorization/idempotency, PDF fail-closed, 20,000 THB advance versus 17,600 THB actual refund, 20,000 THB advance versus 22,000 THB actual top-up, payment idempotency, payroll review export and accounting review export.
+- Easy-ACC and Smartbiz adapter requests are fail-closed because exact supported import/API formats have not yet been verified; neutral review CSV exports are available for verification.
+- Implemented-app Browser UAT passes Chromium 153 with 52 captures across 390/820/1440 widths, zero page errors, zero blocking Axe WCAG findings, no document-level horizontal overflow and no Lorem Ipsum.
+- Representative Sign-in, Employee Home/Expense, Head Approval and Finance Queue/Payment screenshots passed Astra workflow review plus the design-taste-frontend anti-AI-slop visual guardrail.
+- PWA UAT passes installable manifest, active service worker, offline fallback and reconnect. Service-worker cache is restricted to `/offline`, `/icon-192.png`, and `/icon-512.png`; employee, Finance, API, and authenticated page data are not cached.
+- Health and readiness return HTTP 200 on the current isolated UAT stack.
+- UAT process evidence shows supervisor timeout/stop behavior can leave an idle PostgreSQL client session during smart shutdown; UAT recovery is bounded to the isolated database and does not change product persistence semantics.
+- Docker CLI/socket is not exposed inside the OCI worker. This is expected because production Docker Compose verification now belongs on the dedicated Linux VM hosted by Infinity ESXi, not on Agent Gateway OCI.
+- Live Infinity ESXi UAT passed on `INFINITY-EMPLOYEE-PROD01` at `172.20.11.220` with 2 vCPU, 4 GB RAM and a 60 GB thin VMDK on the NFS datastore.
+- The ESXi VM runs Docker 29.1.3 and Docker Compose 2.40.3. The production-image build passed Next.js compilation, TypeScript validation and static generation before the runtime stack was started.
+- PostgreSQL 18 uses the version-compatible `/var/lib/postgresql` volume layout. Database, migration and worker traffic stay on the internal backend network; the app additionally joins a frontend bridge and publishes `0.0.0.0:3000`.
+- Live ESXi runtime acceptance passes: database healthy, migration exit 0, app healthy, worker running, `/api/health` HTTP 200 and `/api/ready` HTTP 200 from both the VM and the Infinity VPN worker.
+- Reboot persistence passed with a changed VM boot ID; Docker returned enabled/active and db/app/worker recovered automatically with health/readiness still green.
+- Backup verification passed with a PostgreSQL dump and document-volume archive under `/var/backups/infinity-employee`; both archives validated successfully after reboot.
+- The current ESXi deployment remains UAT: production-grade secret rotation, Entra production identity, S3-compatible object storage, domain/TLS and explicit cutover approval remain required before serving live users.
+
+## External Readiness Gates
+- Production Entra tenant/client credentials and redirect registration.
+- Production S3-compatible object storage credentials. OCI Object Storage remains a compatible option even though the application host is on Infinity ESXi.
+- Microsoft Lists/SharePoint Project Master production source connection and field mapping.
+- Google Routes credential/provider verification for automated route quotes.
+- Verified Easy-ACC supported import/API format.
+- Verified Smartbiz supported import/API format.
+- Explicit authorization before production cutover affecting live users.
+
+<!-- agent-gateway:managed:start:external-readiness-2026-09-26 -->
+## External readiness verification — 2026-09-26
+- Project Master live SharePoint snapshot contains 458 projects. Customer, Sales Owner and Status are populated 458/458; Start Date and End Date are populated 405/458; Engineer Lead and Cost Center are populated 0/458. Do not invent these two required semantics; production mapping remains blocked until an authoritative source/list/field is identified or scope explicitly changes.
+- Google Routes now has a separate transient preview boundary at `/api/routes/preview`: it requires only the API key, returns `Cache-Control: no-store`, never writes `route_quotes`, and explicitly marks the result non-persistable/non-evidence. The durable `/api/routes/quote` path remains fail-closed unless contractual retention rights are explicitly confirmed. This avoids treating preview distance/duration as permanent Google-verified financial evidence.
+- Easy-ACC PRIMPORT employee-code width is verified at <=9 digits with regression coverage; production enablement still requires authoritative employee-code, workday and OT1–OT4 mappings from the payroll owner/system.
+- Smartbiz exact transaction import/API contract remains unverified and therefore fail-closed.
+- Live ESXi UAT, reboot persistence and backup archive validation remain previously verified. Production cutover still requires production object storage, domain/TLS, production credentials, restore acceptance and explicit cutover approval.
+- Earlier Agent Gateway git commit/push operations remained non-terminal and are preserved as ambiguous receipts. Current source state has since been re-verified through the project control plane and AGW OCI git CLI; only a new receipt-backed commit/push attempt may replace those stale operations.
+- Full source verification on 2026-09-26 passed `pnpm verify` after the Routes preview redesign and integration cleanup: Prettier, ESLint with zero warnings, TypeScript, 46/46 tests and Next production build all green.
+- Migration 005 applied successfully to isolated PostgreSQL 18.4 UAT (`total=5`, checksum verified); synthetic seed remained 6 employees / 8 policy families and the full transaction UAT passed after the migration.
+<!-- agent-gateway:managed:end:external-readiness-2026-09-26 -->
+
+<!-- agent-gateway:managed:start:autocontinue-2026-09-26-run -->
+Run checkpoint 2026-09-26:
+- Verified local HEAD 0075d395e1f60042de3cbc08ddc6ce0077f01154 on feat/v1-implementation. Commit message: "feat: advance production integration readiness". Working tree after commit has only untracked .transfer-runtime/; do not commit it.
+- Full source gate PASS via task 3a08c828-1235-403e-96ba-471ace636d67: Prettier, ESLint --max-warnings 0, TypeScript, 46/46 tests, Next production build.
+- Google Routes now exposes /api/routes/preview as transient Cache-Control:no-store, non-persistable/non-evidence preview. Durable /api/routes/quote remains fail-closed unless GOOGLE_ROUTES_RETENTION_CONFIRMED=true with separately confirmed retention rights.
+- Migration 005_identity_bootstrap.sql applied successfully to isolated PostgreSQL 18.4 UAT with checksum verification (task e7d35237-29ea-41ff-a53e-2f1c74927047); synthetic seed PASS; post-migration transaction UAT PASS (task 77ee4891-6ede-49f5-a802-dc2f097f2878).
+- Project Master authoritative live snapshot remains 458 rows: Customer/Sales Owner/Status 458/458, Start/End 405/458, Engineer Lead 0/458, Cost Center 0/458. Do not invent the two missing semantics.
+- Source-control push is externally blocked by GitHub auth. One receipt-backed HTTPS push attempt (task 56ec231f-bad5-4be8-aec8-5f4b6bfc0225) failed code 128: "could not read Username for https://github.com". A read-only SSH ls-remote probe (task 918f1d4c-8f97-424f-983e-76b7061346fa) also failed: repository not found/access denied. Do not blind-retry. Restore repo access/credential, then push feat/v1-implementation and verify upstream ahead=0.
+- Existing ESXi UAT/reboot/backup archive evidence remains valid for the previously deployed build. Latest local commit is not yet deployed because source sync/auth and a live ESXi connection are unavailable in this run.
+- Remaining true external gates: authoritative Engineer Lead + Cost Center source; Google Routes API credential and retention rights only if durable Google evidence is required; Easy-ACC employee/workday/OT1-OT4 mappings; sanctioned Smartbiz transaction contract; production Entra identity; S3-compatible private object storage credentials/bucket; public domain/TLS; restore acceptance on production config; explicit cutover approval.
+Next run: resume from this checkpoint, fix/reauthorize GitHub without exposing tokens, push 0075d395..., then continue production infrastructure and latest-commit ESXi UAT.
+<!-- agent-gateway:managed:end:autocontinue-2026-09-26-run -->
+
+<!-- agent-gateway:managed:start:github-mcp-oci -->
+2026-09-26: Configured AGW OCI external MCP `Infinity-GitHub` for GitHub hosted MCP all-toolsets endpoint `https://api.githubcopilot.com/mcp/x/all`. Configuration is valid, transport preflight passes, `readOnly=false`, `writeEnabled=true`, and AGW policy reports `autoApproveMode=full-access`. Integration validation is intentionally not called ready yet because GitHub authentication/consent is missing (`AUTHENTICATION_FAILED`); do not recreate or duplicate the server. Complete GitHub OAuth/PAT authorization, then validate tool discovery + bounded read + write probe before using it for source-control sync.
+<!-- agent-gateway:managed:end:github-mcp-oci -->
+
+<!-- agent-gateway:managed:start:autocontinue-2026-09-26-run2 -->
+Run checkpoint 2026-09-26 continuation:
+- User decision: Project Master does not exist yet and is deferred for this cut. Easy-ACC and Smartbiz are also deferred. They remain visible and fail-closed, but are non-blocking production readiness gates.
+- Production preflight now distinguishes blocking vs deferred gates and supports Entra certificate-mode readiness. Blocking gates include HTTPS origin, Entra identity, private S3-compatible storage, Google Routes credential/retention, receipt-backed restore acceptance, and explicit cutover approval.
+- Production deployment hardening added: runtime image executes as non-root UID/GID 10001; production Compose overlay; Caddy TLS reverse-proxy template; runtime S3 credentials file mount; Google Routes runtime env-file path; production environment template; database backup script; isolated disposable-database restore drill with receipt.
+- Verification receipt: Agent Gateway OCI task 2fcefa3d-33f0-4ddb-8b35-55a1f5002cf2 completed code 0. pnpm verify PASS: formatting, ESLint, TypeScript, 50/50 tests, Next.js 16.3.6 production build.
+- Backup and restore scripts pass bash syntax checks and are executable.
+- Microsoft Graph live read shows current app registration "Infinity Employee System UAT" exists; no production-named Employee System application was present in the 22-application inventory read on this run. Graph connection is read-only, so production identity creation remains external/authorization work.
+- ESXi live UAT could not be refreshed in that run because the direct SSH path did not establish. Existing prior ESXi evidence remained valid only for the prior source/runtime.
+- Source sync remained blocked because the existing GitHub connection was not usable; do not blind-retry prior failed push paths.
+- Production external inputs still required for final live acceptance: production identity, private S3-compatible storage, approved HTTPS ingress, Google Routes production input, restore acceptance, and explicit cutover approval.
+Next sanctioned action: deploy the next verified exact commit through the authorized shared ESXi path and continue production-provider/live UAT.
+<!-- agent-gateway:managed:end:autocontinue-2026-09-26-run2 -->
+
+<!-- agent-gateway:managed:start:autocontinue-2026-09-26-run3 -->
+Run checkpoint 2026-09-26:
+- Exact Work Session remains ws_fcd73c6e4eb54b8fb3563806a7fbca6a; no replacement identity was created.
+- Cloudflare Access SSO source milestone is commit 937ec64fc613992e1e7ef4aa26231749a5392c70.
+- Verification process 0385d55e-f31a-40ba-919f-9baf30ab22d9 exited 0: formatting, lint, typecheck, 53/53 tests, and Next.js production build passed.
+- Reuse the existing healthy Cloudflare tunnel agent-gateway-oci-admin, id 686c8778-7524-4e12-b343-b2d071e21f94; do not create a duplicate.
+- Intended hostname is employee.infinitysolutions.co.th. Live Access application AUD is not yet recorded in runtime config.
+- Main OCI worker cannot directly reach 172.20.11.220:3000; task f3a9dfed-06bc-4c87-a5e5-c142e8d2b2a2 timed out. Use the dedicated Infinity VPN execution plane instead.
+- Shared ESXi path is live: task 7bb52dd9-df6d-4123-8f11-337bcb5af92f connected, and task 34a06aff-b068-49a4-ad89-9e79af8d3a32 confirms INFINITY-EMPLOYEE-PROD01 powered on with VMware Tools and IP 172.20.11.220.
+- Do not publish the Employee hostname until commit 937ec64 is deployed and the origin is verified through the sanctioned VPN path.
+- Source sync still awaits the existing GitHub connection to become usable; do not blind-retry prior failed push paths.
+- Project Master, Easy-ACC, and Smartbiz remain deferred/non-blocking. Remaining blocking gates include private object storage, Google Routes production input, Cloudflare Access app/AUD and route, production restore acceptance, and explicit cutover approval.
+Next sanctioned action: deploy 937ec64 through the existing Infinity VPN/shared ESXi path, verify health/readiness, then publish employee.infinitysolutions.co.th on the existing tunnel, attach Access using the existing Microsoft identity provider, record AUD, and run HTTPS/SSO live UAT.
+<!-- agent-gateway:managed:end:autocontinue-2026-09-26-run3 -->
+
+<!-- agent-gateway:managed:start:autocontinue-run3 -->
+Run checkpoint 2026-09-26:
+- Exact Work Session: ws_fcd73c6e4eb54b8fb3563806a7fbca6a; no replacement session/project/workspace created.
+- Source milestone: 937ec64fc613992e1e7ef4aa26231749a5392c70 adds Cloudflare Access SSO. Full verification passed: 53/53 tests plus Next.js production build.
+- Existing healthy Cloudflare tunnel agent-gateway-oci-admin must be reused; intended hostname is employee.infinitysolutions.co.th. Access application AUD is not yet in runtime config.
+- Main OCI worker cannot reach 172.20.11.220:3000 directly. The shared Infinity execution plane is live; ESXi is connected and INFINITY-EMPLOYEE-PROD01 is powered on with VMware Tools at 172.20.11.220.
+- Do not publish the Employee hostname until exact commit 937ec64 is deployed and origin health/readiness is verified through the dedicated Infinity path.
+- Source sync still awaits the existing GitHub connection. Project Master, Easy-ACC and Smartbiz remain deferred/non-blocking.
+- Remaining blocking gates: private object storage, Google Routes production input, Cloudflare Access app/AUD + route, production restore acceptance, explicit cutover approval.
+Next: deploy 937ec64 through the existing shared ESXi path, verify origin, then finish Access + hostname route and HTTPS/SSO live UAT.
+<!-- agent-gateway:managed:end:autocontinue-run3 -->
+
+<!-- agent-gateway:managed:start:cloudflare-mcp-oci-2026-09-26 -->
+2026-09-26: Preserve the existing Cloudflare provider entry on AGW OCI; do not create a duplicate. Its configuration and transport setup are present, while live provider validation remains incomplete. Continue the existing entry and validate it before using it for production provider changes.
+<!-- agent-gateway:managed:end:cloudflare-mcp-oci-2026-09-26 -->
+
+<!-- agent-gateway:managed:start:cloudflare-access-provider-state -->
+Provider verification 2026-09-26:
+- The Access application list currently has only the existing admin application; the Employee System application is not present.
+- The identity-provider list currently has only the default provider; the Microsoft provider required by the target design is not present.
+- The admin browser is not signed in to the Microsoft admin portal, so the provider-side setup cannot be completed in this non-interactive run.
+- Source code is ready for the external Access assertion to map an active employee and issue the normal application session.
+<!-- agent-gateway:managed:end:cloudflare-access-provider-state -->
+
+<!-- agent-gateway:managed:start:employee-cloudflare-topology-20260927 -->
+## Employee System Cloudflare topology correction — 2026-09-27
+- Authoritative topology: `agw-admin.infinitysolutions.co.th` is served by the existing `agent-gateway-oci-admin` tunnel on AGW OCI. The Employee System is a separate runtime on `INFINITY-EMPLOYEE-PROD01` (Infinity ESXi, `172.20.11.220`) and MUST NOT reuse the AGW admin tunnel.
+- Employee public ingress requires a separate Cloudflare Tunnel/connector colocated with the Employee VM/ESXi network. Target origin is `http://127.0.0.1:3000` on the Employee VM.
+- Shared Infinity execution plane is confirmed live: workspace `customer-infinity-solutions` dispatches to worker `vpn-infinity-solutions`; Infinity-ESXi is READY/live-read-verified; VM is powered on with VMware Tools running at `172.20.11.220`.
+- Direct SSH to the Employee VM using the existing deployment key and known_hosts succeeds as user `ubuntu`. Docker is active. App/db/worker containers are running; app is healthy and `http://127.0.0.1:3000/api/health` returns HTTP 200.
+- `cloudflared` was installed on the Employee VM from Cloudflare's official APT repository. Verified version: `2026.9.3`. Service is intentionally inactive until the correct Infinity-account tunnel token is available.
+- A mistakenly-created `infinity-employee-prod` tunnel made while treating the OCI admin tunnel as reusable was deleted before any connector was installed; do not infer that Employee ingress is complete from that stale attempt.
+- Cloudflare Access app and Microsoft Entra IdP were configured earlier in the current continuation and the IdP live test passed. Public hostname live UAT is still blocked on Tunnel/DNS.
+- Current Cloudflare OCI credential is NOT authorized for the Infinity Cloudflare account. Direct API account listing proves it can access only account `578dbabcdff6ab54e0b59e366bbf1b47` (Hmathh@gmail.com's Account), while the Infinity account used by the configured Access app is `9aaa7e2e9be7382908589bf3373eabd6`. Do not use the current OCI Cloudflare MCP credential for Employee production.
+- AGW Local tunnel-client is currently disconnected (>300 s not seen), so the previously authenticated Infinity Cloudflare browser session is not reachable from Agent Gateway at this checkpoint.
+- Next sanctioned action: restore an authorized Infinity Cloudflare session/credential, recreate dedicated tunnel `infinity-employee-prod`, obtain its token without exposing it in chat, install the connector service on `INFINITY-EMPLOYEE-PROD01`, configure `employee.infinitysolutions.co.th -> http://127.0.0.1:3000`, then run DNS/TLS/Access/Entra live UAT.
+<!-- agent-gateway:managed:end:employee-cloudflare-topology-20260927 -->
+
+<!-- agent-gateway:managed:start:phase2-2026-09-28 -->
+## Phase 2 engineering checkpoint — 2026-09-28
+- Current source branch is `feat/v1-implementation`.
+- Microsoft directory + Outlook runtime milestone is committed and synchronized as `9b5d3e5`. Source now contains 11 ordered migrations; migration 011 adds Microsoft 365 tenant-directory synchronization without automatically granting Employee System access.
+- Phase 2 source milestone is `54cc3e2`: project cost reporting/reconciliation is present; Teams Workflow notifications use validated in-app links, deduplicated reminder fan-out and retry-safe worker delivery; Finance exposes a role-gated Operational Dashboard for queues, exceptions, background jobs and worker freshness.
+- Source regression is green: 83/83 tests pass. The full `pnpm verify` worker execution completed with exit code 0 after its parent dispatch crossed the AGW watchdog deadline; the worker ledger and separate regression receipt reconcile the ambiguous parent state.
+- Phase 2 roadmap items are complete in source. Project Master, Easy-ACC and Smartbiz remain deferred/non-blocking by product decision.
+- Production is not yet approved for live cutover. Remaining blocking gates are private S3-compatible object storage, Google Routes production credential plus contractual retention confirmation for durable evidence, production restore acceptance, dedicated Cloudflare Tunnel/Access hostname+AUD live UAT, and explicit cutover approval.
+<!-- agent-gateway:managed:end:phase2-2026-09-28 -->
+
+<!-- agent-gateway:managed:start:project-master-reactivated-2026-09-30 -->
+## Project Master reactivated — 2026-09-30
+- Product decision supersedes earlier deferral: Project Master is active production scope.
+- Microsoft Lists/SharePoint remains authoritative. Employee System stores a read-only ProjectReference projection plus immutable request snapshots; no local project create/edit workflow is allowed.
+- Latest verified SharePoint snapshot evidence remains 458 projects: Customer, Sales Owner and Status 458/458; Start Date and End Date 405/458; Engineer Lead 0/458; Cost Center 0/458.
+- Engineer Lead and Cost Center are optional source semantics for this cut. Their absence must display as unavailable and must not block synchronization of fields that have authoritative mappings. They must never be inferred or invented.
+- Source implementation now includes searchable Project Master list/detail, Admin Project Integration/readiness and retry-safe queued sync, active-project request selection, hourly worker scheduling, stale/inactive preservation and Finance Project Cost Ledger/detail.
+- Live ESXi Project Master sync is not yet claimed PASS in this checkpoint. It still requires the real tenant/site/list/client credential and verified column mapping to be applied to the ESXi production candidate, followed by a fresh sync job and data/UAT verification.
+<!-- agent-gateway:managed:end:project-master-reactivated-2026-09-30 -->
+
+<!-- agent-gateway:managed:start:autocontinue-2026-09-30-run3 -->
+## Auto-continue checkpoint — 2026-09-30 run 3
+- Exact durable identities were resumed without replacement: workspace e1dd59e3-bce9-489d-be6c-c965e62daf2c, project project_5c01804a850041be9adf8b135b0700f0, Work Session ws_fcd73c6e4eb54b8fb3563806a7fbca6a, resume key infinity-employee-system-autocontinue.
+- Authoritative source branch is feat/v1-implementation at commit 55aecd4fd33ca785923c524cb46aa3c5136f6d75. The working tree is clean and the feature branch is synchronized with origin (ahead 0 / behind 0).
+- Fresh source verification PASS on task 2344804f-7155-4f38-8bb0-85b6028e3901: pnpm verify exit 0, Prettier PASS, ESLint zero warnings, TypeScript PASS, 86/86 tests PASS, Next.js production build PASS. Build includes /admin/integrations/projects, /api/admin/projects/sync, /projects, /projects/[id], /finance/projects and /finance/projects/[id].
+- Project Master is active production scope. Current source already implements the Microsoft Lists/SharePoint read-only adapter, paging, lookup resolution, source IDs/ETags, upsert, inactive preservation, audit, retry-safe queued sync, hourly worker scheduling, Admin integration/readiness, searchable Project Master list/detail, request selection and Finance Project Cost Ledger/detail. Employee System never writes the authoritative SharePoint master.
+- Authoritative normalized SharePoint snapshot at /workspace/project-master-snapshot.json was re-verified: generatedAt 2026-09-25T12:48:13.249Z, tenant 1e85b452-905e-4ec2-805a-39cf81ea8d95, site infinitysolutionservice.sharepoint.com,fc1d5bea-a498-4677-a112-24e355ac9074,d7875f7c-f683-4e00-96a8-a85601bcf2a0, list c1c2ff83-62fd-42e7-a98f-3bf9566e1d77, 458 projects. Customer/Sales Owner/Status are populated 458/458; Start/End 405/458; Engineer Lead and Cost Center 0/458. These two missing semantics remain explicitly unavailable and must not be invented.
+- Live Project Master production sync is not PASS yet. The normalized snapshot does not preserve original SharePoint internal column names / lookup mapping, and the currently exposed read-only MSGraph connector has no generic list-columns/list-items GET operation. Therefore the exact PROJECT_MASTER_COLUMN_MAP still needs authoritative recovery before live sync can be enabled safely. Do not guess internal field names.
+- GitHub authorization is restored: get_me task 794cedbf-9485-4b00-901f-b7030aab8345 authenticated as natchdec. Remote feature commit is 55aecd4 (task a4e40820-e8e4-4fc2-9783-5141ac5d009a); remote main remains 075e2f04dc60befc5ad07d63b090c1a446907516 (task b6651b40-e784-4048-94d1-e209d998a134); no open PR to main (task 3a9baa85-b9e0-4069-b22e-5c407ea4b4a4). A bounded create-PR attempt was blocked by the platform safety boundary before execution, so no PR/merge is claimed.
+- Fresh ESXi live acceptance was attempted only with read-style commands, but Agent Gateway classified the SSH boundary as state-changing and the calls expired under the watchdog. ssh.exec task ad226d83-08d5-4e9b-85c5-31b687bea881 and ssh.connect task 62492caf-8f06-4c81-a01b-db12950392f7 ended review_required / TASK_DEADLINE_EXPIRED; no new deployment or runtime change is claimed. This is treated as transient control-plane evidence and must be reconciled before replay.
+- Existing canonical ingress decision remains: Employee System is a separate ESXi runtime and must use a dedicated Cloudflare tunnel for employee.infinitysolutions.co.th; it must not reuse the AGW admin tunnel. Cloudflare MCP connection is currently healthy and write-enabled, but live tunnel/DNS/Access mutation was not replayed in this run because ESXi runtime reachability and Project Master production mapping are still unresolved.
+- Easy-ACC and Smartbiz remain deferred/non-blocking by current product decision.
+- Next sanctioned actions: (1) recover authoritative SharePoint internal column/lookup mapping through a read-only supported path; (2) configure Project Master credentials/mapping and run a fresh production-candidate sync, validating 458-row data and stale/inactive/audit behavior; (3) reconcile ESXi connectivity, deploy the exact verified commit and run health/readiness plus Project Master and role/UX live UAT; (4) finish dedicated Cloudflare tunnel/DNS/Access and HTTPS/SSO UAT; (5) finish remaining Google Routes, storage/restore and explicit cutover gates; (6) synchronize main through an approved GitHub path without force-push.
+<!-- agent-gateway:managed:end:autocontinue-2026-09-30-run3 -->
+
+<!-- agent-gateway:managed:start:project-master-mapping-2026-09-30 -->
+## Project Master authoritative mapping recovered — 2026-09-30
+- The previously blocking SharePoint internal-column/lookup mapping was recovered live through Microsoft Graph using a POST /v1.0/$batch envelope containing GET-only subrequests. Receipt: task fc5f941a-4227-4e5a-9be7-a651018d6a39 completed with Graph HTTP 200.
+- Authoritative source remains tenant 1e85b452-905e-4ec2-805a-39cf81ea8d95, site infinitysolutionservice.sharepoint.com,fc1d5bea-a498-4677-a112-24e355ac9074,d7875f7c-f683-4e00-96a8-a85601bcf2a0, list c1c2ff83-62fd-42e7-a98f-3bf9566e1d77.
+- Verified Project Master mapping: code=Title; name=ProjectName; customer lookup uses source CustomerLookupId -> list bac6a1d2-84fe-4806-95a1-bcb4b66bdb06 -> CompanyShortName; sales owner lookup uses source SaleNameLookupId -> list 07de377c-c069-40aa-afcf-fc90191b17c6 -> InfinityContactShortName; startDate=ProductStartDate; endDate=ProductEndDate; status=Status.
+- SharePoint Status choices are Lead, Quotation, Bidding, Win and Lose. The existing normalized 458-row snapshot has all 458 rows locally active, so the production mapping keeps all five current source status values selectable and reserves local inactive for source removal/staleness. Do not reinterpret sales-pipeline status as local deletion/inactivation without a new product decision.
+- Engineer Lead and Cost Center still have no authoritative source column and remain intentionally unavailable/blank; they must not be inferred.
+- Additional authoritative upstream PO fields were discovered: PONumber (PO Number), PODate (Customer PO Date), and POCreateDate (PO Create Date). These are source facts only at this checkpoint; they are not silently added to the local ProjectReference contract without an explicit product/data-model decision.
+- Sample validation receipt: task 7c905b34-1746-46ee-8938-e9e6eaf43d3a completed Graph HTTP 200 and confirmed Title project codes such as PO-001-20260115-01, ProjectName, CustomerLookupId, SaleNameLookupId, Status=Win, ProductStartDate/ProductEndDate and PO fields; the Sales lookup list returned InfinityContactShortName values.
+- deploy/production.env.example now carries the verified non-secret tenant/site/list identifiers and exact PROJECT_MASTER_COLUMN_MAP. Client identity/credential remains runtime-only and is not committed.
+- Remaining Project Master production gate is no longer column discovery. It is runtime authentication/configuration on the ESXi production candidate, then a fresh sync and verification of 458-row data, lookup resolution, ETag/Last Sync, stale/inactive behavior and audit evidence.
+<!-- agent-gateway:managed:end:project-master-mapping-2026-09-30 -->
+
+<!-- agent-gateway:managed:start:production-storage-graph-identity-20260930 -->
+## Production storage and shared Microsoft Graph identity — 2026-09-30
+- Supersedes the earlier S3-only production-storage baseline: receipt/document binaries for the current production cut use a private host-backed filesystem on INFINITY-EMPLOYEE-PROD01. The application container uses `/data/documents`; the default ESXi VM host path is `/srv/infinity-employee/documents`.
+- Production backup scope now includes both the PostgreSQL dump and a compressed document archive with SHA-256 receipts. Restore acceptance remains required before cutover.
+- Project Master reuses the existing read-only Microsoft Graph application identity used for Microsoft 365 directory / Outlook synchronization. Microsoft Lists/SharePoint remains authoritative and the Employee System performs no Project Master write-back.
+- Project Master source mapping remains the verified 2026-09-30 mapping. Engineer Lead and Cost Center remain unavailable because no authoritative source columns exist; they are not inferred.
+- Google Routes transient no-store preview is implemented, but durable Google-verified evidence remains a blocking production gate until the production credential and contractual retention rights are both verified.
+- Easy-ACC and Smartbiz production enablement remain explicitly deferred by product decision.
+<!-- agent-gateway:managed:end:production-storage-graph-identity-20260930 -->

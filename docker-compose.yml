@@ -1,0 +1,127 @@
+name: infinity-employee
+
+x-app-env: &app-env
+  APP_ENV: uat
+  APP_ORIGIN: ${APP_ORIGIN:-https://172.20.11.220}
+  AUTH_MODE: ${AUTH_MODE:-entra_oidc}
+  ENTRA_TENANT_ID: ${ENTRA_TENANT_ID:-}
+  ENTRA_CLIENT_ID: ${ENTRA_CLIENT_ID:-}
+  ENTRA_CLIENT_AUTH_MODE: ${ENTRA_CLIENT_AUTH_MODE:-secret}
+  ENTRA_CLIENT_AUTH: ${ENTRA_CLIENT_AUTH:-}
+  ENTRA_CLIENT_PRIVATE_KEY_PATH: ${ENTRA_CLIENT_PRIVATE_KEY_PATH:-}
+  ENTRA_CLIENT_CERT_PATH: ${ENTRA_CLIENT_CERT_PATH:-}
+  OUTLOOK_CALENDAR_SYNC_ENABLED: ${OUTLOOK_CALENDAR_SYNC_ENABLED:-false}
+  OUTLOOK_CALENDAR_SYNC_INTERVAL_MINUTES: ${OUTLOOK_CALENDAR_SYNC_INTERVAL_MINUTES:-60}
+  OUTLOOK_CALENDAR_TENANT_ID: ${OUTLOOK_CALENDAR_TENANT_ID:-}
+  OUTLOOK_CALENDAR_CLIENT_ID: ${OUTLOOK_CALENDAR_CLIENT_ID:-}
+  OUTLOOK_CALENDAR_CLIENT_AUTH_MODE: ${OUTLOOK_CALENDAR_CLIENT_AUTH_MODE:-secret}
+  OUTLOOK_CALENDAR_CLIENT_AUTH: ${OUTLOOK_CALENDAR_CLIENT_AUTH:-}
+  OUTLOOK_CALENDAR_CLIENT_PRIVATE_KEY_PATH: ${OUTLOOK_CALENDAR_CLIENT_PRIVATE_KEY_PATH:-}
+  OUTLOOK_CALENDAR_CLIENT_CERT_PATH: ${OUTLOOK_CALENDAR_CLIENT_CERT_PATH:-}
+  CLOUDFLARE_ACCESS_TEAM_DOMAIN: ${CLOUDFLARE_ACCESS_TEAM_DOMAIN:-}
+  CLOUDFLARE_ACCESS_AUD: ${CLOUDFLARE_ACCESS_AUD:-}
+  EMAIL_NOTIFICATIONS_ENABLED: ${EMAIL_NOTIFICATIONS_ENABLED:-false}
+  EMAIL_NOTIFICATION_SENDER: ${EMAIL_NOTIFICATION_SENDER:-hr@infinitysolutions.co.th}
+  PROJECT_MASTER_TENANT_ID: ${PROJECT_MASTER_TENANT_ID:-}
+  PROJECT_MASTER_CLIENT_ID: ${PROJECT_MASTER_CLIENT_ID:-}
+  PROJECT_MASTER_CLIENT_AUTH: ${PROJECT_MASTER_CLIENT_AUTH:-}
+  PROJECT_MASTER_SITE_ID: ${PROJECT_MASTER_SITE_ID:-}
+  PROJECT_MASTER_LIST_ID: ${PROJECT_MASTER_LIST_ID:-}
+  PROJECT_MASTER_COLUMN_MAP: ${PROJECT_MASTER_COLUMN_MAP:-}
+  DATABASE_URL: 'postgresql://infinity_app:${DB_APP_PASSWORD:?DB_APP_PASSWORD is required}@db:5432/infinity_employee'
+  STORAGE_DRIVER: filesystem
+  STORAGE_ROOT: /data/documents
+
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: infinity_employee
+      POSTGRES_USER: infinity_owner
+      POSTGRES_PASSWORD: ${DB_OWNER_PASSWORD:?DB_OWNER_PASSWORD is required}
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD:?DB_APP_PASSWORD is required}
+    volumes:
+      - employee_db:/var/lib/postgresql
+      - ./deploy/postgres-init.sh:/docker-entrypoint-initdb.d/10-app-role.sh:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U infinity_owner -d infinity_employee']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    networks: [backend]
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: 'no'
+    environment:
+      <<: *app-env
+      DATABASE_URL: 'postgresql://infinity_app@127.0.0.1:5432/infinity_employee'
+      MIGRATION_DATABASE_URL: 'postgresql://infinity_owner@127.0.0.1:5432/infinity_employee'
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ['pnpm', 'db:migrate']
+    network_mode: 'service:db'
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - '${APP_BIND_IP:-0.0.0.0}:${APP_PORT:-3000}:3000'
+    volumes:
+      - employee_documents:/data/documents
+      - /etc/ssl/private/ssl-cert-snakeoil.key:/run/secrets/entra/client.key:ro
+      - /etc/ssl/certs/ssl-cert-snakeoil.pem:/run/secrets/entra/client.crt:ro
+      - ./secrets/outlook/calendar-sync.key.pem:/run/secrets/outlook/client.key:ro
+      - ./secrets/outlook/calendar-sync.crt.pem:/run/secrets/outlook/client.crt:ro
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    networks: [frontend, backend]
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    command: ['pnpm', 'worker']
+    volumes:
+      - employee_documents:/data/documents
+      - ./secrets/outlook/calendar-sync.key.pem:/run/secrets/outlook/client.key:ro
+      - ./secrets/outlook/calendar-sync.crt.pem:/run/secrets/outlook/client.crt:ro
+    networks: [frontend, backend]
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+    internal: true
+
+volumes:
+  employee_db:
+  employee_documents:

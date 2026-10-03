@@ -1,7 +1,7 @@
 # Infinity Employee System
 
 ## Status
-Blueprint V1 approved for UX/UI design. Implementation has not started.
+Core transactional V1 and the installable/offline-safe PWA are usable and verified in isolated Agent Gateway OCI UAT. Production identity, external provider formats/credentials, live Docker deployment on the Infinity ESXi environment, and production cutover remain separate acceptance gates.
 
 ## Objective
 Build a mobile-first employee self-service system for Infinity Solution Service covering leave, OT, expenses, business travel, cash advances, approvals, finance verification, payroll handoff, accounting handoff, policy management, document evidence, and audit.
@@ -28,10 +28,10 @@ Build a mobile-first employee self-service system for Infinity Solution Service 
 - Original receipt tracking after payment.
 - Payroll export adapter for Easy-ACC.
 - Accounting export adapter for Smartbiz.
-- Microsoft Lists / SharePoint Project Master integration.
+- Microsoft Lists / SharePoint Project Master integration as an active production feature: read-only sync, searchable list/detail, request selection, Admin sync/readiness and Finance project-cost drill-down.
 - Mobile-first PWA.
 - Audit trail and policy versioning.
-- Docker-first deployment on OCI.
+- Docker Compose deployment on a dedicated Linux VM hosted on Infinity ESXi. Agent Gateway OCI remains a separate automation/VPN platform and is not the Employee System production application host.
 
 ## Out of Scope for Initial V1
 - LINE OA as primary UI.
@@ -49,3 +49,13 @@ Build a mobile-first employee self-service system for Infinity Solution Service 
 - Finance can close payment and payroll batches with traceable audit evidence.
 - Policies can change without source-code edits.
 - Every material state change is auditable.
+- Project Master remains authoritative in Microsoft Lists/SharePoint; Employee System exposes source identity/freshness and never invents missing Engineer Lead or Cost Center values.
+
+<!-- agent-gateway:managed:start:production-scope-20260930 -->
+## Production Scope Clarification — 2026-09-30
+- Project Master is active V1 production scope and uses Microsoft Lists/SharePoint as the authoritative read-only source.
+- Production identity is Cloudflare Access backed by Microsoft Entra. Directory, Outlook Calendar and Project Master synchronization use the approved read-only Microsoft Graph application identity.
+- Receipt/document binaries use private ESXi-local host-backed storage for this cut; S3 is not required.
+- Easy-ACC and Smartbiz production enablement remain deferred. Their existing adapters stay fail-closed until a later explicit decision.
+- Final acceptance still requires exact-commit ESXi deployment, fresh background sync validation, role/security UAT, backup/restore acceptance, domain/TLS/Access UAT and explicit cutover approval.
+<!-- agent-gateway:managed:end:production-scope-20260930 -->
