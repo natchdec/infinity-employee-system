@@ -99,7 +99,7 @@ export async function createGoogleRoutePreview(actor: Actor, raw: unknown) {
     usage: 'transient_preview' as const,
     persistable: false as const,
     canSubmitAsProviderEvidence: false as const,
-    attribution: 'Google',
+    attribution: 'Google Maps',
     ...result,
   };
 }
