@@ -29,11 +29,13 @@ function formatSatang(value: string): string {
 export function PaymentBatchControls({
   csrf,
   actorId,
+  canPay,
   obligations,
   batches,
 }: {
   csrf: string;
   actorId: string;
+  canPay: boolean;
   obligations: Obligation[];
   batches: Batch[];
 }) {
@@ -80,6 +82,10 @@ export function PaymentBatchControls({
   }
 
   async function pay(batch: Batch) {
+    if (!canPay) {
+      setError('ต้องมีสิทธิ์ Finance Payer จึงจะยืนยันการจ่ายเงินได้');
+      return;
+    }
     const reference = window.prompt('เลขอ้างอิงการจ่ายภายนอก เช่น KBank / Petty Cash');
     if (!reference?.trim()) return;
     const paidDate = window.prompt(
@@ -221,7 +227,10 @@ export function PaymentBatchControls({
         <div className="section-header">
           <div>
             <h2>Payment Batches</h2>
-            <p>การกด Paid คือการบันทึกธุรกรรมที่จ่ายภายนอกแล้ว ไม่ได้สั่งธนาคาร</p>
+            <p>
+              Finance จัดชุดจ่ายได้ แต่การยืนยัน Paid ต้องใช้สิทธิ์ Finance Payer
+              และยังคงห้ามจ่ายรายการของตนเอง
+            </p>
           </div>
         </div>
         {batches.length ? (
@@ -256,10 +265,11 @@ export function PaymentBatchControls({
                         <div className="action-row">
                           <button
                             className="button button-primary"
-                            disabled={Boolean(busy)}
+                            disabled={Boolean(busy) || !canPay}
                             onClick={() => void pay(batch)}
+                            title={canPay ? undefined : 'ต้องมีสิทธิ์ Finance Payer'}
                           >
-                            บันทึก Paid
+                            ยืนยัน Paid
                           </button>
                           <button
                             className="button button-secondary"

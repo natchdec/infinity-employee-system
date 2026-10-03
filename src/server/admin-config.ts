@@ -13,14 +13,14 @@ import {
 import { approvalPolicySchema, dateSchema } from '../domain/policy';
 import { audit, command, db, safeJson, type Transaction } from './db';
 
-const roleOrder: Role[] = ['employee', 'head', 'finance', 'admin'];
-const roleSchema = z.enum(['employee', 'head', 'finance', 'admin']);
+const roleOrder: Role[] = ['employee', 'head', 'finance', 'finance_payer', 'admin'];
+const roleSchema = z.enum(['employee', 'head', 'finance', 'finance_payer', 'admin']);
 
 export const employeeAdminSchema = z
   .object({
     expectedRevision: z.number().int().min(1),
     departmentId: z.string().uuid().nullable(),
-    roles: z.array(roleSchema).min(1).max(4),
+    roles: z.array(roleSchema).min(1).max(5),
     isHeadOwner: z.boolean(),
     active: z.boolean(),
   })
@@ -96,6 +96,7 @@ export function normalizeAdminRoles(input: readonly Role[], isHeadOwner: boolean
   const values = new Set<Role>(input);
   values.add('employee');
   if (isHeadOwner) values.add('head');
+  if (values.has('finance_payer')) values.add('finance');
   return roleOrder.filter((role) => values.has(role));
 }
 
@@ -136,8 +137,8 @@ export function approvalRuleRows(): ApprovalRuleRow[] {
       kind: 'expense',
       label: 'ค่าใช้จ่าย',
       manager: 'Line Head',
-      finance: 'Finance Verify',
-      destination: 'Separate Payment',
+      finance: 'Finance Verify → Finance Payer',
+      destination: 'Separate Payment / Payment Batch',
     },
     {
       kind: 'trip',
@@ -150,8 +151,8 @@ export function approvalRuleRows(): ApprovalRuleRow[] {
       kind: 'advance',
       label: 'เงินทดรอง',
       manager: 'Line Head',
-      finance: 'Finance Verify',
-      destination: 'Separate Payment',
+      finance: 'Finance Verify → Finance Payer',
+      destination: 'Separate Payment / Payment Batch',
     },
   ];
 }

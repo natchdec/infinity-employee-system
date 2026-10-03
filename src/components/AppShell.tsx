@@ -12,6 +12,9 @@ interface Props {
 
 function actorRoleLabel(actor: Actor) {
   if (actor.isHeadOwner) return 'Owner / Head';
+  if (actor.roles.includes('finance_payer') && actor.roles.includes('admin'))
+    return 'Finance Payer / Admin';
+  if (actor.roles.includes('finance_payer')) return 'Finance Payer';
   if (actor.roles.includes('finance') && actor.roles.includes('admin')) return 'Finance / Admin';
   if (actor.roles.includes('finance')) return 'Finance';
   if (actor.roles.includes('admin')) return 'Admin';

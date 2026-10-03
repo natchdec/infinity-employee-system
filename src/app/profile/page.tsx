@@ -12,6 +12,7 @@ const roleLabel = {
   employee: 'Employee',
   head: 'Head',
   finance: 'Finance',
+  finance_payer: 'Finance Payer',
   admin: 'Admin',
 } as const;
 

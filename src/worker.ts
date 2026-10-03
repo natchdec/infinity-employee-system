@@ -1,6 +1,7 @@
 import { hostname } from 'node:os';
 import { z } from 'zod';
 import { closeDb, db, safeJson } from './server/db';
+import { sendEmployeeEmailNotification } from './server/integrations/email-notification';
 import { sendTeamsWorkflowNotice } from './server/integrations/teams-workflow';
 import { log } from './server/logging';
 import {
@@ -165,6 +166,9 @@ async function runOne(): Promise<boolean> {
           where id = ${claimed.id} and locked_by = ${workerId}
         `;
       });
+    } else if (claimed.kind === 'email_notification') {
+      const result = await sendEmployeeEmailNotification(claimed.payload);
+      await markJobSucceeded(String(claimed.id), result);
     } else if (claimed.kind === 'teams_workflow_notification') {
       const value = teamsNoticeSchema.parse(claimed.payload);
       const result = await sendTeamsWorkflowNotice(value);

@@ -1,6 +1,7 @@
-import { invariant, type Json } from '../domain/core';
+import { invariant } from '../domain/core';
 import type { RequestRecord } from '../domain/requests';
-import { enqueue, type Transaction } from './db';
+import type { Transaction } from './db';
+import { enqueueEmployeeNotice, enqueueRoleNotices } from './notification-queue';
 
 export type CommandResult = {
   id: string;
@@ -123,14 +124,46 @@ export async function notifyHead(
   headId: string | null,
 ): Promise<void> {
   if (!headId || request.workflow_state !== 'pending_head') return;
-  await enqueue(
+  await enqueueEmployeeNotice(tx, `${request.id}:${request.submission_round}:head_pending`, {
+    employeeId: headId,
+    title: `มีคำขอรออนุมัติ ${request.reference}`,
+    detail: `${request.title} · กรุณาตรวจสอบและเลือก Approve / Return / Reject`,
+    href: `/requests/${request.id}`,
+  });
+}
+
+export async function notifyFinancePending(tx: Transaction, request: RequestRecord): Promise<void> {
+  if (!financialKind(request.kind)) return;
+  if (request.workflow_state !== 'approved' || request.finance_state !== 'pending') return;
+  await enqueueRoleNotices(
     tx,
-    'in_app_notification',
-    `${request.id}:${request.submission_round}:head_pending`,
+    'finance',
+    `${request.id}:${request.submission_round}:finance_pending`,
     {
-      employeeId: headId,
-      title: `มีคำขอรออนุมัติ ${request.reference}`,
-      href: `/approvals/${request.id}`,
-    } satisfies Json,
+      title: `มีรายการรอ Finance Verify ${request.reference}`,
+      detail: `${request.title} · ตรวจสอบเอกสารและยอดก่อนส่งต่อขั้นจ่ายเงิน`,
+      href: `/requests/${request.id}`,
+    },
+    [request.employee_id],
+  );
+}
+
+export async function notifyFinancePayers(
+  tx: Transaction,
+  request: RequestRecord,
+  excludeEmployeeIds: readonly string[] = [],
+): Promise<void> {
+  if (!financialKind(request.kind)) return;
+  if (request.finance_state !== 'verified' || request.payment_state !== 'unpaid') return;
+  await enqueueRoleNotices(
+    tx,
+    'finance_payer',
+    `${request.id}:${request.submission_round}:payment_pending`,
+    {
+      title: `มีรายการพร้อมจ่าย ${request.reference}`,
+      detail: `${request.title} · Finance Verify แล้ว กรุณาจัดชุดจ่ายและยืนยัน Paid`,
+      href: '/finance/payments',
+    },
+    [request.employee_id, ...excludeEmployeeIds],
   );
 }

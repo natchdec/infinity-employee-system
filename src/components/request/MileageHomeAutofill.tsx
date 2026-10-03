@@ -16,6 +16,7 @@ export function MileageHomeAutofill({ homeAddress }: { homeAddress: string | nul
       );
       if (input && input.value.trim() === '') {
         input.value = configuredHomeAddress ?? '';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
       }
     }
 

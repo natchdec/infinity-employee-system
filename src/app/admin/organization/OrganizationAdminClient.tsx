@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type FormEvent } from 'react';
 
-type Role = 'employee' | 'head' | 'finance' | 'admin';
+type Role = 'employee' | 'head' | 'finance' | 'finance_payer' | 'admin';
 
 interface EmployeeRow {
   id: string;

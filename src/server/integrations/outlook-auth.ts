@@ -98,16 +98,22 @@ async function graphAccessToken(): Promise<string> {
   return tokenCache.accessToken;
 }
 
-export async function outlookGraphJson(url: string): Promise<unknown> {
+export async function outlookGraphJson(
+  url: string,
+  init: { method?: 'GET' | 'POST'; body?: unknown; expectJson?: boolean } = {},
+): Promise<unknown> {
   const target = graphUrl(url);
   let response: Response;
   try {
     const accessToken = await graphAccessToken();
     response = await fetch(target, {
+      method: init.method ?? 'GET',
       headers: {
         Authorization: 'Bearer ' + accessToken,
         Accept: 'application/json',
+        ...(init.body === undefined ? {} : { 'Content-Type': 'application/json' }),
       },
+      body: init.body === undefined ? undefined : JSON.stringify(init.body),
       cache: 'no-store',
     });
   } catch {
@@ -139,6 +145,7 @@ export async function outlookGraphJson(url: string): Promise<unknown> {
   }
 
   try {
+    if (init.expectJson === false) return null;
     return await response.json();
   } catch {
     throw new DomainError(
@@ -147,6 +154,10 @@ export async function outlookGraphJson(url: string): Promise<unknown> {
       503,
     );
   }
+}
+
+export async function outlookGraphPostJson(url: string, body: unknown): Promise<void> {
+  await outlookGraphJson(url, { method: 'POST', body, expectJson: false });
 }
 
 export function resetOutlookGraphAuthForTests(): void {

@@ -9,6 +9,7 @@ import { prepareRequest } from './prepare-request';
 import { assertPeriodAcceptsNewRequest } from './monthly-operations-service';
 import {
   financeAfterManager,
+  notifyFinancePending,
   notifyHead,
   resultOf,
   requestForUpdate,
@@ -288,6 +289,7 @@ export async function submitNewRequest(
     await notifyHead(tx, request, routing.assignedHeadId);
     if (routing.state === 'approved') {
       await approvedEffects(tx, request, actor, now, correlationId);
+      await notifyFinancePending(tx, request);
     }
     return resultOf(request) as unknown as Json;
   }) as Promise<CommandResult>;
@@ -397,6 +399,7 @@ export async function resubmitRequest(
     await notifyHead(tx, updated, routing.assignedHeadId);
     if (routing.state === 'approved') {
       await approvedEffects(tx, updated, actor, now, correlationId);
+      await notifyFinancePending(tx, updated);
     }
     return resultOf(updated) as unknown as Json;
   }) as Promise<CommandResult>;

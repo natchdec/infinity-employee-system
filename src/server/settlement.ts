@@ -10,7 +10,8 @@ import {
   type Actor,
   type Json,
 } from '../domain/core';
-import { audit, command, enqueue, safeJson } from './db';
+import { audit, command, safeJson } from './db';
+import { enqueueEmployeeNotice, enqueueRoleNotices } from './notification-queue';
 
 const verifySchema = z.object({ expectedRevision: z.number().int().min(1) }).strict();
 const refundSchema = z
@@ -158,6 +159,17 @@ export async function submitSettlement(
       safeJson(calc),
       correlationId,
     );
+    await enqueueRoleNotices(
+      tx,
+      'finance',
+      `${id}:finance_pending`,
+      {
+        title: 'มี Trip Settlement รอ Finance Verify',
+        detail: `Trip Settlement ของ ${tripId} ถูกส่งแล้ว กรุณาตรวจยอดจริงและเงินทดรอง`,
+        href: `/trips/${tripId}`,
+      },
+      [actor.id],
+    );
     return result(inserted as Record<string, unknown>) as unknown as Json;
   }) as unknown as Promise<SettlementResult>;
 }
@@ -228,7 +240,7 @@ export async function verifySettlement(
         safeJson({ state: nextState, netSatang: String(row.net_satang) }),
         correlationId,
       );
-      await enqueue(tx, 'in_app_notification', `${settlementId}:verified:${revision}`, {
+      await enqueueEmployeeNotice(tx, `${settlementId}:verified:${revision}`, {
         employeeId: row.owner_id,
         title:
           nextState === 'top_up_due'
@@ -236,8 +248,27 @@ export async function verifySettlement(
             : nextState === 'refund_due'
               ? 'มีเงินทดรองส่วนเกินที่ต้องคืน'
               : 'เคลียร์ค่าใช้จ่ายเรียบร้อย',
+        detail:
+          nextState === 'top_up_due'
+            ? 'Finance Verify แล้ว และส่วนต่างถูกส่งเข้าสู่คิวจ่ายเงิน'
+            : nextState === 'refund_due'
+              ? 'Finance Verify แล้ว กรุณาดำเนินการคืนเงินทดรองส่วนเกิน'
+              : 'Finance Verify แล้ว และ Trip Settlement ปิดเรียบร้อย',
         href: `/trips/${row.trip_id}`,
       });
+      if (nextState === 'top_up_due') {
+        await enqueueRoleNotices(
+          tx,
+          'finance_payer',
+          `${settlementId}:payment_pending:${revision}`,
+          {
+            title: 'มี Trip Settlement พร้อมจ่าย',
+            detail: 'Finance Verify แล้ว กรุณาจัดชุดจ่ายและยืนยัน Paid',
+            href: '/finance/payments',
+          },
+          [String(row.owner_id), actor.id],
+        );
+      }
       return result({ ...row, revision, state: nextState }) as unknown as Json;
     },
   ) as unknown as Promise<SettlementResult>;
@@ -288,9 +319,10 @@ export async function confirmSettlementRefund(
         safeJson({ externalReference: input.externalReference }),
         correlationId,
       );
-      await enqueue(tx, 'in_app_notification', `${settlementId}:refund:${revision}`, {
+      await enqueueEmployeeNotice(tx, `${settlementId}:refund:${revision}`, {
         employeeId: row.owner_id,
         title: 'บันทึกรับเงินคืนและปิดการเคลียร์ค่าใช้จ่ายแล้ว',
+        detail: 'Finance ยืนยันการรับเงินคืนและปิด Trip Settlement แล้ว',
         href: `/trips/${row.trip_id}`,
       });
       return result({ ...row, revision, state: 'settled' }) as unknown as Json;

@@ -17,7 +17,7 @@ export default async function FinanceProjectDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const actor = await requireActor();
-  requirePageRole(actor, 'finance');
+  requirePageRole(actor, 'finance', 'admin');
   const { id } = await params;
   const detail = await financeProjectProfitDetail(id);
   if (!detail) notFound();

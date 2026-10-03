@@ -119,7 +119,7 @@ export function csv(rows: readonly (readonly unknown[])[]): string {
   return '\uFEFF' + rows.map((row) => row.map(safeCsvCell).join(',')).join('\r\n') + '\r\n';
 }
 
-export type Role = 'employee' | 'head' | 'finance' | 'admin';
+export type Role = 'employee' | 'head' | 'finance' | 'finance_payer' | 'admin';
 export interface Actor {
   id: string;
   displayName: string;

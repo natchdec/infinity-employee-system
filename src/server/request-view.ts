@@ -38,6 +38,7 @@ export interface RequestFormOptions {
     settlementDueDays: number;
   };
   homeAddress: string | null;
+  commuteDistanceMetres: number | null;
   approvedTrips: {
     id: string;
     reference: string;
@@ -82,9 +83,19 @@ export async function requestFormOptions(actor: Actor): Promise<RequestFormOptio
     [process.env.APP_ENV === 'production'],
   );
   const [profile] = await db()`
-    select home_address
-    from employees
-    where id=${actor.id}
+    select
+      e.home_address,
+      commute.distance_metres
+    from employees e
+    left join lateral (
+      select distance_metres
+      from commute_versions
+      where employee_id=e.id
+        and effective_from<=${date}::date
+      order by effective_from desc
+      limit 1
+    ) commute on true
+    where e.id=${actor.id}
   `;
   const trips = await db()`
     select r.id,r.reference,r.title,r.business_date::text
@@ -144,6 +155,10 @@ export async function requestFormOptions(actor: Actor): Promise<RequestFormOptio
       settlementDueDays: perDiem.body.settlementDueDays,
     },
     homeAddress: profile?.home_address ? String(profile.home_address) : null,
+    commuteDistanceMetres:
+      profile?.distance_metres === null || profile?.distance_metres === undefined
+        ? null
+        : Number(profile.distance_metres),
     approvedTrips: trips.map((row) => ({
       id: row.id,
       reference: row.reference,

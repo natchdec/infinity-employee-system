@@ -4,7 +4,7 @@ import { db } from './db';
 import { invariant, type Actor, type Role } from '../domain/core';
 
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
-const roles = new Set<Role>(['employee', 'head', 'finance', 'admin']);
+const roles = new Set<Role>(['employee', 'head', 'finance', 'finance_payer', 'admin']);
 
 export function digestOpaque(value: string): string {
   return createHash('sha256').update(value).digest('hex');

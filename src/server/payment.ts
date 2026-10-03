@@ -9,7 +9,8 @@ import {
   type Json,
 } from '../domain/core';
 import { bangkokDate } from '../domain/calendar';
-import { audit, command, enqueue, safeJson } from './db';
+import { audit, command, safeJson } from './db';
+import { enqueueEmployeeNotice } from './notification-queue';
 
 const createBatchSchema = z
   .object({
@@ -138,7 +139,7 @@ export async function markPaymentBatchPaid(
   now = new Date(),
   correlationId = randomUUID(),
 ): Promise<PaymentBatchResult> {
-  requireRole(actor, 'finance');
+  requireRole(actor, 'finance_payer');
   const input = payBatchSchema.parse(rawInput);
 
   return command(
@@ -163,7 +164,7 @@ export async function markPaymentBatchPaid(
       );
 
       const obligations = await tx`
-      select o.id,o.owner_id,o.request_id,o.source_kind,o.source_id,o.state,o.amount_satang::text
+      select o.id,o.owner_id,o.request_id,o.source_kind,o.source_id,o.state,o.amount_satang::text,o.verified_by
       from payment_items i
       join payable_obligations o on o.id=i.obligation_id
       where i.batch_id=${batchId} and i.active
@@ -172,6 +173,12 @@ export async function markPaymentBatchPaid(
       invariant(obligations.length > 0, 'EMPTY_PAYMENT_BATCH', 'ไม่พบรายการในชุดจ่าย', 409);
       for (const item of obligations) {
         requireIndependentFinance(actor, item.owner_id);
+        invariant(
+          !item.verified_by || String(item.verified_by) !== actor.id,
+          'PAYMENT_VERIFIER_CONFLICT',
+          'ผู้ยืนยัน Paid ต้องเป็นคนละคนกับ Finance Verifier ของรายการ',
+          403,
+        );
         invariant(
           item.state === 'allocated',
           'PAYABLE_NOT_ALLOCATED',
@@ -207,9 +214,10 @@ export async function markPaymentBatchPaid(
           where id=${item.source_id} and state='top_up_due'
         `;
         }
-        await enqueue(tx, 'in_app_notification', `${batchId}:${item.id}:paid`, {
+        await enqueueEmployeeNotice(tx, `${batchId}:${item.id}:paid`, {
           employeeId: item.owner_id,
           title: 'บันทึกการจ่ายเงินแล้ว',
+          detail: `Payment Batch ${batch.reference} ถูกยืนยัน Paid แล้ว`,
           href: item.request_id ? `/requests/${item.request_id}` : '/trips',
         });
       }

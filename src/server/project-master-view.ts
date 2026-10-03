@@ -16,6 +16,12 @@ export interface ProjectMasterLine {
   poNumber: string | null;
   poDate: string | null;
   poCreateDate: string | null;
+  revenueSatang: string;
+  saleCostSatang: string;
+  engineerCostSatang: string;
+  entertainCostSatang: string;
+  hiddenCostSatang: string;
+  saleCommissionSatang: string;
   sourceEtag: string | null;
   lastSyncedAt: Date;
 }
@@ -34,6 +40,13 @@ export interface ProjectMasterRow {
   poNumber: string | null;
   poDate: string | null;
   poCreateDate: string | null;
+  revenueSatang: string;
+  saleCostSatang: string;
+  engineerCostSatang: string;
+  entertainCostSatang: string;
+  hiddenCostSatang: string;
+  saleCommissionSatang: string;
+  plannedCostSatang: string;
   lineCount: number;
   source: string;
   sourceEtag: string | null;
@@ -72,6 +85,13 @@ function mapProject(row: Record<string, unknown>): ProjectMasterRow {
     poNumber: row.po_number ? String(row.po_number) : null,
     poDate: row.po_date ? String(row.po_date) : null,
     poCreateDate: row.po_create_date ? String(row.po_create_date) : null,
+    revenueSatang: String(row.revenue_satang ?? '0'),
+    saleCostSatang: String(row.sale_cost_satang ?? '0'),
+    engineerCostSatang: String(row.engineer_cost_satang ?? '0'),
+    entertainCostSatang: String(row.entertain_cost_satang ?? '0'),
+    hiddenCostSatang: String(row.hidden_cost_satang ?? '0'),
+    saleCommissionSatang: String(row.sale_commission_satang ?? '0'),
+    plannedCostSatang: String(row.planned_cost_satang ?? '0'),
     lineCount: Number(row.line_count ?? 1),
     source: String(row.source),
     sourceEtag: row.source_etag ? String(row.source_etag) : null,
@@ -95,6 +115,12 @@ function mapLine(row: Record<string, unknown>): ProjectMasterLine {
     poNumber: row.po_number ? String(row.po_number) : null,
     poDate: row.po_date ? String(row.po_date) : null,
     poCreateDate: row.po_create_date ? String(row.po_create_date) : null,
+    revenueSatang: String(row.revenue_satang ?? '0'),
+    saleCostSatang: String(row.sale_cost_satang ?? '0'),
+    engineerCostSatang: String(row.engineer_cost_satang ?? '0'),
+    entertainCostSatang: String(row.entertain_cost_satang ?? '0'),
+    hiddenCostSatang: String(row.hidden_cost_satang ?? '0'),
+    saleCommissionSatang: String(row.sale_commission_satang ?? '0'),
     sourceEtag: row.source_etag ? String(row.source_etag) : null,
     lastSyncedAt: new Date(row.last_synced_at as Date),
   };
@@ -151,6 +177,19 @@ export async function listProjectMaster(
         (array_agg(po_number order by source_item_id,id))[1] as po_number,
         min(po_date)::text as po_date,
         min(po_create_date)::text as po_create_date,
+        coalesce(sum(revenue_satang),0)::text as revenue_satang,
+        coalesce(sum(sale_cost_satang),0)::text as sale_cost_satang,
+        coalesce(sum(engineer_cost_satang),0)::text as engineer_cost_satang,
+        coalesce(sum(entertain_cost_satang),0)::text as entertain_cost_satang,
+        coalesce(sum(hidden_cost_satang),0)::text as hidden_cost_satang,
+        coalesce(sum(sale_commission_satang),0)::text as sale_commission_satang,
+        (
+          coalesce(sum(sale_cost_satang),0)+
+          coalesce(sum(engineer_cost_satang),0)+
+          coalesce(sum(entertain_cost_satang),0)+
+          coalesce(sum(hidden_cost_satang),0)+
+          coalesce(sum(sale_commission_satang),0)
+        )::text as planned_cost_satang,
         count(*)::integer as line_count,
         'microsoft_lists'::text as source,
         (array_agg(source_etag order by source_item_id,id))[1] as source_etag,
@@ -188,7 +227,10 @@ export async function projectMasterDetail(id: string): Promise<ProjectMasterDeta
   const lines = await db().unsafe(
     `
       select id,source_item_id,code,name,customer,sales_owner,engineer_lead,start_date::text,end_date::text,
-        status,cost_center,po_number,po_date::text,po_create_date::text,source_etag,last_synced_at
+        status,cost_center,po_number,po_date::text,po_create_date::text,
+        revenue_satang::text,sale_cost_satang::text,engineer_cost_satang::text,
+        entertain_cost_satang::text,hidden_cost_satang::text,sale_commission_satang::text,
+        source_etag,last_synced_at
       from project_references
       where source='microsoft_lists' and ${groupKeySql}=$1
       order by source_item_id,id
@@ -220,6 +262,32 @@ export async function projectMasterDetail(id: string): Promise<ProjectMasterDeta
     poNumber: mapped.find((line) => line.poNumber)?.poNumber ?? null,
     poDate: mapped.find((line) => line.poDate)?.poDate ?? null,
     poCreateDate: mapped.find((line) => line.poCreateDate)?.poCreateDate ?? null,
+    revenueSatang: mapped.reduce((sum, line) => sum + BigInt(line.revenueSatang), 0n).toString(),
+    saleCostSatang: mapped.reduce((sum, line) => sum + BigInt(line.saleCostSatang), 0n).toString(),
+    engineerCostSatang: mapped
+      .reduce((sum, line) => sum + BigInt(line.engineerCostSatang), 0n)
+      .toString(),
+    entertainCostSatang: mapped
+      .reduce((sum, line) => sum + BigInt(line.entertainCostSatang), 0n)
+      .toString(),
+    hiddenCostSatang: mapped
+      .reduce((sum, line) => sum + BigInt(line.hiddenCostSatang), 0n)
+      .toString(),
+    saleCommissionSatang: mapped
+      .reduce((sum, line) => sum + BigInt(line.saleCommissionSatang), 0n)
+      .toString(),
+    plannedCostSatang: mapped
+      .reduce(
+        (sum, line) =>
+          sum +
+          BigInt(line.saleCostSatang) +
+          BigInt(line.engineerCostSatang) +
+          BigInt(line.entertainCostSatang) +
+          BigInt(line.hiddenCostSatang) +
+          BigInt(line.saleCommissionSatang),
+        0n,
+      )
+      .toString(),
     lineCount: mapped.length,
     source: 'microsoft_lists',
     sourceEtag: first.sourceEtag,

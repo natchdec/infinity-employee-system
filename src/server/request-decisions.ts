@@ -8,13 +8,16 @@ import {
   type Json,
 } from '../domain/core';
 import { commandSchema, type RequestRecord } from '../domain/requests';
-import { audit, command, enqueue, safeJson } from './db';
+import { audit, command, safeJson } from './db';
+import { enqueueEmployeeNotice } from './notification-queue';
 import { approvedEffects, voidQueuedPayroll } from './payroll';
 import { releaseLeave } from './persist-request';
 import {
   financeAfterManager,
   financialKind,
   historyAction,
+  notifyFinancePending,
+  notifyFinancePayers,
   requestForUpdate,
   resultOf,
   type CommandResult,
@@ -123,17 +126,26 @@ export async function headDecision(
 
     if (workflowState === 'approved') {
       await approvedEffects(tx, updated, actor, now, correlationId);
+      await enqueueEmployeeNotice(tx, `${id}:${current.submission_round}:head_approved`, {
+        employeeId: current.employee_id,
+        title:
+          financeState === 'pending'
+            ? 'หัวหน้าอนุมัติแล้ว · รอ Finance ตรวจสอบ'
+            : 'คำขอได้รับอนุมัติแล้ว',
+        detail:
+          financeState === 'pending'
+            ? `${current.reference} ผ่าน Manager approval แล้ว และถูกส่งต่อให้ Finance Verify`
+            : `${current.reference} ได้รับอนุมัติเรียบร้อยแล้ว`,
+        href: `/requests/${id}`,
+      });
+      await notifyFinancePending(tx, updated);
     } else {
-      await enqueue(
-        tx,
-        'in_app_notification',
-        `${id}:${current.submission_round}:head_${input.action}`,
-        {
-          employeeId: current.employee_id,
-          title: input.action === 'return' ? 'คำขอถูกส่งกลับให้แก้ไข' : 'คำขอไม่ได้รับอนุมัติ',
-          href: `/requests/${id}`,
-        } satisfies Json,
-      );
+      await enqueueEmployeeNotice(tx, `${id}:${current.submission_round}:head_${input.action}`, {
+        employeeId: current.employee_id,
+        title: input.action === 'return' ? 'คำขอถูกส่งกลับให้แก้ไข' : 'คำขอไม่ได้รับอนุมัติ',
+        detail: input.reason?.trim() || `สถานะคำขอ ${current.reference} เปลี่ยนแล้ว`,
+        href: `/requests/${id}`,
+      });
     }
     return resultOf(updated) as unknown as Json;
   }) as Promise<CommandResult>;
@@ -264,11 +276,19 @@ export async function financeDecision(
       { round: current.submission_round, reason: input.reason ?? null },
       correlationId,
     );
-    await enqueue(tx, 'in_app_notification', `${id}:${current.submission_round}:${input.action}`, {
+    await enqueueEmployeeNotice(tx, `${id}:${current.submission_round}:${input.action}`, {
       employeeId: current.employee_id,
       title: returning ? 'การเงินส่งรายการกลับให้แก้ไข' : 'การเงินตรวจสอบรายการแล้ว',
+      detail: returning
+        ? input.reason?.trim() || `${current.reference} ถูกส่งกลับจาก Finance`
+        : routedToTripSettlement
+          ? `${current.reference} ผ่าน Finance Verify แล้ว และจะไปรวมใน Trip Settlement`
+          : `${current.reference} ผ่าน Finance Verify แล้ว และพร้อมเข้าสู่ขั้นจ่ายเงิน`,
       href: `/requests/${id}`,
-    } satisfies Json);
+    });
+    if (!returning) {
+      await notifyFinancePayers(tx, updated, [actor.id]);
+    }
     return resultOf(updated) as unknown as Json;
   }) as Promise<CommandResult>;
 }

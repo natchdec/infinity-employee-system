@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-type Role = 'employee' | 'head' | 'finance' | 'admin';
+type Role = 'employee' | 'head' | 'finance' | 'finance_payer' | 'admin';
 
 interface EmployeeRow {
   id: string;
@@ -65,9 +65,11 @@ function EmployeeEditor({
       const next = new Set(current);
       if (checked) next.add(role);
       else next.delete(role);
+      if (role === 'finance_payer' && checked) next.add('finance');
+      if (role === 'finance' && !checked) next.delete('finance_payer');
       next.add('employee');
       if (isHeadOwner) next.add('head');
-      return ['employee', 'head', 'finance', 'admin'].filter((item) =>
+      return ['employee', 'head', 'finance', 'finance_payer', 'admin'].filter((item) =>
         next.has(item as Role),
       ) as Role[];
     });
@@ -137,7 +139,7 @@ function EmployeeEditor({
       <fieldset className="admin-role-fieldset">
         <legend>Roles</legend>
         <div className="role-checks">
-          {(['employee', 'head', 'finance', 'admin'] as Role[]).map((role) => (
+          {(['employee', 'head', 'finance', 'finance_payer', 'admin'] as Role[]).map((role) => (
             <label className="check-field" key={role}>
               <input
                 type="checkbox"
@@ -145,7 +147,11 @@ function EmployeeEditor({
                 disabled={role === 'employee' || (self && role === 'admin')}
                 onChange={(event) => toggleRole(role, event.target.checked)}
               />
-              <span>{role[0]!.toUpperCase() + role.slice(1)}</span>
+              <span>
+                {role === 'finance_payer'
+                  ? 'Finance Payer'
+                  : role[0]!.toUpperCase() + role.slice(1)}
+              </span>
             </label>
           ))}
         </div>

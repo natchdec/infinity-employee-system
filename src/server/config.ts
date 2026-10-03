@@ -60,6 +60,8 @@ const configSchema = z.object({
     (value) => (value === '' ? undefined : value),
     z.string().url().optional(),
   ),
+  EMAIL_NOTIFICATIONS_ENABLED: booleanText,
+  EMAIL_NOTIFICATION_SENDER: z.string().email().default('hr@infinitysolutions.co.th'),
   STORAGE_DRIVER: z.enum(['filesystem', 's3']).default('filesystem'),
   STORAGE_ROOT: z.string().min(1).default('data/documents'),
   STORAGE_BUCKET: z.string().min(1).optional(),
@@ -93,7 +95,7 @@ export function config(): AppConfig {
     throw new Error(`Invalid application configuration: ${names}`);
   }
   const value = parsed.data;
-  if (value.OUTLOOK_CALENDAR_SYNC_ENABLED) {
+  if (value.OUTLOOK_CALENDAR_SYNC_ENABLED || value.EMAIL_NOTIFICATIONS_ENABLED) {
     if (!value.OUTLOOK_CALENDAR_TENANT_ID || !value.OUTLOOK_CALENDAR_CLIENT_ID) {
       throw new Error('Outlook Calendar sync requires tenant and application configuration');
     }

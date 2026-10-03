@@ -9,6 +9,11 @@ import {
 test('employee role is mandatory and owner/head always receives head role', () => {
   assert.deepEqual(normalizeAdminRoles(['finance'], false), ['employee', 'finance']);
   assert.deepEqual(normalizeAdminRoles(['admin'], true), ['employee', 'head', 'admin']);
+  assert.deepEqual(normalizeAdminRoles(['finance_payer'], false), [
+    'employee',
+    'finance',
+    'finance_payer',
+  ]);
 });
 
 test('reporting line cycle detection rejects direct and transitive loops', () => {
@@ -31,7 +36,7 @@ test('approval matrix preserves company routing invariants', () => {
   const byKind = Object.fromEntries(rows.map((row) => [row.kind, row]));
   assert.equal(byKind.leave?.manager, 'Line Head');
   assert.equal(byKind.ot?.destination, 'Payroll Queue');
-  assert.equal(byKind.expense?.finance, 'Finance Verify');
-  assert.equal(byKind.advance?.finance, 'Finance Verify');
+  assert.equal(byKind.expense?.finance, 'Finance Verify → Finance Payer');
+  assert.equal(byKind.advance?.finance, 'Finance Verify → Finance Payer');
   assert.equal(byKind.trip?.finance, 'ไม่ใช้');
 });

@@ -21,6 +21,7 @@ const options: RequestFormOptions = {
     settlementDueDays: 3,
   },
   homeAddress: null,
+  commuteDistanceMetres: null,
   approvedTrips: [],
   receiptInbox: [],
 };

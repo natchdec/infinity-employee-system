@@ -23,6 +23,7 @@ export default async function FinancePaymentsPage() {
       <PaymentBatchControls
         csrf={csrf}
         actorId={actor.id}
+        canPay={actor.roles.includes('finance_payer')}
         obligations={data.obligations}
         batches={data.batches.map((batch) => ({
           id: batch.id,
