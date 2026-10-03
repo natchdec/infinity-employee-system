@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   invariant,
   requireIndependentFinance,
+  requireIndependentPayer,
   requireRevision,
   requireRole,
   type Actor,
@@ -172,13 +173,7 @@ export async function markPaymentBatchPaid(
     `;
       invariant(obligations.length > 0, 'EMPTY_PAYMENT_BATCH', 'ไม่พบรายการในชุดจ่าย', 409);
       for (const item of obligations) {
-        requireIndependentFinance(actor, item.owner_id);
-        invariant(
-          !item.verified_by || String(item.verified_by) !== actor.id,
-          'PAYMENT_VERIFIER_CONFLICT',
-          'ผู้ยืนยัน Paid ต้องเป็นคนละคนกับ Finance Verifier ของรายการ',
-          403,
-        );
+        requireIndependentPayer(actor, item.owner_id, String(item.verified_by));
         invariant(
           item.state === 'allocated',
           'PAYABLE_NOT_ALLOCATED',

@@ -148,6 +148,22 @@ export function requireIndependentFinance(actor: Actor, ownerId: string): void {
   );
 }
 
+export function requireIndependentPayer(actor: Actor, ownerId: string, verifiedById: string): void {
+  requireRole(actor, 'finance_payer');
+  invariant(
+    actor.id !== ownerId,
+    'FINANCE_CONFLICT_OF_INTEREST',
+    'ให้ผู้มีสิทธิ์การเงินอีกคนบันทึกการจ่ายรายการของคุณ',
+    403,
+  );
+  invariant(
+    actor.id !== verifiedById,
+    'PAYMENT_VERIFIER_CONFLICT',
+    'ผู้ยืนยัน Paid ต้องเป็นคนละคนกับ Finance Verifier ของรายการ',
+    403,
+  );
+}
+
 export function requireRevision(actual: number, expected: number): void {
   invariant(
     Number.isSafeInteger(expected) && actual === expected,

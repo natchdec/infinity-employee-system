@@ -8,6 +8,7 @@ import {
   metres,
   fingerprint,
   requireIndependentFinance,
+  requireIndependentPayer,
   requireRevision,
   csv,
 } from '../src/domain/core';
@@ -73,6 +74,18 @@ test('another Finance actor can verify a claim', () =>
   assert.doesNotThrow(() => requireIndependentFinance(finance, employee.id)));
 test('employee cannot impersonate Finance', () =>
   rejects(() => requireIndependentFinance(employee, 'other'), 'FORBIDDEN'));
+test('Finance Payer must be different from both owner and Finance Verifier', () => {
+  const payer = {
+    ...finance,
+    roles: ['employee', 'finance', 'finance_payer'] as ('employee' | 'finance' | 'finance_payer')[],
+  };
+  rejects(
+    () => requireIndependentPayer(payer, payer.id, employee.id),
+    'FINANCE_CONFLICT_OF_INTEREST',
+  );
+  rejects(() => requireIndependentPayer(payer, employee.id, payer.id), 'PAYMENT_VERIFIER_CONFLICT');
+  assert.doesNotThrow(() => requireIndependentPayer(payer, employee.id, 'another-finance-id'));
+});
 test('stale optimistic revision is a conflict', () =>
   rejects(() => requireRevision(3, 2), 'REVISION_CONFLICT'));
 test('invalid calendar dates are rejected', () => {
