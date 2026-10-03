@@ -20,22 +20,40 @@ export interface WorklogListRow {
 export async function employeeWorklogRows(
   employeeId: string,
   month: string,
+  view: 'month' | 'pending' = 'month',
 ): Promise<WorklogListRow[]> {
   invariant(/^20\d{2}-(0[1-9]|1[0-2])$/.test(month), 'INVALID_MONTH', 'เดือนไม่ถูกต้อง');
   const start = `${month}-01`;
   const end = `${nextMonth(month)}-01`;
-  const rows = await db()`
-    select
-      id, subject, start_at, end_at, intent, location_label, state,
-      exception_code, draft_payload, source_changed_after_confirmation, revision,
-      to_char(start_at at time zone 'Asia/Bangkok','YYYY-MM-DD"T"HH24:MI:SS') as local_start,
-      to_char(end_at at time zone 'Asia/Bangkok','YYYY-MM-DD"T"HH24:MI:SS') as local_end
-    from worklog_items
-    where employee_id=${employeeId}
-      and (start_at at time zone 'Asia/Bangkok')::date >= ${start}::date
-      and (start_at at time zone 'Asia/Bangkok')::date < ${end}::date
-    order by start_at, intent, id
-  `;
+  const rows =
+    view === 'pending'
+      ? await db()`
+          select
+            id, subject, start_at, end_at, intent, location_label, state,
+            exception_code, draft_payload, source_changed_after_confirmation, revision,
+            to_char(start_at at time zone 'Asia/Bangkok','YYYY-MM-DD"T"HH24:MI:SS') as local_start,
+            to_char(end_at at time zone 'Asia/Bangkok','YYYY-MM-DD"T"HH24:MI:SS') as local_end
+          from worklog_items
+          where employee_id=${employeeId}
+            and (
+              state in ('suggested','confirmed','exception')
+              or source_changed_after_confirmation
+            )
+          order by start_at desc, intent, id
+          limit 500
+        `
+      : await db()`
+          select
+            id, subject, start_at, end_at, intent, location_label, state,
+            exception_code, draft_payload, source_changed_after_confirmation, revision,
+            to_char(start_at at time zone 'Asia/Bangkok','YYYY-MM-DD"T"HH24:MI:SS') as local_start,
+            to_char(end_at at time zone 'Asia/Bangkok','YYYY-MM-DD"T"HH24:MI:SS') as local_end
+          from worklog_items
+          where employee_id=${employeeId}
+            and (start_at at time zone 'Asia/Bangkok')::date >= ${start}::date
+            and (start_at at time zone 'Asia/Bangkok')::date < ${end}::date
+          order by start_at, intent, id
+        `;
   const items = rows.map((row) => ({
     id: String(row.id),
     subject: String(row.subject),

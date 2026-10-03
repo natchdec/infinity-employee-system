@@ -66,6 +66,33 @@ function DepartmentEditor({ csrf, department }: { csrf: string; department: Depa
     }
   }
 
+  async function remove() {
+    if (department.activeEmployees > 0) {
+      setMessage('ย้ายพนักงานที่ยังใช้งานอยู่ออกจากแผนกนี้ก่อนลบ');
+      return;
+    }
+    if (!window.confirm(`ลบแผนก ${department.name} (${department.code}) ใช่หรือไม่?`)) return;
+    setBusy(true);
+    setMessage('');
+    try {
+      const response = await fetch(`/api/admin/departments/${department.id}`, {
+        method: 'DELETE',
+        headers: {
+          'x-csrf-token': csrf,
+          'idempotency-key': crypto.randomUUID(),
+        },
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result?.error?.message ?? 'ลบแผนกไม่สำเร็จ');
+      setMessage('ลบแผนกแล้ว');
+      window.setTimeout(() => window.location.reload(), 350);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'ลบแผนกไม่สำเร็จ');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="department-row">
       <code>{department.code}</code>
@@ -85,6 +112,16 @@ function DepartmentEditor({ csrf, department }: { csrf: string; department: Depa
       </label>
       <button className="button button-secondary" disabled={busy} onClick={() => void save()}>
         บันทึก
+      </button>
+      <button
+        className="button button-quiet"
+        disabled={busy || department.activeEmployees > 0}
+        title={
+          department.activeEmployees > 0 ? 'ย้ายพนักงานที่ยังใช้งานอยู่ออกจากแผนกก่อนลบ' : 'ลบแผนก'
+        }
+        onClick={() => void remove()}
+      >
+        ลบ
       </button>
       {message ? <span className="field-note">{message}</span> : null}
     </div>

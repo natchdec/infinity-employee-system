@@ -37,6 +37,7 @@ export interface RequestFormOptions {
     internationalRateSatang: string | null;
     settlementDueDays: number;
   };
+  homeAddress: string | null;
   approvedTrips: {
     id: string;
     reference: string;
@@ -80,6 +81,11 @@ export async function requestFormOptions(actor: Actor): Promise<RequestFormOptio
     `,
     [process.env.APP_ENV === 'production'],
   );
+  const [profile] = await db()`
+    select home_address
+    from employees
+    where id=${actor.id}
+  `;
   const trips = await db()`
     select r.id,r.reference,r.title,r.business_date::text
     from requests r
@@ -137,6 +143,7 @@ export async function requestFormOptions(actor: Actor): Promise<RequestFormOptio
       internationalRateSatang: perDiem.body.internationalRateSatang,
       settlementDueDays: perDiem.body.settlementDueDays,
     },
+    homeAddress: profile?.home_address ? String(profile.home_address) : null,
     approvedTrips: trips.map((row) => ({
       id: row.id,
       reference: row.reference,

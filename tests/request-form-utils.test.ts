@@ -20,6 +20,7 @@ const options: RequestFormOptions = {
     internationalRateSatang: null,
     settlementDueDays: 3,
   },
+  homeAddress: null,
   approvedTrips: [],
   receiptInbox: [],
 };

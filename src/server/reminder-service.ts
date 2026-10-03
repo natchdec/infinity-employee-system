@@ -54,7 +54,7 @@ export async function queueOperationalReminders(now = new Date()): Promise<numbe
       employeeId: String(row.employee_id),
       eventKey: `reminder:worklog:${date}:${row.employee_id}`,
       title: `มี Calendar Draft ${row.count} รายการที่ยังต้องตรวจสอบ`,
-      href: '/worklog',
+      href: '/worklog?view=pending',
     });
   }
 

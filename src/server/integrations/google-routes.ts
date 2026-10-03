@@ -70,16 +70,20 @@ async function requestGoogleRoute(
   };
   const route = payload.routes?.[0];
   invariant(
-    route &&
-      Number.isSafeInteger(route.distanceMeters) &&
-      Number(route.distanceMeters) > 0 &&
-      Number(route.distanceMeters) <= 3_000_000,
+    route,
+    'GOOGLE_ROUTES_NO_ROUTE',
+    'Google Maps หาเส้นทางไม่เจอ กรุณาระบุชื่อสถานที่พร้อมที่อยู่ให้ละเอียดขึ้น',
+    422,
+  );
+  const distanceMetres = Number(route.distanceMeters);
+  invariant(
+    Number.isSafeInteger(distanceMetres) && distanceMetres > 0 && distanceMetres <= 3_000_000,
     'GOOGLE_ROUTES_RESPONSE_INVALID',
     'ผลระยะทางจาก Google Routes ไม่ถูกต้อง',
     503,
   );
   return {
-    distanceMetres: Number(route.distanceMeters),
+    distanceMetres,
     durationSeconds: durationSeconds(route.duration),
   };
 }

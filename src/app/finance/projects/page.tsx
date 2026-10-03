@@ -1,74 +1,82 @@
 import Link from 'next/link';
 import { AppShell, Money } from '@/components/AppShell';
 import { requireActor, requirePageRole } from '@/server/auth-context';
-import { financeProjectCosts } from '@/server/project-reporting';
+import { financeProjectProfits } from '@/server/project-profit-reporting';
 
 export const dynamic = 'force-dynamic';
+
+function percentLabel(basisPoints: number | null): string {
+  if (basisPoints === null) return '-';
+  return `${(basisPoints / 100).toFixed(2)}%`;
+}
 
 export default async function ProjectCostsPage() {
   const actor = await requireActor();
   requirePageRole(actor, 'finance');
-  const report = await financeProjectCosts();
+  const report = await financeProjectProfits();
 
   return (
     <AppShell
       actor={actor}
-      title="ต้นทุนตามโครงการ"
-      description="สรุปต้นทุนที่มีหลักฐานธุรกรรมแล้ว โดยไม่รวมเงินทดรองเป็นต้นทุน"
+      title="Project P&L"
+      description="เทียบ Revenue / Planned Cost จาก Project Master กับต้นทุนจริงที่เกิดใน Employee System"
     >
       <section className="section">
-        <div className="metric-row" aria-label="สรุปต้นทุนโครงการ">
+        <div className="metric-row" aria-label="สรุป Project P&L">
           <div className="metric">
             <strong>
-              <Money satang={report.totalOtSatang} />
+              <Money satang={report.totalRevenueSatang} />
             </strong>
-            <span>OT ใน Payroll</span>
+            <span>Revenue</span>
           </div>
           <div className="metric">
             <strong>
-              <Money satang={report.totalExpenseSatang} />
+              <Money satang={report.totalPlannedCostSatang} />
             </strong>
-            <span>Expense ที่ตรวจแล้ว</span>
-          </div>
-          <div className="metric">
-            <strong>
-              <Money satang={report.totalTravelSatang} />
-            </strong>
-            <span>Travel Settlement</span>
+            <span>Planned Cost</span>
           </div>
           <div className="metric">
             <strong>
               <Money satang={report.totalSatang} />
             </strong>
-            <span>รวมที่ติดตามได้</span>
+            <span>Actual Employee Cost</span>
+          </div>
+          <div className="metric">
+            <strong>
+              <Money satang={report.totalMarginSatang} />
+            </strong>
+            <span>Actual Margin</span>
           </div>
         </div>
       </section>
+
       <section className="section">
         <div className="section-header">
           <div>
-            <h2>Project Cost Ledger</h2>
+            <h2>Project P&L Ledger</h2>
             <p>
-              OT จาก Payroll, Expense จาก payable และ Travel จาก Settlement ที่ Finance ตรวจแล้ว
+              Revenue / planned cost มาจาก Microsoft Lists; Actual Cost มาจาก OT, Expense และ Travel
+              ที่มีหลักฐานในระบบ
             </p>
           </div>
           <div>
             รออนุมัติ {report.pendingHead} · รอ Finance {report.pendingFinance}
           </div>
         </div>
+
         {report.rows.length ? (
           <div className="data-table-wrap" tabIndex={0}>
             <table className="data-table">
-              <caption className="sr-only">ต้นทุนที่ติดตามได้ตามโครงการ</caption>
+              <caption className="sr-only">Project P&L ตาม PO / Project</caption>
               <thead>
                 <tr>
                   <th>Project</th>
                   <th>ลูกค้า</th>
-                  <th>Cost Center</th>
-                  <th className="amount">OT</th>
-                  <th className="amount">Expense</th>
-                  <th className="amount">Travel</th>
-                  <th className="amount">รวม</th>
+                  <th className="amount">Revenue</th>
+                  <th className="amount">Planned</th>
+                  <th className="amount">Actual</th>
+                  <th className="amount">Margin</th>
+                  <th className="amount">Margin %</th>
                   <th>คิวค้าง</th>
                   <th>ล่าสุด</th>
                 </tr>
@@ -91,19 +99,19 @@ export default async function ProjectCostsPage() {
                       </Link>
                     </td>
                     <td>{row.customer ?? '-'}</td>
-                    <td>{row.costCenter ?? '-'}</td>
                     <td className="amount">
-                      <Money satang={row.otSatang} />
+                      <Money satang={row.revenueSatang} />
                     </td>
                     <td className="amount">
-                      <Money satang={row.expenseSatang} />
-                    </td>
-                    <td className="amount">
-                      <Money satang={row.travelSatang} />
+                      <Money satang={row.plannedCostSatang} />
                     </td>
                     <td className="amount">
                       <Money satang={row.totalSatang} />
                     </td>
+                    <td className="amount">
+                      <Money satang={row.marginSatang} />
+                    </td>
+                    <td className="amount">{percentLabel(row.marginBasisPoints)}</td>
                     <td>
                       Head {row.pendingHead} · Finance {row.pendingFinance}
                     </td>
@@ -121,17 +129,19 @@ export default async function ProjectCostsPage() {
           </div>
         ) : (
           <div className="empty">
-            <h2>ยังไม่มีต้นทุนโครงการที่พร้อมรายงาน</h2>
-            <p>รายงานจะแสดงเมื่อมีรายการที่ตรวจสอบแล้วและผูกกับโครงการ</p>
+            <h2>ยังไม่มี Project ที่พร้อมรายงาน</h2>
+            <p>รายงานจะแสดงเมื่อ Project Master มีข้อมูล Revenue/Cost หรือมีต้นทุนจริงในระบบ</p>
           </div>
         )}
       </section>
+
       <section className="section">
         <div className="attention">
-          <strong>ขอบเขตของรายงาน</strong>
+          <strong>หลักการคำนวณ</strong>
           <p>
-            เป็น Project Cost Ledger จาก Employee System ไม่ใช่งบกำไรขาดทุน และไม่สร้าง Cost Center
-            ที่ต้นทางยังไม่ได้กำหนดขึ้นเอง
+            Planned Cost = Sale Cost + Engineer Cost + Entertain Cost + Hidden Cost + Sale
+            Commission. Actual Margin = Revenue − Actual Employee Cost. ค่า planned และ actual
+            ถูกแสดงแยกกันเพื่อไม่ให้ double count
           </p>
         </div>
       </section>

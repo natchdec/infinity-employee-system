@@ -189,7 +189,7 @@ export async function employeeExceptionInbox(employeeId: string): Promise<Except
       detail: row.source_changed_after_confirmation
         ? 'Calendar ต้นทางเปลี่ยนหลังยืนยันหรือส่งคำขอ'
         : String(row.exception_code ?? 'Calendar ต้องตรวจสอบ'),
-      href: '/worklog',
+      href: `/worklog?view=pending#worklog-${row.id}`,
       severity: 'review' as const,
     })),
     ...conflicts.map((conflict) => ({
@@ -201,7 +201,7 @@ export async function employeeExceptionInbox(employeeId: string): Promise<Except
         conflict.code === 'OT_OVERLAP'
           ? 'ต้องตรวจช่วงเวลาที่ซ้อนกันก่อนสร้างคำขอ OT'
           : 'ต้องตรวจ route chain และระยะทางทุก leg ก่อนสร้าง Expense',
-      href: '/worklog',
+      href: `/worklog?view=pending#worklog-${conflict.itemIds[0]}`,
       severity: 'blocking' as const,
     })),
     ...(calendarSync?.last_error_code
@@ -211,7 +211,7 @@ export async function employeeExceptionInbox(employeeId: string): Promise<Except
             kind: 'configuration' as const,
             title: 'Outlook Calendar sync ต้องตรวจสอบ',
             detail: String(calendarSync.last_error_code),
-            href: '/worklog',
+            href: '/worklog?view=pending',
             severity: 'blocking' as const,
           },
         ]

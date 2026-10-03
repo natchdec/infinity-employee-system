@@ -98,10 +98,13 @@ export function AppShell({ actor, title, description, children }: Props) {
 
 export function Money({ satang }: { satang: string }) {
   const value = BigInt(satang);
-  const whole = value / 100n;
-  const fraction = (value % 100n).toString().padStart(2, '0');
+  const negative = value < 0n;
+  const absolute = negative ? -value : value;
+  const whole = absolute / 100n;
+  const fraction = (absolute % 100n).toString().padStart(2, '0');
   return (
     <span className="money">
+      {negative ? '-' : ''}
       {whole.toLocaleString('en-US')}.{fraction} บาท
     </span>
   );

@@ -14,6 +14,7 @@ import {
 } from './BasicFields';
 import { DocumentUploader, type UploadedDocument } from './DocumentUploader';
 import { ExpenseFields } from './ExpenseFields';
+import { MileageHomeAutofill } from './MileageHomeAutofill';
 import { buildRequestInput, initialDocumentIds } from './form-utils';
 
 interface Props {
@@ -149,7 +150,10 @@ export function RequestForm({
       {kind === 'leave' ? <LeaveFields options={options} initial={initial} /> : null}
       {kind === 'ot' ? <OTFields options={options} initial={initial} /> : null}
       {kind === 'expense' ? (
-        <ExpenseFields csrf={csrf} options={options} initial={initial} />
+        <>
+          <MileageHomeAutofill homeAddress={options.homeAddress} />
+          <ExpenseFields csrf={csrf} options={options} initial={initial} />
+        </>
       ) : null}
       {kind === 'trip' ? <TripFields initial={initial} /> : null}
       {kind === 'advance' ? <AdvanceFields options={options} initial={initial} /> : null}

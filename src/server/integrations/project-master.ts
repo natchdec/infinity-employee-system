@@ -22,6 +22,12 @@ interface ColumnMap {
   poNumber?: string;
   poDate?: string;
   poCreateDate?: string;
+  revenue?: string;
+  saleCost?: string;
+  engineerCost?: string;
+  entertainCost?: string;
+  hiddenCost?: string;
+  saleCommission?: string;
   status: string;
   costCenter?: TextSource;
   activeValues: string[];
@@ -127,6 +133,12 @@ function runtime(): Runtime {
       poNumber: optionalString(map, 'poNumber'),
       poDate: optionalString(map, 'poDate'),
       poCreateDate: optionalString(map, 'poCreateDate'),
+      revenue: optionalString(map, 'revenue') ?? 'Revenue',
+      saleCost: optionalString(map, 'saleCost') ?? 'SaleCost',
+      engineerCost: optionalString(map, 'engineerCost') ?? 'EngineerCost',
+      entertainCost: optionalString(map, 'entertainCost') ?? 'EntertainCost',
+      hiddenCost: optionalString(map, 'hiddenCost') ?? 'HiddenCost',
+      saleCommission: optionalString(map, 'saleCommission') ?? 'Sale_x0020_Commission',
       costCenter: textSource(map, 'costCenter'),
     },
   };
@@ -143,6 +155,20 @@ function dateField(fields: Fields, name?: string): string | null {
   if (!value) return null;
   const date = value.slice(0, 10);
   return /^20\d{2}-\d{2}-\d{2}$/.test(date) ? date : null;
+}
+
+function moneySatangField(fields: Fields, name?: string): string | null {
+  if (!name) return null;
+  const raw = fields[name];
+  const amount =
+    typeof raw === 'number'
+      ? raw
+      : typeof raw === 'string' && raw.trim() !== ''
+        ? Number(raw.replace(/,/g, ''))
+        : Number.NaN;
+  if (!Number.isFinite(amount) || amount < 0) return null;
+  const satang = Math.round(amount * 100);
+  return Number.isSafeInteger(satang) ? String(satang) : null;
 }
 async function readListItems(siteId: string, listId: string) {
   let url = `https://graph.microsoft.com/v1.0/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(listId)}/items?$expand=fields&$top=200`;
@@ -272,6 +298,13 @@ export async function syncProjectMaster(now = new Date()) {
       poNumber: textField(item.fields, value.columns.poNumber),
       poDate: dateField(item.fields, value.columns.poDate),
       poCreateDate: dateField(item.fields, value.columns.poCreateDate),
+      revenueSatang: moneySatangField(item.fields, value.columns.revenue),
+      saleCostSatang: moneySatangField(item.fields, value.columns.saleCost),
+      engineerCostSatang: moneySatangField(item.fields, value.columns.engineerCost),
+      entertainCostSatang: moneySatangField(item.fields, value.columns.entertainCost),
+      hiddenCostSatang: moneySatangField(item.fields, value.columns.hiddenCost),
+      saleCommissionSatang: moneySatangField(item.fields, value.columns.saleCommission),
+      sourceFields: item.fields as Json,
       status: activeValues.has(sourceStatus.toLowerCase()) ? 'active' : 'inactive',
       costCenter: mappedTextField(item.fields, value.columns.costCenter, lookups),
     };
@@ -284,15 +317,22 @@ export async function syncProjectMaster(now = new Date()) {
       const changed = await tx`
         insert into project_references(source,source_tenant_id,source_site_id,source_list_id,source_item_id,
           code,name,customer,sales_owner,engineer_lead,start_date,end_date,po_number,po_date,po_create_date,
-          status,cost_center,source_etag,last_synced_at)
+          revenue_satang,sale_cost_satang,engineer_cost_satang,entertain_cost_satang,hidden_cost_satang,
+          sale_commission_satang,source_fields,status,cost_center,source_etag,last_synced_at)
         values('microsoft_lists',${value.tenantId},${value.siteId},${value.listId},${row.sourceItemId},
           ${row.code},${row.name},${row.customer},${row.salesOwner},${row.engineerLead},${row.startDate},${row.endDate},
-          ${row.poNumber},${row.poDate},${row.poCreateDate},${row.status},${row.costCenter},${row.sourceEtag},${now})
+          ${row.poNumber},${row.poDate},${row.poCreateDate},${row.revenueSatang},${row.saleCostSatang},
+          ${row.engineerCostSatang},${row.entertainCostSatang},${row.hiddenCostSatang},${row.saleCommissionSatang},
+          ${tx.json(row.sourceFields)},${row.status},${row.costCenter},${row.sourceEtag},${now})
         on conflict(source_tenant_id,source_site_id,source_list_id,source_item_id)
         do update set code=excluded.code,name=excluded.name,customer=excluded.customer,sales_owner=excluded.sales_owner,
           engineer_lead=excluded.engineer_lead,start_date=excluded.start_date,end_date=excluded.end_date,
-          po_number=excluded.po_number,po_date=excluded.po_date,po_create_date=excluded.po_create_date,status=excluded.status,
-          cost_center=excluded.cost_center,source_etag=excluded.source_etag,last_synced_at=excluded.last_synced_at
+          po_number=excluded.po_number,po_date=excluded.po_date,po_create_date=excluded.po_create_date,
+          revenue_satang=excluded.revenue_satang,sale_cost_satang=excluded.sale_cost_satang,
+          engineer_cost_satang=excluded.engineer_cost_satang,entertain_cost_satang=excluded.entertain_cost_satang,
+          hidden_cost_satang=excluded.hidden_cost_satang,sale_commission_satang=excluded.sale_commission_satang,
+          source_fields=excluded.source_fields,status=excluded.status,cost_center=excluded.cost_center,
+          source_etag=excluded.source_etag,last_synced_at=excluded.last_synced_at
         returning (xmax=0) as inserted`;
       if (changed[0]?.inserted) inserted++;
       else updated++;

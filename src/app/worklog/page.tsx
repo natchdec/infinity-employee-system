@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { AppShell, StateLabel } from '@/components/AppShell';
 import { WorklogReviewControls } from '@/components/WorklogReviewControls';
@@ -41,7 +42,7 @@ function bangkokDateTime(value: Date): string {
 export default async function WorklogPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string }>;
+  searchParams: Promise<{ month?: string; view?: string }>;
 }) {
   const actor = await requireActor();
   const store = await cookies();
@@ -49,8 +50,9 @@ export default async function WorklogPage({
   const params = await searchParams;
   const currentMonth = bangkokDate(new Date()).slice(0, 7);
   const month = /^20\d{2}-(0[1-9]|1[0-2])$/.test(params.month ?? '') ? params.month! : currentMonth;
+  const pendingView = params.view === 'pending';
   const [items, sync] = await Promise.all([
-    employeeWorklogRows(actor.id, month),
+    employeeWorklogRows(actor.id, month, pendingView ? 'pending' : 'month'),
     worklogSyncStatus(actor.id),
   ]);
   const counts = items.reduce(
@@ -108,8 +110,26 @@ export default async function WorklogPage({
       <section className="section">
         <div className="section-header">
           <div>
-            <h2>{month}</h2>
-            <p>รายการที่ Ignore แล้วจะยังคงประวัติไว้แต่ไม่สร้างคำขอ</p>
+            <h2>{pendingView ? 'Draft ที่ยังต้องตรวจทั้งหมด' : month}</h2>
+            <p>
+              {pendingView
+                ? 'รวม Draft ที่ยัง Suggested / Confirmed / Exception ข้ามเดือน เพื่อเปิดจาก Notification ได้ตรงรายการ'
+                : 'รายการที่ Ignore แล้วจะยังคงประวัติไว้แต่ไม่สร้างคำขอ'}
+            </p>
+          </div>
+          <div className="action-row">
+            <Link
+              className={pendingView ? 'button button-secondary' : 'button button-primary'}
+              href={`/worklog?month=${month}`}
+            >
+              เดือนนี้
+            </Link>
+            <Link
+              className={pendingView ? 'button button-primary' : 'button button-secondary'}
+              href="/worklog?view=pending"
+            >
+              รอตรวจทั้งหมด
+            </Link>
           </div>
         </div>
         {items.length ? (
@@ -128,7 +148,7 @@ export default async function WorklogPage({
               </thead>
               <tbody>
                 {items.map((item) => (
-                  <tr key={item.id}>
+                  <tr key={item.id} id={`worklog-${item.id}`}>
                     <td>{bangkokDateTime(item.startAt)}</td>
                     <td>{item.subject}</td>
                     <td>{intentLabel[item.intent]}</td>
@@ -158,8 +178,16 @@ export default async function WorklogPage({
           </div>
         ) : (
           <div className="empty">
-            <h2>ยังไม่มี Calendar Draft ในเดือนนี้</h2>
-            <p>เพิ่ม IES Category ที่ Outlook Calendar แล้วซิงก์ ระบบจึงจะแสดงรายการใน Inbox</p>
+            <h2>
+              {pendingView
+                ? 'ไม่มี Calendar Draft ที่ค้างตรวจ'
+                : 'ยังไม่มี Calendar Draft ในเดือนนี้'}
+            </h2>
+            <p>
+              {pendingView
+                ? 'รายการที่ต้องตรวจทั้งหมดถูกจัดการแล้ว'
+                : 'เพิ่ม IES Category ที่ Outlook Calendar แล้วซิงก์ ระบบจึงจะแสดงรายการใน Inbox'}
+            </p>
           </div>
         )}
       </section>

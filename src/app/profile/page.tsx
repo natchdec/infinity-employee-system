@@ -1,7 +1,9 @@
 import { cookies } from 'next/headers';
 import { AppShell } from '@/components/AppShell';
+import { HomeAddressForm } from '@/components/profile/HomeAddressForm';
 import { requireActor } from '@/server/auth-context';
 import { cookieNames } from '@/server/identity';
+import { profileSettings } from '@/server/profile-settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +18,7 @@ export default async function ProfilePage() {
   const actor = await requireActor();
   const store = await cookies();
   const antiForgery = store.get(cookieNames().csrf)?.value ?? '';
+  const settings = await profileSettings(actor);
 
   return (
     <AppShell
@@ -34,6 +37,15 @@ export default async function ProfilePage() {
           <dt>Owner / Head</dt>
           <dd>{actor.isHeadOwner ? 'ใช่' : 'ไม่ใช่'}</dd>
         </dl>
+      </section>
+      <section className="section">
+        <div className="section-header">
+          <div>
+            <h2>ที่อยู่สำหรับ Mileage</h2>
+            <p>ตั้งค่า Home Address ของคุณเพื่อให้ฟอร์มเบิกค่ารถเติมที่อยู่ “บ้าน” ให้อัตโนมัติ</p>
+          </div>
+        </div>
+        <HomeAddressForm csrf={antiForgery} initialHomeAddress={settings.homeAddress} />
       </section>
       <section className="section">
         <form action="/auth/sign-out" method="post">
