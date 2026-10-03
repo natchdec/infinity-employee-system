@@ -88,9 +88,9 @@ export function productionReadiness(env: NodeJS.ProcessEnv = process.env): Readi
     {
       id: 'google_routes',
       ready: present(env.GOOGLE_ROUTES_API_KEY) && env.GOOGLE_ROUTES_RETENTION_CONFIRMED === 'true',
-      blocking: true,
+      blocking: false,
       detail:
-        'Durable Google-verified mileage evidence stays fail-closed until contractual retention rights are separately confirmed; transient no-store route preview remains available',
+        'Durable Google Maps Routes distance/duration evidence is intentionally fail-closed under standard terms; enable only with separately documented licensing/retention rights',
     },
     {
       id: 'easy_acc',
