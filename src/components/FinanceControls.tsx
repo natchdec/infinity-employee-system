@@ -357,7 +357,7 @@ export function PayrollExportControls({ csrf, months }: { csrf: string; months: 
         disabled={!month || busy}
         onClick={() => void create('easy_acc')}
       >
-        ตรวจ Easy-ACC Adapter
+        สถานะ EASY-ACC Direct Integration
       </button>
       {message ? <p className="field-note">{message}</p> : null}
     </div>
@@ -421,7 +421,7 @@ export function AccountingExportControls({ csrf }: { csrf: string }) {
         disabled={busy}
         onClick={() => void create('smartbiz')}
       >
-        ตรวจ Smartbiz Adapter
+        สถานะ Smartbiz API Integration
       </button>
       {message ? <p className="field-note">{message}</p> : null}
     </form>

@@ -1,3 +1,4 @@
+import { requireRole, type Actor } from '../domain/core';
 import { db } from './db';
 
 export interface ProjectCostRow {
@@ -40,7 +41,8 @@ const groupKeySql = `coalesce(nullif(upper(btrim(po_number)),''),'ITEM:' || id::
  * remain linked to their immutable source row while cost reporting rolls every
  * row in that PO group into one project.
  */
-export async function financeProjectCosts(limit = 500): Promise<ProjectCostSummary> {
+export async function financeProjectCosts(actor: Actor, limit = 500): Promise<ProjectCostSummary> {
+  requireRole(actor, 'finance', 'admin');
   const rows = await db().unsafe(
     `
       with project_map as (
@@ -200,8 +202,10 @@ export interface ProjectCostDetail {
 }
 
 export async function financeProjectCostDetail(
+  actor: Actor,
   projectId: string,
 ): Promise<ProjectCostDetail | null> {
+  requireRole(actor, 'finance', 'admin');
   const [target] = await db().unsafe(
     `select ${groupKeySql} as group_key from project_references where id=$1 limit 1`,
     [projectId],

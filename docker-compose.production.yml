@@ -14,6 +14,7 @@ services:
       STORAGE_DRIVER: filesystem
       STORAGE_ROOT: /data/documents
       GOOGLE_ROUTES_RETENTION_CONFIRMED: ${GOOGLE_ROUTES_RETENTION_CONFIRMED:-false}
+      GOOGLE_PLACES_ENABLED_CONFIRMED: ${GOOGLE_PLACES_ENABLED_CONFIRMED:-false}
       PRODUCTION_RESTORE_ACCEPTED: ${PRODUCTION_RESTORE_ACCEPTED:-false}
       PRODUCTION_CUTOVER_APPROVED: ${PRODUCTION_CUTOVER_APPROVED:-false}
     volumes:
@@ -33,6 +34,7 @@ services:
       STORAGE_DRIVER: filesystem
       STORAGE_ROOT: /data/documents
       GOOGLE_ROUTES_RETENTION_CONFIRMED: ${GOOGLE_ROUTES_RETENTION_CONFIRMED:-false}
+      GOOGLE_PLACES_ENABLED_CONFIRMED: ${GOOGLE_PLACES_ENABLED_CONFIRMED:-false}
     volumes:
       - ${DOCUMENTS_HOST_PATH:-/srv/infinity-employee/documents}:/data/documents
       - ${OUTLOOK_CALENDAR_CLIENT_PRIVATE_KEY_HOST_PATH:-/home/ubuntu/ies-secrets/outlook/calendar-sync.key.pem}:/run/secrets/outlook/client.key:ro

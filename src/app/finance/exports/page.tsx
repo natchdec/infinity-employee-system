@@ -18,7 +18,7 @@ export default async function FinanceExportsPage() {
     <AppShell
       actor={actor}
       title="ส่งออกบัญชี"
-      description="Review CSV เป็นไฟล์กลางสำหรับตรวจสอบ; Easy-ACC/Smartbiz จะไม่ถูกเรียกว่าพร้อมจนกว่าจะยืนยัน format จริง"
+      description="Review CSV ใช้ตรวจสอบภายใน Finance เท่านั้น ไม่ใช้ import เข้า EASY-ACC/Smartbiz; direct integration เปิดได้เฉพาะ vendor API/bridge ที่อนุมัติ"
     >
       <section className="section">
         <div className="section-header">

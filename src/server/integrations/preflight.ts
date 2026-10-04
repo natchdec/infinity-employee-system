@@ -86,6 +86,15 @@ export function productionReadiness(env: NodeJS.ProcessEnv = process.env): Readi
         'A Routes API key enables transient no-store previews only; preview values are not durable provider evidence',
     },
     {
+      id: 'google_places_autocomplete',
+      ready:
+        (present(env.GOOGLE_PLACES_API_KEY) || present(env.GOOGLE_ROUTES_API_KEY)) &&
+        env.GOOGLE_PLACES_ENABLED_CONFIRMED === 'true',
+      blocking: true,
+      detail:
+        'Google Places autocomplete requires a configured Places API key; live acceptance must also confirm Places API (New) is enabled',
+    },
+    {
       id: 'google_routes',
       ready: present(env.GOOGLE_ROUTES_API_KEY) && env.GOOGLE_ROUTES_RETENTION_CONFIRMED === 'true',
       blocking: false,
@@ -97,14 +106,14 @@ export function productionReadiness(env: NodeJS.ProcessEnv = process.env): Readi
       ready: false,
       blocking: false,
       detail:
-        'Deferred by product decision: PRIMPORT.TXT integration remains fail-closed until payroll-owner mappings are verified',
+        'Direct EASY-ACC integration remains fail-closed until Business Soft provides a sanctioned API/bridge contract; file import and direct database writes are prohibited',
     },
     {
       id: 'smartbiz',
       ready: false,
       blocking: false,
       detail:
-        'Deferred by product decision: accounting export remains fail-closed until a sanctioned Smartbiz transaction contract is available',
+        'Smartbiz direct integration remains fail-closed until Smartbiz366 Open API Developer Partner credentials/contract are available; file import and direct database writes are prohibited',
     },
     {
       id: 'restore_acceptance',

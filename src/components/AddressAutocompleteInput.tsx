@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 export function AddressAutocompleteInput({
   csrf,
   name,
+  placeIdName,
   defaultValue = '',
   required = false,
   placeholder,
@@ -12,6 +13,7 @@ export function AddressAutocompleteInput({
 }: {
   csrf: string;
   name: string;
+  placeIdName?: string;
   defaultValue?: string;
   required?: boolean;
   placeholder?: string;
@@ -19,6 +21,7 @@ export function AddressAutocompleteInput({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState(defaultValue);
+  const [selectedPlaceId, setSelectedPlaceId] = useState('');
   const [suggestions, setSuggestions] = useState<
     { placeId: string; text: string; mainText: string; secondaryText: string }[]
   >([]);
@@ -66,6 +69,7 @@ export function AddressAutocompleteInput({
 
   return (
     <div className="address-autocomplete">
+      {placeIdName ? <input type="hidden" name={placeIdName} value={selectedPlaceId} /> : null}
       <input
         name={name}
         required={required}
@@ -77,6 +81,7 @@ export function AddressAutocompleteInput({
         onInput={(event) => {
           const value = event.currentTarget.value;
           setQuery(value);
+          setSelectedPlaceId('');
           setAvailable(true);
           if (value.trim().length < 3) {
             requestSequence.current += 1;
@@ -96,6 +101,7 @@ export function AddressAutocompleteInput({
               onClick={() => {
                 if (inputRef.current) inputRef.current.value = item.text;
                 setQuery(item.text);
+                setSelectedPlaceId(item.placeId);
                 setSuggestions([]);
               }}
             >
@@ -103,6 +109,9 @@ export function AddressAutocompleteInput({
               {item.secondaryText ? <span>{item.secondaryText}</span> : null}
             </button>
           ))}
+          <div className="address-attribution" aria-label="ข้อมูลสถานที่จาก Google Maps">
+            Google Maps
+          </div>
         </div>
       ) : null}
     </div>

@@ -236,3 +236,15 @@ Provider verification 2026-09-26:
 - Google Routes transient no-store preview is implemented, but durable Google-verified evidence remains a blocking production gate until the production credential and contractual retention rights are both verified.
 - Easy-ACC and Smartbiz production enablement remain explicitly deferred by product decision.
 <!-- agent-gateway:managed:end:production-storage-graph-identity-20260930 -->
+
+<!-- agent-gateway:managed:start:financial-privacy-places-direct-integrations-20261004 -->
+## Project financial privacy, direct accounting integration policy, and Places autocomplete — 2026-10-04
+- Baseline production remains exact commit `dc0dbc90b483c369827934be83b82613d66732af` at this checkpoint; no production mutation is claimed by this source checkpoint.
+- Candidate source hardens Project Master financial confidentiality: ordinary Employee/Head project queries no longer retrieve Revenue, Cost Center, planned costs or other financial values; Finance/Admin financial reporting functions enforce role checks at the server query boundary.
+- EASY-ACC/Smartbiz policy is now direct-integration-only. File import paths (PRIMPORT/CSV/helper importers) and direct writes to vendor databases are prohibited. Smartbiz366 Open API is the preferred Smartbiz path after Developer Partner credentials/contract; EASY-ACC remains fail-closed until Business Soft supplies a sanctioned API/bridge contract. Review CSV remains internal Finance reconciliation only.
+- Mileage origin/destination fields are wired to Google Places type-ahead. Selecting a suggestion carries its Place ID into transient Google Routes preview; manual address text remains a fallback.
+- Source full verification receipt `dbfb59dd-f89e-497e-9d80-c020c422cdea`: Prettier PASS, ESLint PASS, TypeScript PASS, 90/90 tests PASS, Next.js production build PASS.
+- Production Places acceptance probe `369c3168-9dda-4ba7-916f-056a8a84b9cb` failed safely with `GOOGLE_PLACES_NOT_ENABLED`: the configured production key exists, but Google Places API (New) is not enabled for its Google Cloud project. Autocomplete cannot be accepted live until `places.googleapis.com` is enabled and re-probed.
+- Production readiness now contains a blocking `google_places_autocomplete` gate requiring both a configured key and `GOOGLE_PLACES_ENABLED_CONFIRMED=true`; the flag must only be set after a successful live probe.
+- `PRODUCTION_CUTOVER_APPROVED` is an explicit business/operations sign-off assertion consumed by production preflight. It is not a deployment, DNS, tunnel, or Cloudflare bypass switch and must not be set without explicit cutover approval.
+<!-- agent-gateway:managed:end:financial-privacy-places-direct-integrations-20261004 -->

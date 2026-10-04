@@ -1,3 +1,4 @@
+import { requireRole, type Actor } from '../domain/core';
 import { db } from './db';
 import {
   financeProjectCostDetail,
@@ -162,10 +163,14 @@ async function financialGroups(limit = 500): Promise<FinancialGroup[]> {
   }));
 }
 
-export async function financeProjectProfits(limit = 500): Promise<ProjectProfitSummary> {
+export async function financeProjectProfits(
+  actor: Actor,
+  limit = 500,
+): Promise<ProjectProfitSummary> {
+  requireRole(actor, 'finance', 'admin');
   const [financials, actual] = await Promise.all([
     financialGroups(limit),
-    financeProjectCosts(limit),
+    financeProjectCosts(actor, limit),
   ]);
   const actualById = new Map(actual.rows.map((row) => [row.projectId, row]));
   const rows = financials.map((row) => mergeProfit(row, actualById.get(row.id)));
@@ -187,9 +192,11 @@ export async function financeProjectProfits(limit = 500): Promise<ProjectProfitS
 }
 
 export async function financeProjectProfitDetail(
+  actor: Actor,
   projectId: string,
 ): Promise<ProjectProfitDetail | null> {
-  const base = await financeProjectCostDetail(projectId);
+  requireRole(actor, 'finance', 'admin');
+  const base = await financeProjectCostDetail(actor, projectId);
   if (!base) return null;
 
   const [target] = await db().unsafe(

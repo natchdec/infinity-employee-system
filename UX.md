@@ -160,4 +160,6 @@ Before implementation:
 - Finance/Admin: Project Cost Ledger and project drill-down showing Customer, Sales Owner, Engineer Lead, Start/End, Status, Cost Center, linked OT/Expense/Travel totals, pending queues and recent activity.
 - Missing authoritative Engineer Lead or Cost Center values render as unavailable; the UI never infers them.
 - Project Master surfaces obey existing role gates and Quiet Enterprise responsive behavior on phone and notebook/browser layouts.
+- Financial confidentiality is explicit: Employee/Head project screens show operational Project Master metadata only. Revenue, Cost Center, planned costs, actual costs, margin and P&L are Finance/Admin-only and are not fetched by ordinary-user project queries.
+- Mileage origin/destination fields provide Google Maps-style type-ahead suggestions through Google Places. Selecting a suggestion retains its Place ID for route preview; free-text remains available as fallback, and the suggestion surface includes Google Maps attribution.
 <!-- agent-gateway:managed:end:project-master-accepted-ux-20260930 -->

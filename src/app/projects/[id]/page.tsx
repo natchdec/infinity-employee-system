@@ -36,11 +36,11 @@ export default async function ProjectDetailPage({ params }: Props) {
   const actor = await requireActor();
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
-  const project = await projectMasterDetail(id);
+  const canViewFinancials = actor.roles.includes('finance') || actor.roles.includes('admin');
+  const project = await projectMasterDetail(actor, id);
   if (!project) notFound();
 
-  const canViewFinancials = actor.roles.includes('finance') || actor.roles.includes('admin');
-  const profit = canViewFinancials ? await financeProjectProfitDetail(project.id) : null;
+  const profit = canViewFinancials ? await financeProjectProfitDetail(actor, project.id) : null;
 
   return (
     <AppShell
@@ -76,8 +76,12 @@ export default async function ProjectDetailPage({ params }: Props) {
           </dd>
           <dt>Status</dt>
           <dd>{project.status}</dd>
-          <dt>Cost Center</dt>
-          <dd>{project.costCenter ?? 'ยังไม่มีข้อมูลจากต้นทาง'}</dd>
+          {canViewFinancials ? (
+            <>
+              <dt>Cost Center</dt>
+              <dd>{project.costCenter ?? 'ยังไม่มีข้อมูลจากต้นทาง'}</dd>
+            </>
+          ) : null}
           <dt>Source</dt>
           <dd>Microsoft Lists / SharePoint</dd>
           <dt>Last Sync</dt>

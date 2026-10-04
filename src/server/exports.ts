@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { createHash } from 'node:crypto';
 import { csv, fingerprint, invariant, requireRole, type Actor, type Json } from '../domain/core';
 import { audit, command, safeJson } from './db';
-import { EASY_ACC_PRIMPORT_BLOCKED_REASON } from './integrations/easy-acc';
+import { EASY_ACC_DIRECT_INTEGRATION_BLOCKED_REASON } from './integrations/easy-acc';
 
 const payrollSchema = z
   .object({
@@ -72,7 +72,7 @@ export async function createPayrollExport(
       const inputHash = fingerprint(snapshot);
       if (input.adapter === 'easy_acc') {
         const id = randomUUID();
-        const reason = EASY_ACC_PRIMPORT_BLOCKED_REASON;
+        const reason = EASY_ACC_DIRECT_INTEGRATION_BLOCKED_REASON;
         await tx`
         insert into export_jobs(id,actor_id,adapter,scope,input_hash,input_snapshot,state,blocked_reason)
         values(${id},${actor.id},'easy_acc',${input.month},${inputHash},${tx.json(snapshot)},'blocked',${reason})
@@ -182,7 +182,7 @@ export async function createAccountingExport(
       if (input.adapter === 'smartbiz') {
         const id = randomUUID();
         const reason =
-          'Smartbiz on-prem ที่ยืนยันได้รองรับการนำเข้าข้อมูล native ของ Smartbiz/Crystal; ยังไม่มี transaction import schema ที่อนุญาตให้ระบบนี้สร้างเอง และ Smartbiz 366 Open API ต้องใช้ช่องทาง Developer Partner';
+          'Smartbiz direct integration requires the sanctioned Smartbiz366 Open API Developer Partner contract and credentials. File import and direct database writes are prohibited by product decision.';
         await tx`
         insert into export_jobs(id,actor_id,adapter,scope,input_hash,input_snapshot,state,blocked_reason)
         values(${id},${actor.id},'smartbiz',${scope},${inputHash},${tx.json(snapshot)},'blocked',${reason})

@@ -3,85 +3,56 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { DomainError } from '../src/domain/core';
 import { requestSchemas } from '../src/domain/requests';
-import { aggregateEasyAccOt, formatEasyAccPrimport } from '../src/server/integrations/easy-acc';
+import { EASY_ACC_INTEGRATION_POLICY } from '../src/server/integrations/easy-acc';
 import { blockingReadiness, productionReadiness } from '../src/server/integrations/preflight';
 import { validateCloudflareAccessClaims } from '../src/server/cloudflare-access';
 import { teamsWorkflowPayload } from '../src/server/integrations/teams-workflow';
 
-test('Easy-ACC PRIMPORT uses six single-space-delimited fields and three decimals', () => {
-  assert.equal(
-    formatEasyAccPrimport([
-      {
-        employeeCode: '000123',
-        workDays: '22',
-        ot1Hours: '3',
-        ot2Hours: '0',
-        ot3Hours: '4.5',
-        ot4Hours: '0',
-      },
-    ]),
-    '000123 22.000 3.000 0.000 4.500 0.000\r\n',
-  );
+test('EASY-ACC direct integration forbids file import and direct database writes', () => {
+  assert.equal(EASY_ACC_INTEGRATION_POLICY.transport, 'vendor_api_or_bridge_only');
+  assert.equal(EASY_ACC_INTEGRATION_POLICY.fileImportAllowed, false);
+  assert.equal(EASY_ACC_INTEGRATION_POLICY.directDatabaseWriteAllowed, false);
 });
 
-test('Easy-ACC export rejects unverified employee code shape', () => {
-  assert.throws(
-    () =>
-      formatEasyAccPrimport([
-        {
-          employeeCode: 'EMP-1',
-          workDays: '22',
-          ot1Hours: '0',
-          ot2Hours: '0',
-          ot3Hours: '0',
-          ot4Hours: '0',
-        },
-      ]),
-    (error: unknown) =>
-      error instanceof DomainError && error.code === 'EASY_ACC_EMPLOYEE_CODE_INVALID',
+test('Project financial reporting enforces Finance/Admin at the server query boundary', () => {
+  const projectReporting = readFileSync(
+    new URL('../src/server/project-reporting.ts', import.meta.url),
+    'utf8',
   );
+  const profitReporting = readFileSync(
+    new URL('../src/server/project-profit-reporting.ts', import.meta.url),
+    'utf8',
+  );
+  assert.ok(projectReporting.includes("requireRole(actor, 'finance', 'admin')"));
+  assert.ok(profitReporting.includes("requireRole(actor, 'finance', 'admin')"));
 });
 
-test('Easy-ACC PRIMPORT rejects employee codes longer than 9 digits', () => {
-  const row = {
-    employeeCode: '1'.repeat(10),
-    workDays: '22',
-    ot1Hours: '0',
-    ot2Hours: '0',
-    ot3Hours: '0',
-    ot4Hours: '0',
-  };
-  assert.throws(
-    () => formatEasyAccPrimport([row]),
-    (error: unknown) =>
-      error instanceof DomainError && error.code === 'EASY_ACC_EMPLOYEE_CODE_INVALID',
+test('ordinary Project Master detail defaults to a non-financial database projection', () => {
+  const source = readFileSync(
+    new URL('../src/server/project-master-view.ts', import.meta.url),
+    'utf8',
   );
+  assert.ok(source.includes("actor.roles.includes('finance') || actor.roles.includes('admin')"));
+  assert.ok(source.includes('null::text as cost_center'));
+  assert.ok(source.includes("'0'::text as revenue_satang"));
+  assert.ok(source.includes("'0'::text as hidden_cost_satang"));
 });
 
-test('Easy-ACC OT mapping is explicit and never guesses a slot', () => {
-  assert.deepEqual(
-    aggregateEasyAccOt(
-      [
-        { categoryId: 'weekday_ot', hours: 3 },
-        { categoryId: 'holiday_work', hours: 2 },
-      ],
-      { weekday_ot: 1, holiday_work: 3 },
-    ),
-    [3, 0, 2, 0],
+test('mileage address fields use Google autocomplete and selected place IDs for route preview', () => {
+  const expense = readFileSync(
+    new URL('../src/components/request/ExpenseFields.tsx', import.meta.url),
+    'utf8',
   );
-  assert.throws(
-    () => aggregateEasyAccOt([{ categoryId: 'unknown', hours: 1 }], {}),
-    (error: unknown) =>
-      error instanceof DomainError && error.code === 'EASY_ACC_OT_MAPPING_MISSING',
+  const autocomplete = readFileSync(
+    new URL('../src/components/AddressAutocompleteInput.tsx', import.meta.url),
+    'utf8',
   );
-  assert.deepEqual(
-    aggregateEasyAccOt([{ categoryId: 'weekday_ot', hours: 1.5 }], { weekday_ot: 1 }),
-    [1.5, 0, 0, 0],
-  );
-  assert.throws(
-    () => aggregateEasyAccOt([{ categoryId: 'weekday_ot', hours: 1.25 }], { weekday_ot: 1 }),
-    (error: unknown) => error instanceof DomainError && error.code === 'EASY_ACC_OT_HOURS_INVALID',
-  );
+  assert.ok(expense.includes('<AddressAutocompleteInput'));
+  assert.ok(expense.includes('OriginPlaceId'));
+  assert.ok(expense.includes('DestinationPlaceId'));
+  assert.ok(expense.includes('originPlaceId ? { placeId: originPlaceId }'));
+  assert.ok(autocomplete.includes("fetch('/api/places/autocomplete'"));
+  assert.ok(autocomplete.includes('setSelectedPlaceId(item.placeId)'));
 });
 
 test('Google mileage input requires a server-issued quote reference', () => {
@@ -207,6 +178,8 @@ test('blocking readiness requires Project Master but ignores deferred false gate
 
 test('Google Routes durable evidence stays fail-closed but non-blocking', () => {
   const gates = productionReadiness({ NODE_ENV: 'test' });
+  assert.equal(gates.find((gate) => gate.id === 'google_places_autocomplete')?.blocking, true);
+  assert.equal(gates.find((gate) => gate.id === 'google_places_autocomplete')?.ready, false);
   assert.equal(gates.find((gate) => gate.id === 'google_routes')?.blocking, false);
   assert.equal(gates.find((gate) => gate.id === 'google_routes')?.ready, false);
   assert.equal(gates.find((gate) => gate.id === 'cutover_approval')?.blocking, true);

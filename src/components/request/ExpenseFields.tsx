@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { useRef, useState } from 'react';
 import type { Json } from '@/domain/core';
+import { AddressAutocompleteInput } from '@/components/AddressAutocompleteInput';
 import type { RequestFormOptions } from '@/server/request-view';
 import { DocumentUploader, type UploadedDocument } from './DocumentUploader';
 import { arrayValue, objectValue, textValue } from './form-utils';
@@ -188,6 +189,9 @@ function ExpenseLineCard({
     const originAddress = formField(`${prefix}Leg${legIndex}OriginLabel`)?.value.trim() ?? '';
     const destinationAddress =
       formField(`${prefix}Leg${legIndex}DestinationLabel`)?.value.trim() ?? '';
+    const originPlaceId = formField(`${prefix}Leg${legIndex}OriginPlaceId`)?.value.trim() ?? '';
+    const destinationPlaceId =
+      formField(`${prefix}Leg${legIndex}DestinationPlaceId`)?.value.trim() ?? '';
 
     if (originAddress.length < 3 || destinationAddress.length < 3) {
       setRoutePreviews((current) => ({
@@ -214,8 +218,10 @@ function ExpenseLineCard({
           destinationKind,
           originLabel: originAddress,
           destinationLabel: destinationAddress,
-          origin: { address: originAddress },
-          destination: { address: destinationAddress },
+          origin: originPlaceId ? { placeId: originPlaceId } : { address: originAddress },
+          destination: destinationPlaceId
+            ? { placeId: destinationPlaceId }
+            : { address: destinationAddress },
         }),
       });
       const result = (await response.json()) as {
@@ -357,19 +363,23 @@ function ExpenseLineCard({
                   </label>
                   <label>
                     <span>ต้นทาง / ที่อยู่</span>
-                    <input
+                    <AddressAutocompleteInput
+                      csrf={csrf}
                       name={`${prefix}Leg${legIndex}OriginLabel`}
+                      placeIdName={`${prefix}Leg${legIndex}OriginPlaceId`}
                       required={requiredLeg}
-                      placeholder="เช่น Infinity Solution Service, Bangkok"
+                      placeholder="พิมพ์ชื่อสถานที่หรือที่อยู่ แล้วเลือกจาก Google Maps"
                       defaultValue={textValue(initialLeg.originLabel)}
                     />
                   </label>
                   <label>
                     <span>ปลายทาง / ที่อยู่</span>
-                    <input
+                    <AddressAutocompleteInput
+                      csrf={csrf}
                       name={`${prefix}Leg${legIndex}DestinationLabel`}
+                      placeIdName={`${prefix}Leg${legIndex}DestinationPlaceId`}
                       required={requiredLeg}
-                      placeholder="เช่น ชื่อลูกค้าและที่อยู่"
+                      placeholder="พิมพ์ชื่อสถานที่หรือที่อยู่ แล้วเลือกจาก Google Maps"
                       defaultValue={textValue(initialLeg.destinationLabel)}
                     />
                   </label>

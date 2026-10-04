@@ -817,6 +817,58 @@ button:disabled {
   font-weight: 600;
 }
 
+.address-autocomplete {
+  position: relative;
+}
+
+.address-suggestions {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 12px 32px rgba(31, 41, 55, 0.16);
+}
+
+.address-suggestion {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 2px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  padding: 10px 12px;
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.address-suggestion:hover,
+.address-suggestion:focus-visible {
+  background: var(--surface-subtle);
+}
+
+.address-suggestion strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.address-suggestion span,
+.address-attribution {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.address-attribution {
+  padding: 7px 12px;
+  text-align: right;
+}
+
 .form-error {
   padding: 12px 14px;
   border-left: 3px solid var(--danger);

@@ -13,7 +13,7 @@ function percentLabel(basisPoints: number | null): string {
 export default async function ProjectCostsPage() {
   const actor = await requireActor();
   requirePageRole(actor, 'finance', 'admin');
-  const report = await financeProjectProfits();
+  const report = await financeProjectProfits(actor);
 
   return (
     <AppShell

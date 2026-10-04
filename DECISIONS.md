@@ -37,7 +37,7 @@ Business Trip and Cash Advance are included in V1. Settlement is due within 3 da
 Mileage rate starts at 8 THB/km. Normal commute is deducted per eligible leg. Google Maps Routes is the target distance source for transient, no-store route previews. Under the standard Google Maps Platform terms, preview distance/duration is not retained as permanent provider evidence; the employee reviews the previewed distance and the submitted mileage remains employee-attested. Durable Google provider evidence stays fail-closed unless separate documented licensing grants the required retention rights.
 
 ## D-013 Finance Systems
-Use adapters for Easy-ACC payroll and Smartbiz accounting. Do not hard-couple the core system to undocumented direct APIs.
+Use adapters for EASY-ACC payroll and Smartbiz accounting, but direct integration is allowed only through a vendor-sanctioned API or bridge. File-import workflows (including PRIMPORT/CSV/helper importers) and direct writes to vendor databases are prohibited. Smartbiz366 Open API is the preferred Smartbiz path after Developer Partner credentials/contract are available. EASY-ACC remains fail-closed until Business Soft provides an approved API/bridge contract. Neutral Review CSV remains an internal Finance reconciliation artifact only and is never an import feed to either accounting product.
 
 ## D-014 Receipt Handling
 Digital receipt may allow payment before original paper receipt arrives. Original receipt status is tracked separately.
@@ -69,3 +69,9 @@ Microsoft 365 Directory, Outlook Calendar and Project Master use the same approv
 
 ## D-022 Microsoft 365 Directory Review
 Microsoft 365 Directory synchronization remains a read-only tenant identity inventory and never grants Employee System access automatically. Admin explicitly promotes an enabled Microsoft 365 Member to an Employee with a verified department and hire date, or marks an unlinked directory identity as not an employee. Non-employee classification is local review state rather than deletion from Microsoft 365, so subsequent directory synchronization preserves the decision. Linked Employees continue to use the existing Admin Employee controls for department, roles, Head/Owner state, reporting line, and activation.
+
+## D-023 Project Financial Confidentiality
+Project Revenue, planned cost components, Cost Center, actual employee cost, margin, P&L and other project financial fields are restricted to Finance and Admin. Ordinary Employee and Head users may read operational Project Master metadata needed to select and identify a Project, but their server-side Project Master queries must not retrieve financial values from the database. Finance reporting functions enforce the same Finance/Admin role gate at the server boundary.
+
+## D-024 Google Place Search for Mileage
+Mileage origin/destination entry uses Google Places autocomplete for type-ahead suggestions. Selecting a suggestion carries the Google Place ID into the transient route preview for more precise routing; free-text address remains a fallback when the employee does not select a suggestion. Suggestions and route previews are no-store UI assistance and must preserve Google Maps attribution and the existing mileage attestation/retention policy.

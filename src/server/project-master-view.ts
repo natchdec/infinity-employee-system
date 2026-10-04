@@ -1,3 +1,4 @@
+import type { Actor } from '../domain/core';
 import { db } from './db';
 import { projectMasterConfigured } from './integrations/project-master';
 
@@ -173,23 +174,17 @@ export async function listProjectMaster(
         min(start_date)::text as start_date,
         max(end_date)::text as end_date,
         case when bool_or(status='active') then 'active' else 'inactive' end as status,
-        (array_agg(cost_center order by source_item_id,id))[1] as cost_center,
+        null::text as cost_center,
         (array_agg(po_number order by source_item_id,id))[1] as po_number,
         min(po_date)::text as po_date,
         min(po_create_date)::text as po_create_date,
-        coalesce(sum(revenue_satang),0)::text as revenue_satang,
-        coalesce(sum(sale_cost_satang),0)::text as sale_cost_satang,
-        coalesce(sum(engineer_cost_satang),0)::text as engineer_cost_satang,
-        coalesce(sum(entertain_cost_satang),0)::text as entertain_cost_satang,
-        coalesce(sum(hidden_cost_satang),0)::text as hidden_cost_satang,
-        coalesce(sum(sale_commission_satang),0)::text as sale_commission_satang,
-        (
-          coalesce(sum(sale_cost_satang),0)+
-          coalesce(sum(engineer_cost_satang),0)+
-          coalesce(sum(entertain_cost_satang),0)+
-          coalesce(sum(hidden_cost_satang),0)+
-          coalesce(sum(sale_commission_satang),0)
-        )::text as planned_cost_satang,
+        '0'::text as revenue_satang,
+        '0'::text as sale_cost_satang,
+        '0'::text as engineer_cost_satang,
+        '0'::text as entertain_cost_satang,
+        '0'::text as hidden_cost_satang,
+        '0'::text as sale_commission_satang,
+        '0'::text as planned_cost_satang,
         count(*)::integer as line_count,
         'microsoft_lists'::text as source,
         (array_agg(source_etag order by source_item_id,id))[1] as source_etag,
@@ -218,18 +213,28 @@ export async function listProjectMaster(
   return rows.map((row) => mapProject(row as Record<string, unknown>));
 }
 
-export async function projectMasterDetail(id: string): Promise<ProjectMasterDetail | null> {
+export async function projectMasterDetail(
+  actor: Actor,
+  id: string,
+): Promise<ProjectMasterDetail | null> {
+  const includeFinancials = actor.roles.includes('finance') || actor.roles.includes('admin');
   const [target] = await db().unsafe(
     `select ${groupKeySql} as group_key from project_references where id=$1 and source='microsoft_lists'`,
     [id],
   );
   if (!target) return null;
+  const costCenterProjection = includeFinancials ? 'cost_center' : 'null::text as cost_center';
+  const financialProjection = includeFinancials
+    ? `revenue_satang::text,sale_cost_satang::text,engineer_cost_satang::text,
+        entertain_cost_satang::text,hidden_cost_satang::text,sale_commission_satang::text`
+    : `'0'::text as revenue_satang,'0'::text as sale_cost_satang,
+        '0'::text as engineer_cost_satang,'0'::text as entertain_cost_satang,
+        '0'::text as hidden_cost_satang,'0'::text as sale_commission_satang`;
   const lines = await db().unsafe(
     `
       select id,source_item_id,code,name,customer,sales_owner,engineer_lead,start_date::text,end_date::text,
-        status,cost_center,po_number,po_date::text,po_create_date::text,
-        revenue_satang::text,sale_cost_satang::text,engineer_cost_satang::text,
-        entertain_cost_satang::text,hidden_cost_satang::text,sale_commission_satang::text,
+        status,${costCenterProjection},po_number,po_date::text,po_create_date::text,
+        ${financialProjection},
         source_etag,last_synced_at
       from project_references
       where source='microsoft_lists' and ${groupKeySql}=$1
