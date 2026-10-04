@@ -19,6 +19,20 @@
   --v3-warning-soft: #fff4de;
   --v3-danger: #c93e45;
   --v3-danger-soft: #fdecee;
+  /* legacy tokens used by older shared components now resolve to locked V3 */
+  --canvas: #f7f3ee;
+  --surface: #ffffff;
+  --surface-muted: #fff9f4;
+  --surface-subtle: #faf7f3;
+  --navigation: #20262b;
+  --text: #1f252b;
+  --muted: #737c86;
+  --border: #e8e1d9;
+  --border-strong: #d8cec3;
+  --primary: #e84a0c;
+  --primary-hover: #cf3f08;
+  --primary-subtle: #fff0e4;
+  --primary-soft: #fff7f1;
 }
 html,
 body {

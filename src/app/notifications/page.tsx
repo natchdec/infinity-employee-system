@@ -21,15 +21,10 @@ export default async function NotificationsPage() {
       description="รวมงานที่ต้องกลับมาตรวจสอบ อนุมัติ หรือส่งเอกสาร"
     >
       <section className="section">
-        <div className="metric-row">
-          <div className="metric">
-            <strong>{unread}</strong>
-            <span>ยังไม่ได้อ่าน</span>
-          </div>
-          <div className="metric">
-            <strong>{rows.length}</strong>
-            <span>รายการล่าสุด</span>
-          </div>
+        <div className="compact-summary-line">
+          <strong>{unread} ยังไม่ได้อ่าน</strong>
+          <span>·</span>
+          <span>{rows.length} รายการล่าสุด</span>
         </div>
       </section>
       <section className="section">

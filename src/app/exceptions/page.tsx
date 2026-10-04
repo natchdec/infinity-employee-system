@@ -17,15 +17,10 @@ export default async function ExceptionsPage() {
       description="รวมรายการที่ต้องแก้หรือตรวจสอบก่อน workflow จะเดินต่อ"
     >
       <section className="section">
-        <div className="metric-row">
-          <div className="metric">
-            <strong>{rows.length}</strong>
-            <span>ต้องตรวจสอบ</span>
-          </div>
-          <div className="metric">
-            <strong>{blocking}</strong>
-            <span>Blocking</span>
-          </div>
+        <div className="compact-summary-line">
+          <strong>{rows.length} รายการต้องตรวจสอบ</strong>
+          <span>·</span>
+          <span className={blocking ? 'summary-alert' : undefined}>{blocking} Blocking</span>
         </div>
       </section>
       <section className="section">

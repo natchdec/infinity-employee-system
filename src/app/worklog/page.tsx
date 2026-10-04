@@ -71,23 +71,14 @@ export default async function WorklogPage({
       description="ตรวจรายการที่ระบบอ่านจาก Outlook ก่อนสร้าง OT ค่ารถ หรือคำขอลา"
     >
       <section className="section">
-        <div className="metric-row" aria-label="สรุป Calendar Inbox">
-          <div className="metric">
-            <strong>{counts.ot}</strong>
-            <span>OT</span>
-          </div>
-          <div className="metric">
-            <strong>{counts.onsite}</strong>
-            <span>Onsite</span>
-          </div>
-          <div className="metric">
-            <strong>{counts.leave}</strong>
-            <span>ลา</span>
-          </div>
-          <div className="metric">
-            <strong>{counts.review}</strong>
-            <span>ต้องตรวจสอบ</span>
-          </div>
+        <div className="compact-summary-line" aria-label="สรุป Calendar Inbox">
+          <strong>{items.length} รายการ</strong>
+          <span>· OT {counts.ot}</span>
+          <span>· Onsite {counts.onsite}</span>
+          <span>· ลา {counts.leave}</span>
+          <span className={counts.review ? 'summary-alert' : undefined}>
+            · {counts.review} ต้องตรวจ
+          </span>
         </div>
       </section>
 
