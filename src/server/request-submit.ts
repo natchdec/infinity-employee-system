@@ -282,6 +282,7 @@ export async function submitNewRequest(
       {
         kind: request.kind,
         routing: routing.action,
+        approvalRoute: prepared.approvalRoute,
         financeState,
       },
       correlationId,
@@ -393,7 +394,7 @@ export async function resubmitRequest(
       'request',
       id,
       nextRevision,
-      { round: nextRound, routing: routing.action },
+      { round: nextRound, routing: routing.action, approvalRoute: prepared.approvalRoute },
       correlationId,
     );
     await notifyHead(tx, updated, routing.assignedHeadId);

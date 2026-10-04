@@ -7,6 +7,7 @@ import { AddressAutocompleteInput } from '@/components/AddressAutocompleteInput'
 import type { RequestFormOptions } from '@/server/request-view';
 import { DocumentUploader, type UploadedDocument } from './DocumentUploader';
 import { arrayValue, objectValue, textValue } from './form-utils';
+import { RouteMapPreview, type RouteOption, type RoutePreview } from './RouteMapPreview';
 
 interface Props {
   csrf: string;
@@ -18,17 +19,25 @@ interface EditorLine {
   key: string;
   initial: Record<string, unknown>;
   documents: UploadedDocument[];
+  tollDocuments: UploadedDocument[];
 }
 
 interface RoutePreviewState {
   busy: boolean;
-  message?: string;
+  preview?: RoutePreview;
   error?: string;
 }
 
 function initialDocuments(line: Record<string, unknown>): UploadedDocument[] {
   return arrayValue(line.documentIds).flatMap((value, index) =>
     typeof value === 'string' ? [{ id: value, name: `หลักฐานเดิม ${index + 1}` }] : [],
+  );
+}
+
+function initialTollDocuments(line: Record<string, unknown>): UploadedDocument[] {
+  const toll = objectValue(line.toll);
+  return arrayValue(toll.documentIds).flatMap((value, index) =>
+    typeof value === 'string' ? [{ id: value, name: `หลักฐานทางด่วนเดิม ${index + 1}` }] : [],
   );
 }
 
@@ -49,11 +58,6 @@ function metresToKm(value: number): string {
   return (value / 1000).toFixed(3).replace(/\\.?0+$/, '');
 }
 
-function durationLabel(seconds: number | null | undefined): string {
-  if (!Number.isFinite(seconds) || seconds === null || seconds === undefined) return '';
-  return ` · ประมาณ ${Math.max(1, Math.round(seconds / 60))} นาที`;
-}
-
 export function ExpenseFields({ csrf, options, initial }: Props) {
   const initialLines = arrayValue(initial.lines).map(objectValue);
   const nextKey = useRef(initialLines.length);
@@ -63,14 +67,26 @@ export function ExpenseFields({ csrf, options, initial }: Props) {
       key: `line-${index}`,
       initial: line,
       documents: initialDocuments(line),
+      tollDocuments: initialTollDocuments(line),
     }));
   });
 
-  const selectedDocumentIds = new Set(lines.flatMap((line) => line.documents.map((doc) => doc.id)));
+  const selectedDocumentIds = new Set(
+    lines.flatMap((line) => [
+      ...line.documents.map((doc) => doc.id),
+      ...line.tollDocuments.map((doc) => doc.id),
+    ]),
+  );
 
   function updateDocuments(key: string, documents: UploadedDocument[]) {
     setLines((current) =>
       current.map((line) => (line.key === key ? { ...line, documents } : line)),
+    );
+  }
+
+  function updateTollDocuments(key: string, tollDocuments: UploadedDocument[]) {
+    setLines((current) =>
+      current.map((line) => (line.key === key ? { ...line, tollDocuments } : line)),
     );
   }
 
@@ -79,7 +95,7 @@ export function ExpenseFields({ csrf, options, initial }: Props) {
       if (current.length >= 50) return current;
       const key = `new-${nextKey.current}`;
       nextKey.current += 1;
-      return [...current, { key, initial: {}, documents: [] }];
+      return [...current, { key, initial: {}, documents: [], tollDocuments: [] }];
     });
   }
 
@@ -109,7 +125,7 @@ export function ExpenseFields({ csrf, options, initial }: Props) {
           <div>
             <strong>{lines.length} รายการ</strong>
             <p className="field-note">
-              แยก Mileage, Toll, Parking, Grab, Fuel และค่าใช้จ่ายอื่นเป็นคนละรายการ
+              รถส่วนตัว, Taxi และ Grab สามารถเพิ่มค่าทางด่วนในรายการเดียวกันได้
             </p>
           </div>
           <button
@@ -130,10 +146,12 @@ export function ExpenseFields({ csrf, options, initial }: Props) {
           index={index}
           initial={line.initial}
           documents={line.documents}
+          tollDocuments={line.tollDocuments}
           options={options}
           selectedDocumentIds={selectedDocumentIds}
           canRemove={lines.length > 1}
           onDocumentsChange={(documents) => updateDocuments(line.key, documents)}
+          onTollDocumentsChange={(documents) => updateTollDocuments(line.key, documents)}
           onRemove={() => removeLine(line.key)}
         />
       ))}
@@ -146,10 +164,12 @@ interface ExpenseLineCardProps {
   index: number;
   initial: Record<string, unknown>;
   documents: UploadedDocument[];
+  tollDocuments: UploadedDocument[];
   options: RequestFormOptions;
   selectedDocumentIds: Set<string>;
   canRemove: boolean;
   onDocumentsChange: (documents: UploadedDocument[]) => void;
+  onTollDocumentsChange: (documents: UploadedDocument[]) => void;
   onRemove: () => void;
 }
 
@@ -158,15 +178,18 @@ function ExpenseLineCard({
   index,
   initial,
   documents,
+  tollDocuments,
   options,
   selectedDocumentIds,
   canRemove,
   onDocumentsChange,
+  onTollDocumentsChange,
   onRemove,
 }: ExpenseLineCardProps) {
   const prefix = `expenseLine${index + 1}`;
   const mileage = arrayValue(initial.mileage).map(objectValue);
   const entertainment = objectValue(initial.entertainment);
+  const initialToll = objectValue(initial.toll);
   const [category, setCategory] = useState(
     textValue(initial.categoryId) || options.expenseCategories[0]?.id || 'mileage',
   );
@@ -174,8 +197,11 @@ function ExpenseLineCard({
     Math.min(20, Math.max(2, mileage.length || 2)),
   );
   const [routePreviews, setRoutePreviews] = useState<Record<number, RoutePreviewState>>({});
+  const [tollEnabled, setTollEnabled] = useState(Boolean(initial.toll));
   const categoryPolicy = options.expenseCategories.find((item) => item.id === category);
+  const tollPolicy = options.expenseCategories.find((item) => item.id === 'toll');
   const evidenceRequired = categoryPolicy?.evidenceRequired ?? false;
+  const tollAllowed = ['mileage', 'taxi', 'grab'].includes(category) && Boolean(tollPolicy);
 
   function formField(name: string): HTMLInputElement | HTMLSelectElement | null {
     const form = document.querySelector<HTMLFormElement>('form.request-form');
@@ -225,7 +251,15 @@ function ExpenseLineCard({
         }),
       });
       const result = (await response.json()) as {
-        preview?: { distanceMetres?: unknown; durationSeconds?: unknown };
+        preview?: {
+          routes?: Array<{
+            routeIndex?: unknown;
+            distanceMetres?: unknown;
+            durationSeconds?: unknown;
+            encodedPolyline?: unknown;
+            routeLabels?: unknown;
+          }>;
+        };
         error?: { message?: unknown };
       };
       if (!response.ok) {
@@ -235,24 +269,51 @@ function ExpenseLineCard({
             : 'Google Maps คำนวณเส้นทางไม่สำเร็จ',
         );
       }
-      const distanceMetres = Number(result.preview?.distanceMetres);
-      const durationSeconds =
-        result.preview?.durationSeconds === null ? null : Number(result.preview?.durationSeconds);
-      if (!Number.isSafeInteger(distanceMetres) || distanceMetres <= 0) {
-        throw new Error('ผลระยะทางจาก Google Maps ไม่ถูกต้อง');
-      }
+
+      const routes: RouteOption[] = (result.preview?.routes ?? []).flatMap((route) => {
+        const routeIndex = Number(route.routeIndex);
+        const distanceMetres = Number(route.distanceMetres);
+        const durationSeconds =
+          route.durationSeconds === null ? null : Number(route.durationSeconds);
+        const encodedPolyline =
+          typeof route.encodedPolyline === 'string' ? route.encodedPolyline : '';
+        if (
+          !Number.isInteger(routeIndex) ||
+          !Number.isSafeInteger(distanceMetres) ||
+          distanceMetres <= 0 ||
+          !encodedPolyline
+        ) {
+          return [];
+        }
+        return [
+          {
+            routeIndex,
+            distanceMetres,
+            durationSeconds: Number.isFinite(durationSeconds) ? durationSeconds : null,
+            encodedPolyline,
+            routeLabels: Array.isArray(route.routeLabels)
+              ? route.routeLabels.filter((value): value is string => typeof value === 'string')
+              : [],
+          },
+        ];
+      });
+      if (!routes.length) throw new Error('Google Maps ไม่ส่งเส้นทางที่เลือกได้กลับมา');
+
       const distanceField = formField(`${prefix}Leg${legIndex}Km`);
       if (!(distanceField instanceof HTMLInputElement)) {
         throw new Error('ไม่พบช่องระยะทางสำหรับเที่ยวนี้');
       }
-      distanceField.value = metresToKm(distanceMetres);
+      distanceField.value = metresToKm(routes[0]!.distanceMetres);
       setRoutePreviews((current) => ({
         ...current,
         [legIndex]: {
           busy: false,
-          message: `Google Maps: ${metresToKm(distanceMetres)} กม.${durationLabel(
-            Number.isFinite(durationSeconds) ? durationSeconds : null,
-          )}`,
+          preview: {
+            originLabel: originAddress,
+            destinationLabel: destinationAddress,
+            routes,
+            selectedRouteIndex: routes[0]!.routeIndex,
+          },
         },
       }));
     } catch (value) {
@@ -264,6 +325,23 @@ function ExpenseLineCard({
         },
       }));
     }
+  }
+
+  function selectMileageRoute(legIndex: number, route: RouteOption) {
+    const distanceField = formField(`${prefix}Leg${legIndex}Km`);
+    if (!(distanceField instanceof HTMLInputElement)) return;
+    distanceField.value = metresToKm(route.distanceMetres);
+    setRoutePreviews((current) => {
+      const state = current[legIndex];
+      if (!state?.preview) return current;
+      return {
+        ...current,
+        [legIndex]: {
+          ...state,
+          preview: { ...state.preview, selectedRouteIndex: route.routeIndex },
+        },
+      };
+    });
   }
 
   return (
@@ -405,19 +483,20 @@ function ExpenseLineCard({
                     disabled={routePreviews[legIndex]?.busy}
                     onClick={() => void previewMileageLeg(legIndex)}
                   >
-                    {routePreviews[legIndex]?.busy ? 'กำลังคำนวณ…' : 'คำนวณด้วย Google Maps'}
+                    {routePreviews[legIndex]?.busy ? 'กำลังคำนวณ…' : 'ดูเส้นทางจาก Google Maps'}
                   </button>
-                  {routePreviews[legIndex]?.message ? (
-                    <span className="field-note" role="status">
-                      {routePreviews[legIndex]?.message}
-                    </span>
-                  ) : null}
                   {routePreviews[legIndex]?.error ? (
                     <span className="field-warning" role="alert">
                       {routePreviews[legIndex]?.error}
                     </span>
                   ) : null}
                 </div>
+                {routePreviews[legIndex]?.preview ? (
+                  <RouteMapPreview
+                    preview={routePreviews[legIndex]!.preview!}
+                    onSelect={(route) => selectMileageRoute(legIndex, route)}
+                  />
+                ) : null}
               </div>
             );
           })}
@@ -440,7 +519,8 @@ function ExpenseLineCard({
             </button>
           </div>
           <p className="field-note">
-            Mileage คำนวณจากระยะทาง × อัตรานโยบาย และแยกจาก Toll / Parking / Fuel / Taxi / Grab เสมอ
+            Mileage คำนวณจากระยะทาง × อัตรานโยบาย · ถ้ามีค่าทางด่วนสามารถเพิ่มเป็น add-on
+            ใต้รายการเดียวกันได้
           </p>
           <p className="field-note">
             Google Maps ใช้สำหรับ preview แบบ no-store เพื่อช่วยกรอกระยะทางเท่านั้น เมื่อส่งคำขอ
@@ -459,6 +539,105 @@ function ExpenseLineCard({
           />
         </label>
       )}
+
+      {tollAllowed ? (
+        <div className="subsection toll-addon">
+          <label className="toll-addon-toggle">
+            <input
+              type="checkbox"
+              name={`${prefix}TollEnabled`}
+              checked={tollEnabled}
+              onChange={(event) => setTollEnabled(event.target.checked)}
+            />
+            <span>
+              <strong>มีค่าทางด่วนในเที่ยวนี้</strong>
+              <small>ระบบจะแยกเป็นหมวด Toll ให้ Finance/Report อัตโนมัติ</small>
+            </span>
+          </label>
+
+          {tollEnabled ? (
+            <div className="toll-addon-body">
+              <label>
+                <span>ค่าทางด่วน (บาท)</span>
+                <input
+                  name={`${prefix}TollAmount`}
+                  inputMode="decimal"
+                  required
+                  placeholder="0.00"
+                  defaultValue={textValue(initialToll.amount)}
+                />
+              </label>
+
+              {tollDocuments.map((document) => (
+                <input
+                  key={document.id}
+                  type="hidden"
+                  name={`${prefix}TollDocumentId`}
+                  value={document.id}
+                />
+              ))}
+
+              {options.receiptInbox.length ? (
+                <div className="receipt-picker-grid toll-receipt-grid">
+                  {options.receiptInbox.map((receipt) => {
+                    const selectedHere = tollDocuments.some(
+                      (document) => document.id === receipt.id,
+                    );
+                    const selectedElsewhere = selectedDocumentIds.has(receipt.id) && !selectedHere;
+                    return (
+                      <button
+                        className="receipt-picker-card"
+                        type="button"
+                        key={receipt.id}
+                        disabled={selectedHere || selectedElsewhere || tollDocuments.length >= 10}
+                        onClick={() =>
+                          onTollDocumentsChange([
+                            ...tollDocuments,
+                            { id: receipt.id, name: receipt.filename },
+                          ])
+                        }
+                      >
+                        <Image
+                          src={`/api/documents/${receipt.id}`}
+                          alt=""
+                          width={96}
+                          height={96}
+                          unoptimized
+                        />
+                        <span className="receipt-picker-copy">
+                          <strong>{receipt.filename}</strong>
+                          <small>
+                            {fileSize(receipt.byteSize)} · {uploadedWhen(receipt.uploadedAt)}
+                          </small>
+                          <span>
+                            {selectedHere
+                              ? 'ใช้กับค่าทางด่วนแล้ว'
+                              : selectedElsewhere
+                                ? 'ใช้กับรายการอื่นแล้ว'
+                                : 'ใช้เป็นใบเสร็จทางด่วน'}
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+
+              <DocumentUploader
+                csrf={csrf}
+                evidenceClass="expense"
+                documents={tollDocuments}
+                onChange={onTollDocumentsChange}
+                required={tollPolicy?.evidenceRequired ?? false}
+              />
+              <p className="field-note">
+                ใบเสร็จทางด่วนแยกจากใบเสร็จค่าเดินทางหลัก
+                {tollPolicy?.evidenceRequired ? ' · ต้องมีหลักฐานก่อนส่ง' : ''}
+              </p>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {category === 'entertainment' ? (
         <div className="subsection">

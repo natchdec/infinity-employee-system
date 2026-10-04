@@ -12,6 +12,8 @@ export interface RequestFormOptions {
     name: string;
     customer: string | null;
     poNumber: string | null;
+    productCategory: string | null;
+    productSolution: string | null;
     lineCount: number;
   }[];
   leaveTypes: {
@@ -70,6 +72,10 @@ export async function requestFormOptions(actor: Actor): Promise<RequestFormOptio
         (array_agg(name order by source_item_id,id))[1] as name,
         (array_agg(customer order by source_item_id,id))[1] as customer,
         (array_agg(po_number order by source_item_id,id))[1] as po_number,
+        string_agg(distinct nullif(btrim(source_fields->>'ProductCategory'),''), ' · ')
+          as product_category,
+        string_agg(distinct nullif(btrim(source_fields->>'ProductSolution'),''), ' · ')
+          as product_solution,
         count(*)::integer as line_count
       from project_references
       where status='active'
@@ -127,6 +133,8 @@ export async function requestFormOptions(actor: Actor): Promise<RequestFormOptio
       name: row.name,
       customer: row.customer,
       poNumber: row.po_number ? String(row.po_number) : null,
+      productCategory: row.product_category ? String(row.product_category) : null,
+      productSolution: row.product_solution ? String(row.product_solution) : null,
       lineCount: Number(row.line_count ?? 1),
     })),
     leaveTypes: leave.body.types.map((type) => ({

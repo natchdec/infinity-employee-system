@@ -33,10 +33,18 @@ function durationSeconds(value: unknown): number | null {
   return Number.isSafeInteger(seconds) && seconds >= 0 ? seconds : null;
 }
 
-async function requestGoogleRoute(
+interface GoogleRouteOption {
+  routeIndex: number;
+  distanceMetres: number;
+  durationSeconds: number | null;
+  encodedPolyline: string;
+  routeLabels: string[];
+}
+
+async function requestGoogleRoutes(
   c: AppConfig,
   input: z.infer<typeof quoteInputSchema>,
-): Promise<{ distanceMetres: number; durationSeconds: number | null }> {
+): Promise<GoogleRouteOption[]> {
   invariant(
     c.GOOGLE_ROUTES_API_KEY,
     'GOOGLE_ROUTES_NOT_CONFIGURED',
@@ -49,13 +57,15 @@ async function requestGoogleRoute(
     headers: {
       'Content-Type': 'application/json',
       'X-Goog-Api-Key': c.GOOGLE_ROUTES_API_KEY,
-      'X-Goog-FieldMask': 'routes.distanceMeters,routes.duration',
+      'X-Goog-FieldMask':
+        'routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline,routes.routeLabels',
     },
     body: JSON.stringify({
       origin: googleWaypoint(input.origin),
       destination: googleWaypoint(input.destination),
       travelMode: 'DRIVE',
       routingPreference: 'TRAFFIC_UNAWARE',
+      computeAlternativeRoutes: true,
       units: 'METRIC',
     }),
     signal: AbortSignal.timeout(20_000),
@@ -68,26 +78,44 @@ async function requestGoogleRoute(
     503,
   );
   const payload = (await response.json()) as {
-    routes?: Array<{ distanceMeters?: unknown; duration?: unknown }>;
+    routes?: Array<{
+      distanceMeters?: unknown;
+      duration?: unknown;
+      polyline?: { encodedPolyline?: unknown };
+      routeLabels?: unknown;
+    }>;
   };
-  const route = payload.routes?.[0];
+  const source = payload.routes?.slice(0, 3) ?? [];
   invariant(
-    route,
+    source.length > 0,
     'GOOGLE_ROUTES_NO_ROUTE',
     'Google Maps หาเส้นทางไม่เจอ กรุณาระบุชื่อสถานที่พร้อมที่อยู่ให้ละเอียดขึ้น',
     422,
   );
-  const distanceMetres = Number(route.distanceMeters);
-  invariant(
-    Number.isSafeInteger(distanceMetres) && distanceMetres > 0 && distanceMetres <= 3_000_000,
-    'GOOGLE_ROUTES_RESPONSE_INVALID',
-    'ผลระยะทางจาก Google Routes ไม่ถูกต้อง',
-    503,
-  );
-  return {
-    distanceMetres,
-    durationSeconds: durationSeconds(route.duration),
-  };
+
+  return source.map((route, routeIndex) => {
+    const distanceMetres = Number(route.distanceMeters);
+    const encodedPolyline =
+      typeof route.polyline?.encodedPolyline === 'string' ? route.polyline.encodedPolyline : '';
+    invariant(
+      Number.isSafeInteger(distanceMetres) &&
+        distanceMetres > 0 &&
+        distanceMetres <= 3_000_000 &&
+        encodedPolyline.length > 0,
+      'GOOGLE_ROUTES_RESPONSE_INVALID',
+      'ผลเส้นทางจาก Google Routes ไม่ถูกต้อง',
+      503,
+    );
+    return {
+      routeIndex,
+      distanceMetres,
+      durationSeconds: durationSeconds(route.duration),
+      encodedPolyline,
+      routeLabels: Array.isArray(route.routeLabels)
+        ? route.routeLabels.filter((value): value is string => typeof value === 'string')
+        : [],
+    };
+  });
 }
 
 /**
@@ -99,14 +127,17 @@ async function requestGoogleRoute(
 export async function createGoogleRoutePreview(actor: Actor, raw: unknown) {
   invariant(actor.active, 'FORBIDDEN', 'บัญชีพนักงานไม่พร้อมใช้งาน', 403);
   const input = quoteInputSchema.parse(raw);
-  const result = await requestGoogleRoute(config(), input);
+  const routes = await requestGoogleRoutes(config(), input);
+  const primary = routes[0]!;
   return {
     provider: 'google_routes' as const,
     usage: 'transient_preview' as const,
     persistable: false as const,
     canSubmitAsProviderEvidence: false as const,
     attribution: 'Google Maps',
-    ...result,
+    distanceMetres: primary.distanceMetres,
+    durationSeconds: primary.durationSeconds,
+    routes,
   };
 }
 
@@ -120,7 +151,9 @@ export async function createGoogleRouteQuote(actor: Actor, raw: unknown, now = n
     503,
   );
   const input = quoteInputSchema.parse(raw);
-  const { distanceMetres, durationSeconds: duration } = await requestGoogleRoute(c, input);
+  const [primary] = await requestGoogleRoutes(c, input);
+  invariant(primary, 'GOOGLE_ROUTES_NO_ROUTE', 'Google Maps หาเส้นทางไม่เจอ', 422);
+  const { distanceMetres, durationSeconds: duration } = primary;
   const evidence = { distanceMetres, durationSeconds: duration, travelMode: 'DRIVE' };
   const expiresAt = new Date(now.getTime() + 2 * 60 * 60 * 1000);
   const [row] = await db()`

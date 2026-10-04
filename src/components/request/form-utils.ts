@@ -117,6 +117,15 @@ export function buildRequestInput(
       } else {
         line.amount = pick('Amount', 'amount');
       }
+      if (
+        ['mileage', 'taxi', 'grab'].includes(categoryId) &&
+        value(`${prefix}TollEnabled`) === 'on'
+      ) {
+        line.toll = {
+          amount: value(`${prefix}TollAmount`),
+          documentIds: formStrings(data, `${prefix}TollDocumentId`),
+        };
+      }
       if (categoryId === 'entertainment') {
         line.entertainment = {
           purpose: pick('Purpose', 'purpose'),

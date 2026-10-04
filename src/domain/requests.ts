@@ -48,6 +48,13 @@ export const expenseLineSchema = z
     amount: decimalAmount.optional(),
     documentIds: z.array(id).max(10).default([]),
     mileage: z.array(mileageLegSchema).max(20).optional(),
+    toll: z
+      .object({
+        amount: decimalAmount,
+        documentIds: z.array(id).max(10).default([]),
+      })
+      .strict()
+      .optional(),
     entertainment: z
       .object({
         purpose: text,
@@ -167,7 +174,11 @@ export function evidenceIds(input: RequestInput): string[] {
   return input.kind === 'leave'
     ? input.documentIds
     : input.kind === 'expense'
-      ? [...new Set(input.lines.flatMap((line) => line.documentIds))]
+      ? [
+          ...new Set(
+            input.lines.flatMap((line) => [...line.documentIds, ...(line.toll?.documentIds ?? [])]),
+          ),
+        ]
       : [];
 }
 

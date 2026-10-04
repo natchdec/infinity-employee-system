@@ -109,6 +109,40 @@ test('mileage address fields use Google autocomplete and selected place IDs for 
   assert.ok(autocomplete.includes('setSelectedPlaceId(item.placeId)'));
 });
 
+test('Google route preview returns selectable alternatives with transient geometry', () => {
+  const routes = readFileSync(
+    new URL('../src/server/integrations/google-routes.ts', import.meta.url),
+    'utf8',
+  );
+  const expense = readFileSync(
+    new URL('../src/components/request/ExpenseFields.tsx', import.meta.url),
+    'utf8',
+  );
+  const mapPreview = readFileSync(
+    new URL('../src/components/request/RouteMapPreview.tsx', import.meta.url),
+    'utf8',
+  );
+  assert.ok(routes.includes('computeAlternativeRoutes: true'));
+  assert.ok(routes.includes('routes.polyline.encodedPolyline'));
+  assert.ok(routes.includes('routes,'));
+  assert.ok(expense.includes('<RouteMapPreview'));
+  assert.ok(expense.includes('selectedRouteIndex'));
+  assert.ok(mapPreview.includes('เปิดต้นทางและปลายทางใน Google Maps'));
+  assert.ok(mapPreview.includes('Google Routes · transient preview'));
+});
+
+test('travel toll addon is constrained to mileage, taxi or grab and split by the server', () => {
+  const domain = readFileSync(new URL('../src/domain/requests.ts', import.meta.url), 'utf8');
+  const prepare = readFileSync(
+    new URL('../src/server/prepare-expense.ts', import.meta.url),
+    'utf8',
+  );
+  assert.ok(domain.includes('toll: z'));
+  assert.ok(prepare.includes("['mileage', 'taxi', 'grab'].includes(line.categoryId)"));
+  assert.ok(prepare.includes("categoryId: 'toll'"));
+  assert.ok(prepare.includes("addon: 'toll'"));
+});
+
 test('mileage requires commute only for home legs and can use the first baseline retroactively', () => {
   const source = readFileSync(new URL('../src/server/prepare-expense.ts', import.meta.url), 'utf8');
   assert.ok(source.includes("leg.origin === 'home' || leg.destination === 'home'"));

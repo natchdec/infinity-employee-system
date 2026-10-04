@@ -1,5 +1,6 @@
 import type { Json } from '@/domain/core';
 import type { RequestKind } from '@/domain/requests';
+import { ProjectSearchInput } from '@/components/ProjectSearchInput';
 import type { RequestFormOptions } from '@/server/request-view';
 import { arrayValue, objectValue, textValue } from './form-utils';
 
@@ -30,21 +31,11 @@ export function BasicRequestFields({ kind, options, initial }: Props) {
       {projectVisible ? (
         <label>
           <span>โครงการ{kind === 'trip' ? ' *' : ''}</span>
-          <select
-            name="projectId"
+          <ProjectSearchInput
+            projects={options.projects}
             required={kind === 'trip'}
             defaultValue={textValue(initial.projectId)}
-          >
-            <option value="">ไม่ผูกโครงการ</option>
-            {options.projects.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.poNumber ? `PO ${project.poNumber} · ` : ''}
-                {project.code} — {project.name}
-                {project.lineCount > 1 ? ` · ${project.lineCount} รายการ` : ''}
-                {project.customer ? ` · ${project.customer}` : ''}
-              </option>
-            ))}
-          </select>
+          />
         </label>
       ) : null}
     </fieldset>

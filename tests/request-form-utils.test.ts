@@ -119,3 +119,36 @@ test('expense form keeps receipts mapped to their own lines', () => {
     },
   ]);
 });
+
+test('travel expense can carry toll as a same-screen addon with separate evidence', () => {
+  const data = new FormData();
+  data.set('title', 'Taxi to customer');
+  data.set('projectId', '');
+  data.set('description', 'Customer visit');
+  data.set('parentTripId', '');
+  data.set('expenseLineCount', '1');
+
+  data.set('expenseLine1CategoryId', 'taxi');
+  data.set('expenseLine1Date', '2026-10-04');
+  data.set('expenseLine1Description', 'Taxi to customer');
+  data.set('expenseLine1Amount', '350');
+  data.append('expenseLine1DocumentId', '11111111-1111-4111-8111-111111111111');
+  data.set('expenseLine1TollEnabled', 'on');
+  data.set('expenseLine1TollAmount', '85');
+  data.append('expenseLine1TollDocumentId', '22222222-2222-4222-8222-222222222222');
+
+  const result = buildRequestInput('expense', data, options, []);
+  assert.deepEqual(result.lines, [
+    {
+      categoryId: 'taxi',
+      date: '2026-10-04',
+      description: 'Taxi to customer',
+      documentIds: ['11111111-1111-4111-8111-111111111111'],
+      amount: '350',
+      toll: {
+        amount: '85',
+        documentIds: ['22222222-2222-4222-8222-222222222222'],
+      },
+    },
+  ]);
+});

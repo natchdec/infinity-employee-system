@@ -12,6 +12,7 @@ import {
 } from '../domain/core';
 import { approvalPolicySchema, dateSchema } from '../domain/policy';
 import { audit, command, db, safeJson, type Transaction } from './db';
+import { approvalRouteKeys, type ApprovalRouteKey } from './approval-routing';
 
 const roleOrder: Role[] = ['employee', 'head', 'finance', 'finance_payer', 'admin'];
 const roleSchema = z.enum(['employee', 'head', 'finance', 'finance_payer', 'admin']);
@@ -85,12 +86,63 @@ export interface ApprovalRuleRow {
   destination: string;
 }
 
+export interface AdminApprovalRouteRow {
+  routeKey: ApprovalRouteKey;
+  label: string;
+  version: number;
+  effectiveFrom: string;
+  mode: 'line_head' | 'specific_employee';
+  approverEmployeeId: string | null;
+  approverName: string | null;
+}
+
+export interface ApprovalApproverOption {
+  id: string;
+  displayName: string;
+  email: string;
+}
+
+export const approvalRouteAdminSchema = z
+  .object({
+    routeKey: z.enum(approvalRouteKeys),
+    effectiveFrom: dateSchema,
+    mode: z.enum(['line_head', 'specific_employee']),
+    approverEmployeeId: z.string().uuid().nullable(),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (value.mode === 'line_head' && value.approverEmployeeId) {
+      context.addIssue({
+        code: 'custom',
+        path: ['approverEmployeeId'],
+        message: 'Line Head route ไม่ต้องระบุผู้อนุมัติ',
+      });
+    }
+    if (value.mode === 'specific_employee' && !value.approverEmployeeId) {
+      context.addIssue({
+        code: 'custom',
+        path: ['approverEmployeeId'],
+        message: 'เลือกผู้อนุมัติสำหรับ route นี้',
+      });
+    }
+  });
+
 export interface ApprovalPolicyView {
   version: number;
   effectiveFrom: string;
   body: z.infer<typeof approvalPolicySchema>;
   hash: string;
 }
+
+const approvalRouteLabels: Record<ApprovalRouteKey, string> = {
+  leave: 'ลา',
+  ot: 'OT',
+  expense_travel: 'ค่าเดินทาง / ที่พัก',
+  expense_other: 'ค่าใช้จ่ายอื่น',
+  expense_mixed: 'Expense แบบผสม',
+  trip: 'ขออนุมัติเดินทาง',
+  advance: 'เงินทดรอง',
+};
 
 export function normalizeAdminRoles(input: readonly Role[], isHeadOwner: boolean): Role[] {
   const values = new Set<Role>(input);
@@ -526,19 +578,148 @@ export async function setAdminReportingLine(
   );
 }
 
+export async function setAdminApprovalRoute(
+  actor: Actor,
+  raw: unknown,
+  idempotencyKey: string,
+  now = new Date(),
+  correlationId: string = randomUUID(),
+): Promise<Json> {
+  requireRole(actor, 'admin');
+  const input = approvalRouteAdminSchema.parse(raw);
+  const today = bangkokDate(now);
+  invariant(
+    input.effectiveFrom >= today,
+    'APPROVAL_ROUTE_BACKDATE_FORBIDDEN',
+    'การเปลี่ยนผู้อนุมัติต้องมีผลตั้งแต่วันนี้หรืออนาคต',
+    409,
+  );
+
+  return command(
+    actor,
+    `admin.approval_route:${input.routeKey}`,
+    idempotencyKey,
+    input,
+    async (tx) => {
+      let approverName: string | null = null;
+      if (input.mode === 'specific_employee') {
+        const [approver] = await tx`
+          select e.id,e.display_name
+          from employees e
+          where e.id=${input.approverEmployeeId}
+            and e.active
+            and exists(
+              select 1 from employee_roles er
+              where er.employee_id=e.id and er.role='head'
+            )
+          for update
+        `;
+        invariant(
+          approver,
+          'APPROVER_NOT_AVAILABLE',
+          'ผู้อนุมัติต้องเป็น Head / Owner ที่เปิดใช้งาน',
+          409,
+        );
+        approverName = String(approver.display_name);
+      }
+
+      const [latest] = await tx`
+        select id,version
+        from approval_route_versions
+        where route_key=${input.routeKey}
+        order by version desc
+        limit 1
+        for update
+      `;
+      const version = Number(latest?.version ?? 0) + 1;
+      const [created] = await tx`
+        insert into approval_route_versions(
+          route_key,version,effective_from,mode,approver_employee_id,created_by,created_at
+        )
+        values(
+          ${input.routeKey},
+          ${version},
+          ${input.effectiveFrom}::date,
+          ${input.mode},
+          ${input.mode === 'specific_employee' ? input.approverEmployeeId : null},
+          ${actor.id},
+          ${now}
+        )
+        returning id
+      `;
+
+      await audit(
+        tx,
+        actor,
+        'admin.approval_route_published',
+        'approval_route',
+        String(created!.id),
+        version,
+        safeJson({
+          routeKey: input.routeKey,
+          label: approvalRouteLabels[input.routeKey],
+          mode: input.mode,
+          approverEmployeeId: input.mode === 'specific_employee' ? input.approverEmployeeId : null,
+          effectiveFrom: input.effectiveFrom,
+        }),
+        correlationId,
+      );
+
+      return safeJson({
+        id: String(created!.id),
+        routeKey: input.routeKey,
+        label: approvalRouteLabels[input.routeKey],
+        version,
+        effectiveFrom: input.effectiveFrom,
+        mode: input.mode,
+        approverEmployeeId: input.mode === 'specific_employee' ? input.approverEmployeeId : null,
+        approverName,
+      });
+    },
+  );
+}
+
 export async function adminApprovalPolicy(now = new Date()): Promise<{
   current: ApprovalPolicyView;
   history: ApprovalPolicyView[];
   rows: ApprovalRuleRow[];
+  routes: AdminApprovalRouteRow[];
+  approvers: ApprovalApproverOption[];
 }> {
   const today = bangkokDate(now);
-  const rows = await db()`
-    select version,effective_from::text,body,body_hash
-    from policy_versions
-    where family='approval' and status='published'
-    order by effective_from desc,version desc
-  `;
-  const history = rows.map((row) => {
+  const [policyRows, routeRows, approverRows] = await Promise.all([
+    db()`
+      select version,effective_from::text,body,body_hash
+      from policy_versions
+      where family='approval' and status='published'
+      order by effective_from desc,version desc
+    `,
+    db()`
+      select distinct on (ar.route_key)
+        ar.route_key,
+        ar.version,
+        ar.effective_from::text,
+        ar.mode,
+        ar.approver_employee_id,
+        e.display_name as approver_name
+      from approval_route_versions ar
+      left join employees e on e.id=ar.approver_employee_id
+      where ar.effective_from<=${today}::date
+      order by ar.route_key,ar.effective_from desc,ar.version desc
+    `,
+    db()`
+      select e.id,e.display_name,e.email
+      from employees e
+      where e.active
+        and exists(
+          select 1 from employee_roles er
+          where er.employee_id=e.id and er.role='head'
+        )
+      order by e.display_name,e.email
+    `,
+  ]);
+
+  const history = policyRows.map((row) => {
     const body = approvalPolicySchema.parse(row.body);
     invariant(
       fingerprint(body) === row.body_hash,
@@ -550,5 +731,31 @@ export async function adminApprovalPolicy(now = new Date()): Promise<{
   });
   const current = history.find((item) => item.effectiveFrom <= today);
   invariant(current, 'POLICY_NOT_CONFIGURED', 'ยังไม่มี Approval Policy ที่มีผล', 409);
-  return { current, history, rows: approvalRuleRows() };
+
+  const currentByKey = new Map(routeRows.map((row) => [String(row.route_key), row] as const));
+  const routes = approvalRouteKeys.map((routeKey) => {
+    const row = currentByKey.get(routeKey);
+    invariant(row, 'APPROVAL_ROUTE_NOT_CONFIGURED', 'ยังไม่ได้กำหนดเส้นทางผู้อนุมัติ', 409);
+    return {
+      routeKey,
+      label: approvalRouteLabels[routeKey],
+      version: Number(row.version),
+      effectiveFrom: String(row.effective_from),
+      mode: String(row.mode) as 'line_head' | 'specific_employee',
+      approverEmployeeId: row.approver_employee_id ? String(row.approver_employee_id) : null,
+      approverName: row.approver_name ? String(row.approver_name) : null,
+    };
+  });
+
+  return {
+    current,
+    history,
+    rows: approvalRuleRows(),
+    routes,
+    approvers: approverRows.map((row) => ({
+      id: String(row.id),
+      displayName: String(row.display_name),
+      email: String(row.email),
+    })),
+  };
 }

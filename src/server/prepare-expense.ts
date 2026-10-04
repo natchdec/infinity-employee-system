@@ -47,7 +47,10 @@ export async function prepareExpense(
   requestId: string,
   now: Date,
 ) {
-  const inputDocumentIds = input.lines.flatMap((line) => line.documentIds);
+  const inputDocumentIds = input.lines.flatMap((line) => [
+    ...line.documentIds,
+    ...(line.toll?.documentIds ?? []),
+  ]);
   invariant(
     new Set(inputDocumentIds).size === inputDocumentIds.length,
     'RECEIPT_LINE_CONFLICT',
@@ -78,6 +81,11 @@ export async function prepareExpense(
       category,
       'EXPENSE_CATEGORY_DISABLED',
       'ประเภทค่าใช้จ่ายนี้ไม่เปิดใช้งานในวันที่ระบุ',
+    );
+    invariant(
+      !line.toll || ['mileage', 'taxi', 'grab'].includes(line.categoryId),
+      'TOLL_ADDON_NOT_ALLOWED',
+      'ค่าทางด่วนแบบ add-on ใช้ได้เฉพาะรถส่วนตัว Taxi หรือ Grab',
     );
     invariant(
       !category.evidenceRequired || line.documentIds.length > 0,
@@ -201,7 +209,7 @@ export async function prepareExpense(
     total += amount;
     originalRequired ||= category.originalRequired;
     lines.push({
-      line: index + 1,
+      line: lines.length + 1,
       date: line.date,
       categoryId: line.categoryId,
       categoryLabel: category.label,
@@ -211,6 +219,40 @@ export async function prepareExpense(
       originalRequired: category.originalRequired,
       detail,
     });
+
+    if (line.toll) {
+      const tollCategory = policy.body.categories.find(
+        (item) => item.id === 'toll' && item.enabled,
+      );
+      invariant(
+        tollCategory,
+        'EXPENSE_CATEGORY_DISABLED',
+        'ประเภทค่าทางด่วนไม่เปิดใช้งานในวันที่ระบุ',
+      );
+      invariant(
+        !tollCategory.evidenceRequired || line.toll.documentIds.length > 0,
+        'RECEIPT_REQUIRED',
+        `ค่าทางด่วนของรายการที่ ${index + 1} ต้องแนบหลักฐานก่อนส่ง`,
+      );
+      await validateDocuments(tx, actor, line.toll.documentIds, requestId, 'expense');
+      const tollAmount = money(line.toll.amount);
+      invariant(tollAmount > 0n, 'POSITIVE_EXPENSE_REQUIRED', 'ยอดค่าทางด่วนต้องมากกว่าศูนย์');
+      total += tollAmount;
+      originalRequired ||= tollCategory.originalRequired;
+      lines.push({
+        line: lines.length + 1,
+        parentLine: index + 1,
+        addon: 'toll',
+        date: line.date,
+        categoryId: 'toll',
+        categoryLabel: tollCategory.label,
+        description: `ค่าทางด่วน · ${line.description}`,
+        amountSatang: tollAmount.toString(),
+        documentIds: line.toll.documentIds,
+        originalRequired: tollCategory.originalRequired,
+        detail: safeJson({ addon: 'toll', parentLine: index + 1 }),
+      });
+    }
   }
   invariant(
     maximum !== undefined && total <= maximum,

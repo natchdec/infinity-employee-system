@@ -17,6 +17,7 @@ import type { LeavePolicy, OTPolicy, PerDiemPolicy, VersionedPolicy } from '../d
 import { policyFor, safeJson, type Transaction } from './db';
 import { prepareExpense, validateDocuments } from './prepare-expense';
 import { config } from './config';
+import { approvalRouteAudit, resolveApprovalRoute } from './approval-routing';
 
 export interface PreparedRequest {
   input: RequestInput;
@@ -27,6 +28,7 @@ export interface PreparedRequest {
   project: Json;
   wage: Json;
   headId: string | null;
+  approvalRoute: Record<string, Json>;
   originalRequired: boolean;
 }
 export async function prepareRequest(
@@ -88,17 +90,8 @@ export async function prepareRequest(
     );
     project = safeJson(row);
   }
-  let headId: string | null = null;
-  if (!actor.isHeadOwner) {
-    const heads =
-      await tx`select rl.head_id from reporting_lines rl join employees e on e.id=rl.head_id where rl.employee_id=${actor.id} and rl.effective_from<=${bangkokDate(now)}::date and (rl.effective_to is null or rl.effective_to>${bangkokDate(now)}::date) and e.active and exists(select 1 from employee_roles er where er.employee_id=e.id and er.role='head')`;
-    invariant(
-      heads.length === 1 && heads[0]!.head_id !== actor.id,
-      'HEAD_NOT_CONFIGURED',
-      'ต้องมีหัวหน้าตามสายงานที่เปิดใช้งานเพียงหนึ่งคน',
-    );
-    headId = heads[0]!.head_id;
-  }
+  const approvalRoute = await resolveApprovalRoute(tx, actor, input, now);
+  const headId = approvalRoute.assignedApproverId;
   if (input.kind === 'leave') {
     const policy = await policyFor<LeavePolicy>(tx, 'leave', date);
     const calendar = await policyFor<Calendar>(tx, 'calendar', date);
@@ -207,6 +200,7 @@ export async function prepareRequest(
     project,
     wage,
     headId,
+    approvalRoute: approvalRouteAudit(approvalRoute),
     originalRequired,
   };
 }

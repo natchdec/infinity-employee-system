@@ -182,3 +182,9 @@ Accepted visual refresh based on the approved Infinity approval-mail direction:
 - V3 Foundation and Screen Map are now LOCKED and implementation is authorized.
 - Controlling visual direction: exact Infinity logo colors, charcoal sidebar, warm-white canvas, orange primary actions, compact enterprise density, approved Home/forms/approval/project/report/admin/finance/mobile compositions.
 - Business logic, approval invariants, financial confidentiality and responsive requirements remain unchanged.
+
+## Request flow refinements — 2026-10-04
+- Project selection uses type-ahead search instead of a long dropdown. Search covers Project/PO, customer, project name/code, Product Category and Product Solution from Project Master.
+- Mileage address entry keeps Google Places autocomplete and now requests up to three transient Google Routes alternatives. The employee can select a route; the selected distance is copied into the attested mileage field. Route geometry remains no-store and is not durable financial evidence.
+- The route selector shows a lightweight route diagram from Google Routes geometry and provides an explicit link to open the origin/destination in Google Maps.
+- Mileage, Taxi and Grab may include Toll as an add-on in the same travel entry. Toll has its own amount and receipt evidence in the UI, while Finance/reporting receives it as a separate Toll calculation line.

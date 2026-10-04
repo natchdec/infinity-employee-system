@@ -1,4 +1,4 @@
-import { addDays, bangkokDate } from '../domain/calendar';
+import { addDays, bangkokDate, BUSINESS_TIME_ZONE } from '../domain/calendar';
 import { config } from './config';
 import { db, enqueue } from './db';
 
@@ -9,6 +9,67 @@ interface ReminderInsert {
   href: string;
   teamsDetail?: string;
   teamsKey?: string;
+}
+
+function bangkokMinutes(instant: Date): number {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: BUSINESS_TIME_ZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(instant);
+  const value = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((part) => part.type === type)?.value ?? 0);
+  return value('hour') * 60 + value('minute');
+}
+
+export async function queueApprovalDigestEmails(now = new Date()): Promise<number> {
+  if (!config().EMAIL_NOTIFICATIONS_ENABLED) return 0;
+  const minutes = bangkokMinutes(now);
+  // Send once from 08:30 onward; keep a morning catch-up window for worker restarts.
+  if (minutes < 8 * 60 + 30 || minutes >= 12 * 60) return 0;
+
+  const date = bangkokDate(now);
+  const recipients = await db()`
+    with recipients as (
+      select r.assigned_head_id as employee_id
+      from requests r
+      where r.workflow_state='pending_head'
+        and r.assigned_head_id is not null
+      union
+      select d.delegate_id as employee_id
+      from requests r
+      join approval_delegations d
+        on d.delegator_id=r.assigned_head_id
+       and d.active
+       and d.scope='manager_approval'
+       and d.effective_from <= ${date}::date
+       and d.effective_to >= ${date}::date
+      where r.workflow_state='pending_head'
+    )
+    select distinct employee_id
+    from recipients
+    where employee_id is not null
+  `;
+
+  let queued = 0;
+  await db().begin(async (tx) => {
+    for (const row of recipients) {
+      const employeeId = String(row.employee_id);
+      const inserted = await tx`
+        insert into jobs(kind,dedupe_key,payload)
+        values(
+          'approval_digest_email',
+          ${`approval-digest:${date}:${employeeId}`},
+          ${tx.json({ employeeId, date })}
+        )
+        on conflict(dedupe_key) do nothing
+        returning id
+      `;
+      queued += inserted.length;
+    }
+  });
+  return queued;
 }
 
 async function insertReminders(rows: ReminderInsert[]): Promise<number> {

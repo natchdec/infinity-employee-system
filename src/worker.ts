@@ -1,14 +1,17 @@
 import { hostname } from 'node:os';
 import { z } from 'zod';
 import { closeDb, db, safeJson } from './server/db';
-import { sendEmployeeEmailNotification } from './server/integrations/email-notification';
+import {
+  sendApprovalDigestEmail,
+  sendEmployeeEmailNotification,
+} from './server/integrations/email-notification';
 import { sendTeamsWorkflowNotice } from './server/integrations/teams-workflow';
 import { log } from './server/logging';
 import {
   queueDueMicrosoftDirectorySync,
   syncMicrosoftDirectory,
 } from './server/microsoft-directory';
-import { queueOperationalReminders } from './server/reminder-service';
+import { queueApprovalDigestEmails, queueOperationalReminders } from './server/reminder-service';
 import { queueDueProjectMasterSync } from './server/project-master-jobs';
 import { syncProjectMaster } from './server/integrations/project-master';
 import { queueDueOutlookCalendarSyncs, syncEmployeeOutlookCalendar } from './server/worklog';
@@ -111,8 +114,14 @@ async function scheduleReminders(): Promise<void> {
   if (now < nextReminderScheduleCheck) return;
   nextReminderScheduleCheck = now + 5 * 60_000;
   try {
-    const queued = await queueOperationalReminders(new Date(now));
+    const instant = new Date(now);
+    const [queued, approvalDigests] = await Promise.all([
+      queueOperationalReminders(instant),
+      queueApprovalDigestEmails(instant),
+    ]);
     if (queued > 0) log('info', 'operational_reminders_created', { queued });
+    if (approvalDigests > 0)
+      log('info', 'approval_digest_emails_queued', { queued: approvalDigests });
   } catch (error) {
     log('error', 'operational_reminder_schedule_failed', {
       message: error instanceof Error ? error.message : 'unknown',
@@ -168,6 +177,9 @@ async function runOne(): Promise<boolean> {
       });
     } else if (claimed.kind === 'email_notification') {
       const result = await sendEmployeeEmailNotification(claimed.payload);
+      await markJobSucceeded(String(claimed.id), result);
+    } else if (claimed.kind === 'approval_digest_email') {
+      const result = await sendApprovalDigestEmail(claimed.payload);
       await markJobSucceeded(String(claimed.id), result);
     } else if (claimed.kind === 'teams_workflow_notification') {
       const value = teamsNoticeSchema.parse(claimed.payload);
