@@ -7,6 +7,7 @@ import './responsive-fixes.css';
 import './brand-v3-shell.css';
 import './brand-v3-content.css';
 import './brand-v4.css';
+import './brand-v5.css';
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { PwaRegister } from '@/components/PwaRegister';

@@ -204,3 +204,17 @@ Accepted visual refresh based on the approved Infinity approval-mail direction:
 - Desktop Approval Delegation keeps Delegate + From + To + Action on one aligned row when space permits.
 - Oversized blank form surfaces, giant checkmarks and wrapped desktop actions are rejected by the V4 acceptance gate.
 - Full detail is in UX_UI_V4_LOCKED.md.
+
+<!-- agent-gateway:managed:start:ux-ui-v5-locked-reference-20261004 -->
+## UX/UI V5 locked reference — 2026-10-04
+- V5 visual direction is LOCKED from the user-provided Employee System home reference and supersedes the charcoal-sidebar V3/V4 shell styling.
+- Desktop sidebar is white with a subtle divider, clean Infinity orange/navy logo lockup, muted group labels, and pale-orange active navigation.
+- Main canvas is warm white/light neutral; working surfaces are white with thin neutral borders and restrained elevation.
+- Topbar remains white with compact search, notification and account controls.
+- Admin subnavigation uses a white strip with pale-orange active tab.
+- Department editor desktop action order is Save → Delete on the same row when space permits.
+- Approval Rules desktop action order keeps Effective Date → “ใช้ค่านี้” on the same row when space permits.
+- Mobile may stack actions for usability; 390/820/1440 remain required responsive acceptance widths.
+- Business rules, authorization, approval invariants, finance segregation, audit behavior and confidentiality are unchanged.
+- Detailed controlling spec: `UX_UI_V5_LOCKED.md`.
+<!-- agent-gateway:managed:end:ux-ui-v5-locked-reference-20261004 -->
