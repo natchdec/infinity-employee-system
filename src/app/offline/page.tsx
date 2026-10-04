@@ -1,10 +1,14 @@
 import Link from 'next/link';
+import { BrandLogo } from '@/components/BrandLogo';
 
 export default function OfflinePage() {
   return (
     <main className="signin-shell">
       <section className="signin-panel" aria-labelledby="offline-title">
-        <p className="signin-brand">INFINITY SOLUTION SERVICE</p>
+        <div className="signin-logo">
+          <BrandLogo />
+        </div>
+        <p className="signin-product">Employee System</p>
         <h1 id="offline-title">ขณะนี้ออฟไลน์</h1>
         <p>
           หน้านี้ไม่เก็บข้อมูลคำขอหรือข้อมูลการเงินไว้ในเครื่อง

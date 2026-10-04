@@ -1,7 +1,9 @@
 # Infinity Employee System — UX/UI V3 Screen Map
 
-**Status:** PROPOSED — NOT LOCKED  
+**Status:** LOCKED — USER APPROVED  
 **Coverage:** all 36 current page routes and their major role/request states.
+
+**Controlling reference:** the user-approved V3 UI board from 2026-10-04. Where an earlier prose bullet differs from the board, the board controls visual hierarchy, orange/charcoal brand treatment, navigation, form stepper style, approval layout, report presentation, and mobile composition.
 
 ## A. Access / system
 
@@ -16,14 +18,13 @@ Same access shell. Clear offline explanation, retry action, cached-state note if
 ## B. Employee workspace
 
 ### / — Home
-Must not look like a dashboard.
-- compact greeting
-- one-line cutoff/attention context
-- desktop 2/3 + 1/3 layout
-- left: Needs Attention + recent request ledger
-- right: compact New Request action list
-- no KPI strip
-- mobile: prominent New Request CTA, compact 2x2 quick actions, attention, recent requests
+Use the approved V3 employee dashboard composition.
+- warm welcome/banner area with greeting and current date/context
+- four primary action cards: Leave / OT / Expense / Travel
+- lower grid: Outlook calendar, recent/approval status, monthly usage summary
+- restrained monthly summary mini-cards are allowed only here because they answer real employee questions
+- desktop uses the approved balanced 3-column lower grid
+- mobile compresses the same information into stacked sections and compact 2x2 primary actions
 
 ### /requests — My Requests
 - header + New Request CTA
@@ -332,4 +333,4 @@ All items below must be reviewed before implementation:
 - shared states
 - 390 / 820 / 1440 behavior
 
-No UI implementation starts until this screen map and the V3 Foundation are explicitly changed from PROPOSED to LOCKED.
+This screen map is LOCKED by explicit user approval on 2026-10-04. Implementation may proceed against this revision.

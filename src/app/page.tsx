@@ -1,13 +1,17 @@
 import {
   AirplaneTilt,
+  CalendarBlank,
   CalendarCheck,
   ClockCountdown,
   Receipt,
 } from '@phosphor-icons/react/dist/ssr';
 import Link from 'next/link';
+import { bangkokDate } from '@/domain/calendar';
 import { AppShell, Money, StateLabel } from '@/components/AppShell';
 import { requireActor } from '@/server/auth-context';
+import { employeeMonthlyStatement } from '@/server/monthly-statement';
 import { employeeRequests } from '@/server/queries';
+import { employeeWorklogRows } from '@/server/worklog-queries';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,194 +23,189 @@ const kindLabel = {
   advance: 'เงินทดรอง',
 } as const;
 
+function timeLabel(date: Date) {
+  return date.toLocaleTimeString('th-TH', {
+    timeZone: 'Asia/Bangkok',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 export default async function HomePage() {
   const actor = await requireActor();
-  const requests = await employeeRequests(actor.id, 8);
+  const month = bangkokDate(new Date()).slice(0, 7);
+  const [requests, worklog, statement] = await Promise.all([
+    employeeRequests(actor.id, 8),
+    employeeWorklogRows(actor.id, month),
+    employeeMonthlyStatement(actor.id, month),
+  ]);
+
   const attention = requests.filter(
     (item) => item.workflowState === 'returned' || item.financeState === 'returned',
   );
-  const activeCount = requests.filter(
-    (item) => !['approved', 'rejected', 'cancelled'].includes(item.workflowState),
-  ).length;
-  const approvedCount = requests.filter((item) => item.workflowState === 'approved').length;
-  const financePending = requests.filter((item) =>
-    ['pending', 'verified', 'unpaid', 'allocated'].includes(item.financeState ?? ''),
-  ).length;
+  const expenseTotal = (
+    BigInt(statement.expenseSatang) + BigInt(statement.mileageSatang)
+  ).toString();
 
   return (
     <AppShell
       actor={actor}
       title={`สวัสดี ${actor.displayName}`}
-      description="ส่งคำขอ ติดตามสถานะ และดูงานที่ต้องดำเนินการจาก workspace เดียว"
+      description="ภาพรวมงานและคำขอของคุณ"
+      hideHeader
     >
-      <section className="overview-strip" aria-label="ภาพรวมคำขอของฉัน">
-        <div className="overview-item">
-          <span className="overview-label">กำลังดำเนินการ</span>
-          <strong>{activeCount}</strong>
-          <span>จากรายการล่าสุด</span>
+      <section className="home-welcome">
+        <div className="home-welcome-copy">
+          <p className="home-eyebrow">INFINITY EMPLOYEE SYSTEM</p>
+          <h1>สวัสดีครับ {actor.displayName}</h1>
+          <p>ให้การทำงานในวันนี้ราบรื่นและมีประสิทธิภาพครับ</p>
         </div>
-        <div className="overview-item overview-item-attention">
-          <span className="overview-label">ต้องตรวจสอบ</span>
-          <strong>{attention.length}</strong>
-          <span>ส่งกลับในรายการล่าสุด</span>
-        </div>
-        <div className="overview-item">
-          <span className="overview-label">รอการเงิน</span>
-          <strong>{financePending}</strong>
-          <span>อยู่ในรายการล่าสุด</span>
-        </div>
-        <div className="overview-item">
-          <span className="overview-label">อนุมัติแล้ว</span>
-          <strong>{approvedCount}</strong>
-          <span>จากรายการล่าสุด</span>
+        <div className="home-welcome-date">
+          <strong>
+            {new Date().toLocaleDateString('th-TH', {
+              timeZone: 'Asia/Bangkok',
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+            })}
+          </strong>
+          <span>Infinity Solution Service</span>
         </div>
       </section>
 
-      <section className="section">
-        <div className="section-header">
-          <div>
-            <span className="section-kicker">QUICK ACTIONS</span>
-            <h2>สร้างคำขอ</h2>
-            <p>เลือกประเภทงาน ระบบจะแสดงเฉพาะข้อมูลและกฎที่เกี่ยวข้อง</p>
-          </div>
-          <Link className="button button-primary" href="/requests/new">
-            สร้างคำขอ
-          </Link>
-        </div>
-        <div className="quick-list">
-          <Link className="quick-link" href="/requests/new?kind=leave">
-            <span className="quick-link-icon" aria-hidden="true">
-              <CalendarCheck size={22} weight="duotone" />
-            </span>
-            <strong>ลา</strong>
-            <span>ลางานแบบเต็มวันและดูสิทธิคงเหลือ</span>
-          </Link>
-          <Link className="quick-link" href="/requests/new?kind=ot">
-            <span className="quick-link-icon" aria-hidden="true">
-              <ClockCountdown size={22} weight="duotone" />
-            </span>
-            <strong>OT</strong>
-            <span>บันทึกชั่วโมงตามหมวดที่นโยบายกำหนด</span>
-          </Link>
-          <Link className="quick-link" href="/requests/new?kind=expense">
-            <span className="quick-link-icon" aria-hidden="true">
-              <Receipt size={22} weight="duotone" />
-            </span>
-            <strong>ค่าใช้จ่าย</strong>
-            <span>แนบหลักฐาน ค่าเดินทาง และ Entertainment</span>
-          </Link>
-          <Link className="quick-link" href="/requests/new?kind=trip">
-            <span className="quick-link-icon" aria-hidden="true">
-              <AirplaneTilt size={22} weight="duotone" />
-            </span>
-            <strong>เดินทาง</strong>
-            <span>ทริป เบี้ยเลี้ยง เงินทดรอง และการเคลียร์</span>
-          </Link>
-        </div>
+      <section className="home-primary-actions" aria-label="สร้างคำขอ">
+        <Link className="home-action-card" href="/requests/new?kind=leave">
+          <span className="home-action-icon">
+            <CalendarCheck size={25} weight="duotone" />
+          </span>
+          <span>
+            <strong>ขออนุมัติลา</strong>
+            <small>ลาป่วย, ลาพักร้อน</small>
+          </span>
+          <span className="home-action-arrow" aria-hidden="true">
+            ›
+          </span>
+        </Link>
+        <Link className="home-action-card" href="/requests/new?kind=ot">
+          <span className="home-action-icon">
+            <ClockCountdown size={25} weight="duotone" />
+          </span>
+          <span>
+            <strong>ขอ OT</strong>
+            <small>ทำงานล่วงเวลา</small>
+          </span>
+          <span className="home-action-arrow" aria-hidden="true">
+            ›
+          </span>
+        </Link>
+        <Link className="home-action-card" href="/requests/new?kind=expense">
+          <span className="home-action-icon">
+            <Receipt size={25} weight="duotone" />
+          </span>
+          <span>
+            <strong>เบิกค่าใช้จ่าย</strong>
+            <small>ค่ารถ, ที่พัก, ค่าเดินทาง</small>
+          </span>
+          <span className="home-action-arrow" aria-hidden="true">
+            ›
+          </span>
+        </Link>
+        <Link className="home-action-card" href="/requests/new?kind=trip">
+          <span className="home-action-icon">
+            <AirplaneTilt size={25} weight="duotone" />
+          </span>
+          <span>
+            <strong>ขออนุมัติเดินทาง</strong>
+            <small>เดินทางใน/ต่างประเทศ</small>
+          </span>
+          <span className="home-action-arrow" aria-hidden="true">
+            ›
+          </span>
+        </Link>
       </section>
 
-      <section className="section">
-        <div className="section-header">
-          <div>
-            <span className="section-kicker">ACTION REQUIRED</span>
-            <h2>ต้องดำเนินการ</h2>
-            <p>คำขอที่ถูกส่งกลับจะแสดงก่อนรายการทั่วไป</p>
+      <section className="home-dashboard-grid">
+        <article className="home-panel home-calendar-panel">
+          <div className="panel-heading">
+            <div>
+              <span className="panel-icon">
+                <CalendarBlank size={18} />
+              </span>
+              <strong>ปฏิทินงานของฉัน (Outlook)</strong>
+            </div>
+            <Link href="/worklog">ดูทั้งหมด →</Link>
           </div>
-        </div>
-        {attention.length ? (
-          <div className="data-table-wrap" tabIndex={0}>
-            <table className="data-table">
-              <caption className="sr-only">รายการที่ต้องดำเนินการ</caption>
-              <thead>
-                <tr>
-                  <th>เลขที่</th>
-                  <th>ประเภท</th>
-                  <th>เรื่อง</th>
-                  <th>สถานะ</th>
-                  <th className="amount">ยอด</th>
-                </tr>
-              </thead>
-              <tbody>
-                {attention.map((item) => (
-                  <tr key={item.id}>
-                    <td>
-                      <Link className="text-link" href={`/requests/${item.id}`}>
-                        {item.reference}
-                      </Link>
-                    </td>
-                    <td>{kindLabel[item.kind]}</td>
-                    <td>{item.title}</td>
-                    <td>
-                      <StateLabel
-                        value={item.financeState === 'returned' ? 'returned' : item.workflowState}
-                      />
-                    </td>
-                    <td className="amount">
-                      {BigInt(item.totalSatang) > 0n ? <Money satang={item.totalSatang} /> : '-'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="home-agenda">
+            {worklog.slice(0, 3).length ? (
+              worklog.slice(0, 3).map((item) => (
+                <div className="agenda-row" key={item.id}>
+                  <span className="agenda-time">
+                    {timeLabel(item.startAt)} - {timeLabel(item.endAt)}
+                  </span>
+                  <span className="agenda-dot" aria-hidden="true" />
+                  <span className="agenda-title">{item.subject}</span>
+                  <span className="agenda-type">
+                    {item.intent === 'onsite' ? 'Onsite' : item.intent === 'ot' ? 'OT' : 'Leave'}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <p className="panel-empty">ยังไม่มีรายการที่ซิงก์จาก Outlook ในเดือนนี้</p>
+            )}
           </div>
-        ) : (
-          <div className="empty empty-calm">
-            <span className="empty-eyebrow">ALL CLEAR</span>
-            <h2>ไม่มีรายการที่ต้องแก้ไข</h2>
-            <p>คำขอที่ถูกส่งกลับหรือมีข้อยกเว้นจะปรากฏที่นี่</p>
-          </div>
-        )}
-      </section>
+        </article>
 
-      <section className="section">
-        <div className="section-header">
-          <div>
-            <span className="section-kicker">RECENT ACTIVITY</span>
-            <h2>รายการล่าสุด</h2>
-            <p>สถานะล่าสุดของคำขอที่คุณเป็นเจ้าของ</p>
+        <article className="home-panel">
+          <div className="panel-heading">
+            <strong>คำขอล่าสุดของฉัน</strong>
+            <Link href="/requests">ดูทั้งหมด →</Link>
           </div>
-          <Link className="text-link text-link-arrow" href="/requests">
-            ดูทั้งหมด
-          </Link>
-        </div>
-        {requests.length ? (
-          <div className="data-table-wrap" tabIndex={0}>
-            <table className="data-table">
-              <caption className="sr-only">คำขอล่าสุด</caption>
-              <thead>
-                <tr>
-                  <th>เลขที่</th>
-                  <th>ประเภท</th>
-                  <th>เรื่อง</th>
-                  <th>วันที่</th>
-                  <th>สถานะ</th>
-                </tr>
-              </thead>
-              <tbody>
-                {requests.slice(0, 6).map((item) => (
-                  <tr key={item.id}>
-                    <td>
-                      <Link className="text-link" href={`/requests/${item.id}`}>
-                        {item.reference}
-                      </Link>
-                    </td>
-                    <td>{kindLabel[item.kind]}</td>
-                    <td>{item.title}</td>
-                    <td>{item.businessDate}</td>
-                    <td>
-                      <StateLabel value={item.workflowState} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="home-request-list">
+            {requests.slice(0, 4).map((item) => (
+              <Link className="home-request-row" href={`/requests/${item.id}`} key={item.id}>
+                <span>
+                  <strong>{item.reference}</strong>
+                  <small>
+                    {kindLabel[item.kind]} · {item.title}
+                  </small>
+                </span>
+                <StateLabel value={item.workflowState} />
+              </Link>
+            ))}
+            {!requests.length ? <p className="panel-empty">ยังไม่มีคำขอ</p> : null}
           </div>
-        ) : (
-          <div className="empty">
-            <h2>ยังไม่มีคำขอ</h2>
-            <p>เริ่มจากสร้างคำขอแรกของคุณ</p>
+        </article>
+
+        <article className="home-panel home-month-panel">
+          <div className="panel-heading">
+            <strong>สรุปการใช้งานเดือนนี้</strong>
+            <Link href="/statement">ดูรายละเอียด →</Link>
           </div>
-        )}
+          <div className="month-mini-grid">
+            <div>
+              <span>ลา</span>
+              <strong>{statement.leaveDays} วัน</strong>
+            </div>
+            <div>
+              <span>OT</span>
+              <strong>{statement.otHours} ชม.</strong>
+            </div>
+            <div>
+              <span>ค่าใช้จ่าย</span>
+              <strong>
+                <Money satang={expenseTotal} />
+              </strong>
+            </div>
+          </div>
+          <div className="month-note">
+            {attention.length ? (
+              <span className="attention-inline">{attention.length} รายการต้องกลับไปแก้ไข</span>
+            ) : (
+              <span>ไม่มีรายการที่ต้องแก้ไขในตอนนี้</span>
+            )}
+          </div>
+        </article>
       </section>
     </AppShell>
   );

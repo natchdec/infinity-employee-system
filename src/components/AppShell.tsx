@@ -1,12 +1,15 @@
+import { Bell, MagnifyingGlass } from '@phosphor-icons/react/dist/ssr';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { MobileNavigation, PrimaryNavigation } from '@/components/AppNavigation';
+import { BrandLogo } from '@/components/BrandLogo';
 import type { Actor } from '@/domain/core';
 
 interface Props {
   actor: Actor;
   title: string;
   description?: string;
+  hideHeader?: boolean;
   children: ReactNode;
 }
 
@@ -32,24 +35,21 @@ function initials(name: string) {
     .toUpperCase();
 }
 
-export function AppShell({ actor, title, description, children }: Props) {
+export function AppShell({ actor, title, description, hideHeader = false, children }: Props) {
   const roleLabel = actorRoleLabel(actor);
 
   return (
-    <div className="app-shell">
+    <div className="app-shell v3-shell">
       <a className="skip-link" href="#main-content">
         ข้ามไปเนื้อหา
       </a>
 
-      <aside className="sidebar" aria-label="เมนูหลัก">
-        <Link className="brand" href="/">
-          <span className="brand-emblem" aria-hidden="true">
-            ∞
+      <aside className="sidebar v3-sidebar" aria-label="เมนูหลัก">
+        <Link className="brand brand-lockup" href="/" aria-label="Infinity Employee System">
+          <span className="brand-panel">
+            <BrandLogo />
           </span>
-          <span className="brand-copy">
-            <span className="brand-mark">INFINITY</span>
-            <span className="brand-product">Employee System</span>
-          </span>
+          <span className="brand-system-name">Employee System</span>
         </Link>
 
         <PrimaryNavigation roles={actor.roles} />
@@ -66,39 +66,45 @@ export function AppShell({ actor, title, description, children }: Props) {
       </aside>
 
       <div className="app-main">
-        <header className="topbar">
-          <div className="topbar-context" aria-label="บริบทการทำงาน">
-            <span className="topbar-company">Infinity Solution Service</span>
-            <span className="topbar-separator" aria-hidden="true" />
-            <span className="topbar-role">{roleLabel}</span>
-          </div>
+        <header className="topbar v3-topbar">
+          <form className="global-search" action="/projects" method="get" role="search">
+            <MagnifyingGlass size={18} aria-hidden="true" />
+            <input
+              name="q"
+              aria-label="ค้นหาโครงการ"
+              placeholder="ค้นหาโครงการ, PO, ลูกค้า..."
+              autoComplete="off"
+            />
+          </form>
 
-          <Link className="topbar-account" href="/profile" aria-label="เปิดบัญชีของฉัน">
-            <span className="avatar" aria-hidden="true">
-              {initials(actor.displayName)}
-            </span>
-            <span className="topbar-account-copy">
-              <strong>{actor.displayName}</strong>
-              <span>{actor.email}</span>
-            </span>
-          </Link>
+          <div className="topbar-actions">
+            <Link className="icon-button" href="/notifications" aria-label="การแจ้งเตือน">
+              <Bell size={20} weight="regular" aria-hidden="true" />
+            </Link>
+            <Link className="topbar-account" href="/profile" aria-label="เปิดบัญชีของฉัน">
+              <span className="avatar" aria-hidden="true">
+                {initials(actor.displayName)}
+              </span>
+              <span className="topbar-account-copy">
+                <strong>{actor.displayName}</strong>
+                <span>{roleLabel}</span>
+              </span>
+              <span className="account-chevron" aria-hidden="true">
+                ⌄
+              </span>
+            </Link>
+          </div>
         </header>
 
-        <main id="main-content" className="page">
-          <header className="page-header page-hero">
-            <span className="page-hero-mark" aria-hidden="true">
-              ∞
-            </span>
-            <div className="page-header-copy">
-              <span className="page-kicker">INFINITY EMPLOYEE SYSTEM</span>
-              <h1>{title}</h1>
-              {description ? <p>{description}</p> : null}
-              <div className="page-hero-meta" aria-label="บริบทหน้าปัจจุบัน">
-                <span className="page-role-chip">{roleLabel}</span>
-                <span>People · Work · Expense · Travel</span>
+        <main id="main-content" className="page v3-page">
+          {!hideHeader ? (
+            <header className="page-header v3-page-header">
+              <div className="page-header-copy">
+                <h1>{title}</h1>
+                {description ? <p>{description}</p> : null}
               </div>
-            </div>
-          </header>
+            </header>
+          ) : null}
           {children}
         </main>
       </div>

@@ -1,8 +1,14 @@
 # Infinity Employee System — UX/UI V3 Foundation
 
-**Status:** PROPOSED — NOT LOCKED  
-**Implementation:** FROZEN until explicit design lock  
-**Date:** 2026-10-04
+**Status:** LOCKED — USER APPROVED  
+**Implementation:** APPROVED FOR IMPLEMENTATION  
+**Lock date:** 2026-10-04
+
+## Locked visual source of truth
+
+The user-approved V3 visual board in the 2026-10-04 conversation is the controlling visual reference. If prose in this document conflicts with that approved board, the approved board wins.
+
+Brand identity is locked to the user-provided Infinity Solution Service logo: orange/red infinity mark, black “Infinity” wordmark, and orange “SOLUTION SERVICE” line. The previous blue Infinity treatment is rejected.
 
 ## Design objective
 
@@ -36,21 +42,26 @@ Admin UI is configuration-oriented.
 ## Design tokens
 
 ### Color
-- Ink 900: #162033
-- Ink 700: #33415C
-- Ink 500: #69758A
+- Ink 900: #1F252B
+- Ink 700: #3C4650
+- Ink 500: #737C86
 - Paper: #FFFFFF
-- Canvas: #F6F7F9
-- Line: #E3E7ED
-- Line strong: #CCD3DD
-- Infinity Blue: #1769C2
-- Blue soft: #EEF5FC
-- Success: #267A4B
-- Warning: #A56612
-- Danger: #B83A43
-- Neutral status: #687386
+- Canvas: #F7F3EE
+- Warm surface: #FFF9F4
+- Line: #E8E1D9
+- Line strong: #D8CEC3
+- Sidebar: #20262B
+- Sidebar muted: #AAB0B5
+- Infinity Orange: #E84A0C
+- Infinity Orange hover: #CF3F08
+- Orange soft: #FFF0E4
+- Brand gold: #F6A044
+- Success: #2D8A51
+- Warning: #C77A13
+- Danger: #C93E45
+- Neutral status: #737C86
 
-Infinity Blue is an action/selection accent, not a page background theme.
+Infinity Orange is the primary action/selection accent. Charcoal is the navigation anchor. Large surfaces stay warm white/neutral; orange is never used as a full-page background.
 
 ### Typography
 Primary: Noto Sans Thai.
@@ -81,12 +92,13 @@ Shadows reserved for modal/drawer/popover/sticky separation.
 ## Application shell
 
 ### Desktop >=1200
-- left navigation 236px
-- white navigation on neutral canvas
-- top utility bar 56px
+- left navigation 220–236px, charcoal background
+- exact Infinity brand logo at top of navigation
+- warm-white top utility bar 56px with global search and account identity
 - main content max 1440px
-- compact page header: breadcrumb/context + title + optional one-line description + primary action
-- no global hero
+- compact page header on work screens
+- Employee Home alone may use the approved warm skyline/welcome banner composition
+- primary actions use Infinity Orange
 
 ### Notebook 820–1199
 - sidebar collapses to 72px rail or drawer
@@ -172,4 +184,4 @@ Must pass:
 
 ## Lock rule
 
-This document remains PROPOSED until the user explicitly approves V3. No implementation work begins before design lock.
+This document is LOCKED by explicit user approval on 2026-10-04. Any later visual change requires a new documented revision; implementation must preserve this locked visual direction.

@@ -15,60 +15,89 @@ export default async function AdminPage() {
     <AppShell
       actor={actor}
       title="จัดการระบบ"
-      description="กำหนดสิทธิ์พนักงาน โครงสร้างผู้อนุมัติ และตรวจ Approval Rules ที่ระบบบังคับใช้"
+      description="พนักงาน โครงสร้างองค์กร นโยบาย และ Integration"
     >
       <AdminSectionNav />
-      <section className="section">
-        <div className="metric-row" aria-label="โครงสร้างที่ตั้งค่าแล้ว">
-          <div className="metric">
-            <strong>{summary.employees}</strong>
+
+      <section className="admin-overview-grid">
+        <article className="admin-readiness">
+          <div className="section-header">
+            <div>
+              <h2>System setup</h2>
+              <p>รายการตั้งค่าหลักที่ผู้ดูแลต้องตรวจให้ครบ</p>
+            </div>
+          </div>
+          <div className="admin-check-row">
             <span>พนักงานที่เปิดใช้งาน</span>
+            <strong>{summary.employees}</strong>
           </div>
-          <div className="metric">
+          <div className="admin-check-row">
+            <span>Head / Owner</span>
             <strong>{summary.heads}</strong>
-            <span>Head</span>
           </div>
-          <div className="metric">
-            <strong>{summary.finance}</strong>
+          <div className="admin-check-row">
             <span>Finance</span>
+            <strong>{summary.finance}</strong>
           </div>
-          <div className="metric">
+          <div className="admin-check-row">
+            <span>Department</span>
             <strong>{summary.departments}</strong>
-            <span>แผนก</span>
           </div>
-        </div>
-      </section>
-      <section className="section">
-        <div className="quick-list admin-quick-list">
-          <Link className="quick-link" href="/admin/employees">
-            <strong>พนักงานและสิทธิ์</strong>
-            <span>Role, Head/Owner, Department และสถานะบัญชี</span>
+          <div className="notice notice-warning">
+            <p>Reporting Line มีผลกับคำขอใหม่เท่านั้น และ Finance ห้ามตรวจหรือจ่ายรายการของตนเอง</p>
+          </div>
+        </article>
+
+        <article className="admin-navigation-list">
+          <div className="section-header">
+            <div>
+              <h2>Configuration</h2>
+              <p>เลือกพื้นที่ตั้งค่าที่ต้องการจัดการ</p>
+            </div>
+          </div>
+          <Link href="/admin/employees">
+            <span>
+              <strong>พนักงานและสิทธิ์</strong>
+              <small>Role, Head/Owner, Department และสถานะบัญชี</small>
+            </span>
+            <b>›</b>
           </Link>
-          <Link className="quick-link" href="/admin/directory">
-            <strong>Microsoft 365 Directory</strong>
-            <span>Sync บัญชีจาก Office 365 และตรวจการผูกกับ Employee</span>
+          <Link href="/admin/directory">
+            <span>
+              <strong>Microsoft 365 Directory</strong>
+              <small>Sync identity และ mapping กับ Employee</small>
+            </span>
+            <b>›</b>
           </Link>
-          <Link className="quick-link" href="/admin/organization">
-            <strong>โครงสร้างองค์กร</strong>
-            <span>Department และ Reporting Line แบบมี Effective Date</span>
+          <Link href="/admin/organization">
+            <span>
+              <strong>โครงสร้างองค์กร</strong>
+              <small>Department และ Reporting Line</small>
+            </span>
+            <b>›</b>
           </Link>
-          <Link className="quick-link" href="/admin/approval-rules">
-            <strong>Approval Rules</strong>
-            <span>ดู Manager / Finance / Payroll routing และ policy version</span>
+          <Link href="/admin/policies">
+            <span>
+              <strong>Policy Center</strong>
+              <small>Version, Effective Date และประวัติ</small>
+            </span>
+            <b>›</b>
           </Link>
-          <Link className="quick-link" href="/admin/integrations/projects">
-            <strong>Project Integration</strong>
-            <span>ตรวจ Microsoft Lists / SharePoint source, sync freshness และข้อมูลที่ยังขาด</span>
+          <Link href="/admin/approval-rules">
+            <span>
+              <strong>Approval Rules</strong>
+              <small>Manager / Finance / Payroll routing</small>
+            </span>
+            <b>›</b>
           </Link>
-        </div>
-      </section>
-      <section className="section">
-        <div className="notice notice-warning">
-          <p>
-            การเปลี่ยน Reporting Line มีผลกับคำขอใหม่เท่านั้น คำขอที่ส่งแล้วเก็บ Head snapshot เดิม
-            และ Finance ไม่สามารถตรวจหรือจ่ายรายการของตนเองได้แม้มี Admin role.
-          </p>
-        </div>
+          <Link href="/admin/integrations/projects">
+            <span>
+              <strong>Project Integration</strong>
+              <small>SharePoint source, sync freshness และ diagnostics</small>
+            </span>
+            <b>›</b>
+          </Link>
+        </article>
       </section>
     </AppShell>
   );

@@ -132,6 +132,19 @@ export function RequestForm({
 
   return (
     <form className="request-form" onSubmit={submit}>
+      <div className="request-progress" aria-label="ขั้นตอนการส่งคำขอ">
+        <span className="request-progress-step is-active">
+          <b>1.</b> ข้อมูล
+        </span>
+        <span className="request-progress-line" aria-hidden="true" />
+        <span className="request-progress-step">
+          <b>2.</b> รายละเอียด
+        </span>
+        <span className="request-progress-line" aria-hidden="true" />
+        <span className="request-progress-step">
+          <b>3.</b> ยืนยัน
+        </span>
+      </div>
       {sourceWorklogs?.length || sourceWorklogId ? (
         <div className="notice">
           <p>

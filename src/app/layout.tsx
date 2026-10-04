@@ -3,8 +3,9 @@ import '@fontsource/noto-sans-thai/500.css';
 import '@fontsource/noto-sans-thai/600.css';
 import '@fontsource/noto-sans-thai/700.css';
 import './globals.css';
-import './corporate-refresh.css';
 import './responsive-fixes.css';
+import './brand-v3-shell.css';
+import './brand-v3-content.css';
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { PwaRegister } from '@/components/PwaRegister';
@@ -21,7 +22,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#0f66d8',
+  themeColor: '#e84a0c',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

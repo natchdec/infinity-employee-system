@@ -168,21 +168,21 @@ export function RequestActions({
         {isHead && request.workflowState === 'pending_head' ? (
           <>
             <button
-              className="button button-primary"
+              className="button button-approve"
               disabled={Boolean(busy)}
               onClick={() => void command('approve')}
             >
               อนุมัติ
             </button>
             <button
-              className="button button-secondary"
+              className="button button-return"
               disabled={Boolean(busy)}
               onClick={() => void command('return')}
             >
               ส่งกลับแก้ไข
             </button>
             <button
-              className="button button-danger"
+              className="button button-reject"
               disabled={Boolean(busy)}
               onClick={() => void command('reject')}
             >

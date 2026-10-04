@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { BrandLogo } from '@/components/BrandLogo';
 import { currentActor } from '@/server/auth-context';
 import { config } from '@/server/config';
 
@@ -21,7 +22,10 @@ export default async function SignInPage({
   return (
     <main className="signin-shell">
       <section className="signin-panel" aria-labelledby="signin-title">
-        <p className="signin-brand">INFINITY SOLUTION SERVICE</p>
+        <div className="signin-logo">
+          <BrandLogo />
+        </div>
+        <p className="signin-product">Employee System</p>
         <h1 id="signin-title">เข้าสู่ระบบพนักงาน</h1>
         <p>
           {params.reason

@@ -44,21 +44,21 @@ interface NavItem {
 }
 
 const employeeNav: NavItem[] = [
-  { href: '/', label: 'หน้าแรก', icon: 'home' },
-  { href: '/requests', label: 'รายการของฉัน', icon: 'requests' },
-  { href: '/requests/new', label: 'สร้างคำขอ', icon: 'new' },
-  { href: '/trips', label: 'การเดินทาง', icon: 'trips' },
-  { href: '/profile', label: 'โปรไฟล์', icon: 'profile' },
+  { href: '/', label: 'หน้าหลัก', icon: 'home' },
+  { href: '/requests/new', label: 'ขออนุมัติ', icon: 'new' },
+  { href: '/requests', label: 'คำขอของฉัน', icon: 'requests' },
+  { href: '/worklog', label: 'ปฏิทิน', icon: 'worklog' },
   { href: '/projects', label: 'โครงการ', icon: 'projects' },
+  { href: '/statement', label: 'รายงาน', icon: 'statement' },
 ];
 
 const operationsNav: NavItem[] = [
-  { href: '/worklog', label: 'Calendar Inbox', icon: 'worklog' },
-  { href: '/exceptions', label: 'Needs Attention', icon: 'attention' },
+  { href: '/trips', label: 'การเดินทาง', icon: 'trips' },
+  { href: '/receipts', label: 'ใบเสร็จ', icon: 'receipts' },
   { href: '/notifications', label: 'การแจ้งเตือน', icon: 'notifications' },
-  { href: '/receipts', label: 'Receipt Inbox', icon: 'receipts' },
-  { href: '/statement', label: 'สรุปรายเดือน', icon: 'statement' },
-  { href: '/audit', label: 'Audit Timeline', icon: 'audit' },
+  { href: '/exceptions', label: 'ต้องดำเนินการ', icon: 'attention' },
+  { href: '/audit', label: 'ประวัติ', icon: 'audit' },
+  { href: '/profile', label: 'ตั้งค่าโปรไฟล์', icon: 'profile' },
 ];
 
 function Icon({ name, size = 19 }: { name: NavIcon; size?: number }) {
@@ -137,20 +137,20 @@ export function PrimaryNavigation({ roles }: { roles: Role[] }) {
   return (
     <div className="sidebar-nav-stack">
       <nav className="nav-group" aria-label="เมนูพนักงาน">
-        <p className="nav-label">MY WORKSPACE</p>
+        <p className="nav-label">EMPLOYEE</p>
         {employeeNav.map((item) => (
           <NavLink item={item} key={item.href} />
         ))}
       </nav>
       <nav className="nav-group" aria-label="งานรายเดือนและรายการที่ต้องตรวจสอบ">
-        <p className="nav-label">MONTHLY OPERATIONS</p>
+        <p className="nav-label">TOOLS</p>
         {operationsNav.map((item) => (
           <NavLink item={item} key={item.href} />
         ))}
       </nav>
       {workNav.length > 0 ? (
         <nav className="nav-group" aria-label="เมนูงานตามบทบาท">
-          <p className="nav-label">WORK QUEUES</p>
+          <p className="nav-label">ROLE WORK</p>
           {workNav.map((item) => (
             <NavLink item={item} key={item.href} />
           ))}
@@ -162,16 +162,27 @@ export function PrimaryNavigation({ roles }: { roles: Role[] }) {
 
 export function MobileNavigation({ roles }: { roles: Role[] }) {
   const pathname = usePathname();
-  const items: NavItem[] = [...employeeNav];
-  if (roles.includes('head')) {
-    items.push({ href: '/approvals', label: 'อนุมัติ', icon: 'approvals' });
-  }
-  if (roles.includes('finance')) {
-    items.push({ href: '/finance', label: 'การเงิน', icon: 'finance' });
-  }
-  if (roles.includes('admin')) {
-    items.push({ href: '/admin', label: 'Admin', icon: 'admin' });
-  }
+  const roleHref = roles.includes('finance')
+    ? '/finance'
+    : roles.includes('admin')
+      ? '/admin'
+      : roles.includes('head')
+        ? '/approvals'
+        : '/worklog';
+  const roleIcon: NavIcon = roles.includes('finance')
+    ? 'finance'
+    : roles.includes('admin')
+      ? 'admin'
+      : roles.includes('head')
+        ? 'approvals'
+        : 'worklog';
+  const items: NavItem[] = [
+    { href: '/', label: 'หน้าหลัก', icon: 'home' },
+    { href: '/requests', label: 'คำขอ', icon: 'requests' },
+    { href: '/requests/new', label: 'สร้าง', icon: 'new' },
+    { href: roleHref, label: 'งาน', icon: roleIcon },
+    { href: '/profile', label: 'โปรไฟล์', icon: 'profile' },
+  ];
 
   return (
     <nav className="mobile-nav" aria-label="เมนูมือถือ">
