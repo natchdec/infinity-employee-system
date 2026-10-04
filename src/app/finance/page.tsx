@@ -14,30 +14,74 @@ export default async function FinancePage() {
     <AppShell
       actor={actor}
       title="งานการเงิน"
-      description="คิวตรวจสอบ การจ่ายเงิน ใบเสร็จต้นฉบับ และเงินทดรอง"
+      description="ตรวจสอบ จัดชุดการจ่าย Payroll และส่งข้อมูลบัญชีจากจุดเดียว"
     >
-      <section className="finance-status-strip" aria-label="สรุปงานวันนี้">
+      <section className="finance-command-grid" aria-label="งานการเงินหลัก">
+        <Link className="finance-command-card is-primary" href="/finance">
+          <span className="finance-command-step">01</span>
+          <span className="finance-command-copy">
+            <strong>ตรวจสอบรายการ</strong>
+            <small>ตรวจคำขอ ยอดเงิน และหลักฐานก่อน Finance Verify</small>
+          </span>
+          <span className="finance-command-metric">
+            <b>{finance.pendingVerification}</b>
+            <small>รอตรวจสอบ</small>
+          </span>
+        </Link>
+
+        <Link className="finance-command-card" href="/finance/payments">
+          <span className="finance-command-step">02</span>
+          <span className="finance-command-copy">
+            <strong>จัดชุดการจ่ายเงิน</strong>
+            <small>รวมรายการที่ Verify แล้วเป็น Payment Batch</small>
+          </span>
+          <span className="finance-command-metric">
+            <b>{finance.readyToPay}</b>
+            <small>พร้อมจ่าย</small>
+          </span>
+        </Link>
+
+        <Link className="finance-command-card" href="/finance/payroll">
+          <span className="finance-command-step">03</span>
+          <span className="finance-command-copy">
+            <strong>OT / Payroll</strong>
+            <small>ตรวจรอบ Payroll และเตรียมส่งข้อมูลไป EASY-ACC</small>
+          </span>
+          <span className="finance-command-action">EASY-ACC →</span>
+        </Link>
+
+        <Link className="finance-command-card" href="/finance/exports">
+          <span className="finance-command-step">04</span>
+          <span className="finance-command-copy">
+            <strong>Accounting Export</strong>
+            <small>ส่งเฉพาะรายการที่จ่ายแล้วเข้าสู่ขั้นตอนบัญชี</small>
+          </span>
+          <span className="finance-command-action">Smartbiz →</span>
+        </Link>
+      </section>
+
+      <section className="finance-status-strip" aria-label="รายการติดตาม">
         <span>
-          <strong>{finance.pendingVerification}</strong> รอตรวจสอบ
-        </span>
-        <span>
-          <strong>{finance.readyToPay}</strong> พร้อมจ่าย
-        </span>
-        <span>
-          <strong>{finance.originalsOutstanding}</strong> รอต้นฉบับ
+          <strong>{finance.originalsOutstanding}</strong> รอใบเสร็จต้นฉบับ
         </span>
         <span>
           <strong>{finance.advancesOpen}</strong> เงินทดรองเปิดอยู่
         </span>
+        <span>รายการของ Finance เองเป็น Read only และห้าม Verify / Paid ด้วยตนเอง</span>
       </section>
 
-      <section className="finance-workspace">
+      <section className="finance-workspace finance-workspace-single">
         <div className="finance-queue">
           <div className="section-header">
             <div>
-              <h2>คิวรายการ</h2>
-              <p>รายการของคุณเองอ่านได้ แต่ห้ามตรวจสอบหรือบันทึกการจ่ายด้วยตนเอง</p>
+              <h2>รายการที่ต้องตรวจสอบ</h2>
+              <p>
+                เริ่มจากคิวนี้ก่อน แล้วรายการที่ผ่าน Finance Verify จะย้ายไปขั้นจัดชุดการจ่ายเงิน
+              </p>
             </div>
+            <Link className="button button-secondary" href="/finance/payments">
+              ไปชุดการจ่ายเงิน
+            </Link>
           </div>
           {finance.rows.length ? (
             <div className="data-table-wrap" tabIndex={0}>
@@ -97,46 +141,41 @@ export default async function FinancePage() {
             </div>
           )}
         </div>
+      </section>
 
-        <aside className="finance-workflow-nav" aria-label="งานการเงิน">
-          <h2>งานการเงิน</h2>
-          <Link href="/finance/payments">
-            <span>ชุดการจ่ายเงิน</span>
-            <b>›</b>
-          </Link>
+      <section className="section finance-tools-section">
+        <div className="section-header">
+          <div>
+            <h2>เครื่องมือเพิ่มเติม</h2>
+            <p>งานปิดรอบ เอกสาร และการตรวจสอบที่ไม่จำเป็นต้องอยู่ในคิวหลัก</p>
+          </div>
+        </div>
+        <nav className="finance-tools-grid" aria-label="เครื่องมือการเงินเพิ่มเติม">
           <Link href="/finance/settlements">
-            <span>Settlement</span>
-            <b>›</b>
+            <strong>Settlement</strong>
+            <span>เคลียร์เงินทดรองและค่าใช้จ่ายทริป</span>
           </Link>
           <Link href="/finance/receipts">
-            <span>ใบเสร็จต้นฉบับ</span>
-            <b>›</b>
-          </Link>
-          <Link href="/finance/payroll">
-            <span>OT / Payroll</span>
-            <b>›</b>
+            <strong>ใบเสร็จต้นฉบับ</strong>
+            <span>ติดตามเอกสารจริงที่ยังค้าง</span>
           </Link>
           <Link href="/finance/projects">
-            <span>Project P&amp;L</span>
-            <b>›</b>
+            <strong>Project P&amp;L</strong>
+            <span>Revenue / Planned / Actual / Margin</span>
           </Link>
           <Link href="/finance/reconciliation">
-            <span>Reconciliation</span>
-            <b>›</b>
+            <strong>Reconciliation</strong>
+            <span>เทียบยอดกับรายการจ่ายและบัญชี</span>
           </Link>
           <Link href="/finance/monthly-close">
-            <span>Monthly Closing</span>
-            <b>›</b>
-          </Link>
-          <Link href="/finance/exports">
-            <span>Accounting Export</span>
-            <b>›</b>
+            <strong>Monthly Closing</strong>
+            <span>ตรวจ readiness ก่อนปิดรอบ</span>
           </Link>
           <Link href="/finance/operations">
-            <span>Operations</span>
-            <b>›</b>
+            <strong>Operations</strong>
+            <span>ตรวจงานค้างและ exception ฝั่ง Finance</span>
           </Link>
-        </aside>
+        </nav>
       </section>
     </AppShell>
   );

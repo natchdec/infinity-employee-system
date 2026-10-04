@@ -218,3 +218,15 @@ Accepted visual refresh based on the approved Infinity approval-mail direction:
 - Business rules, authorization, approval invariants, finance segregation, audit behavior and confidentiality are unchanged.
 - Detailed controlling spec: `UX_UI_V5_LOCKED.md`.
 <!-- agent-gateway:managed:end:ux-ui-v5-locked-reference-20261004 -->
+
+<!-- agent-gateway:managed:start:finance-command-center-v5-20261005 -->
+## Finance Command Center V5 — 2026-10-05
+- User approved implementation of the Finance UX restructuring shown in the 2026-10-05 proposal.
+- Finance landing page prioritizes four primary tasks in workflow order: ตรวจสอบรายการ → จัดชุดการจ่ายเงิน → OT / Payroll (EASY-ACC) → Accounting Export (Smartbiz).
+- Primary cards use only authoritative current counts already returned by Finance Overview; no invented metrics are shown.
+- The Finance queue remains the working center for verification. Verified items continue to Payment Batches under the existing finance workflow.
+- Settlement, original receipts, Project P&L, reconciliation, monthly closing and operations are grouped under a compact secondary tools area.
+- Existing role gate remains Finance-only. Finance conflict-of-interest protections remain unchanged: own items are read-only and cannot be verified or paid by the same actor.
+- EASY-ACC and Smartbiz remain fail-closed until their approved integration contracts/bridges are ready; this UX change does not bypass readiness gates.
+- Responsive acceptance remains 390/820/1440 and uses the locked V5 white-sidebar / warm-neutral / Infinity-orange visual foundation.
+<!-- agent-gateway:managed:end:finance-command-center-v5-20261005 -->
