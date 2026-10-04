@@ -75,3 +75,7 @@ Project Revenue, planned cost components, Cost Center, actual employee cost, mar
 
 ## D-024 Google Place Search for Mileage
 Mileage origin/destination entry uses Google Places autocomplete for type-ahead suggestions. Selecting a suggestion carries the Google Place ID into the transient route preview for more precise routing; free-text address remains a fallback when the employee does not select a suggestion. Suggestions and route previews are no-store UI assistance and must preserve Google Maps attribution and the existing mileage attestation/retention policy.
+
+
+## D-025 Google Maps Cost Guardrails
+Google Maps Platform requests are cost-controlled inside Employee System before the provider call. Places Autocomplete and Routes Compute each default to a PostgreSQL-backed hard cap of 8,500 provider requests per UTC billing month; configuration may lower the cap but must never exceed 10,000. Each request reserves one unit transactionally before the Google fetch, so concurrent app instances cannot bypass the cap. Once exhausted, the application returns HTTP 429 and does not call Google. Google Cloud API-key restrictions, provider quotas and billing alerts remain defense-in-depth controls when authorized Cloud credentials are available; billing budgets alone are not treated as a hard stop.

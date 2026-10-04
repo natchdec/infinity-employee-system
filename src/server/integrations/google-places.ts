@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { DomainError, invariant } from '../../domain/core';
+import { reserveGoogleApiUsage } from './google-api-budget';
 
 const inputSchema = z
   .object({
@@ -32,13 +33,15 @@ function placesKey(): string {
 
 export async function autocompletePlaces(raw: unknown): Promise<PlaceSuggestion[]> {
   const input = inputSchema.parse(raw);
+  const key = placesKey();
+  await reserveGoogleApiUsage('places_autocomplete');
   let response: Response;
   try {
     response = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Goog-Api-Key': placesKey(),
+        'X-Goog-Api-Key': key,
       },
       body: JSON.stringify({
         input: input.input,

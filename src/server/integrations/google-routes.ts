@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { fingerprint, invariant, type Actor } from '../../domain/core';
 import { config, type AppConfig } from '../config';
 import { db } from '../db';
+import { reserveGoogleApiUsage } from './google-api-budget';
 
 const waypointSchema = z
   .object({
@@ -42,6 +43,7 @@ async function requestGoogleRoute(
     'ยังไม่ได้ตั้งค่า Google Routes',
     503,
   );
+  await reserveGoogleApiUsage('routes_compute');
   const response = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
     method: 'POST',
     headers: {

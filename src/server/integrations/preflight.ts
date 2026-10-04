@@ -1,3 +1,5 @@
+import { googleMonthlyHardCap } from './google-api-budget';
+
 export interface ReadinessGate {
   id: string;
   ready: boolean;
@@ -93,6 +95,22 @@ export function productionReadiness(env: NodeJS.ProcessEnv = process.env): Readi
       blocking: true,
       detail:
         'Google Places autocomplete requires a configured Places API key; live acceptance must also confirm Places API (New) is enabled',
+    },
+    {
+      id: 'google_api_monthly_budget',
+      ready: (() => {
+        try {
+          return (
+            googleMonthlyHardCap('places_autocomplete', env) <= 10_000 &&
+            googleMonthlyHardCap('routes_compute', env) <= 10_000
+          );
+        } catch {
+          return false;
+        }
+      })(),
+      blocking: true,
+      detail:
+        'Application hard caps must stay at or below 10,000 requests/month per Google SKU; production defaults are 8,500 for Places and 8,500 for Routes',
     },
     {
       id: 'google_routes',

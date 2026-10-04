@@ -7,6 +7,7 @@ import { EASY_ACC_INTEGRATION_POLICY } from '../src/server/integrations/easy-acc
 import { blockingReadiness, productionReadiness } from '../src/server/integrations/preflight';
 import { validateCloudflareAccessClaims } from '../src/server/cloudflare-access';
 import { teamsWorkflowPayload } from '../src/server/integrations/teams-workflow';
+import { googleMonthlyHardCap } from '../src/server/integrations/google-api-budget';
 
 test('EASY-ACC direct integration forbids file import and direct database writes', () => {
   assert.equal(EASY_ACC_INTEGRATION_POLICY.transport, 'vendor_api_or_bridge_only');
@@ -46,6 +47,49 @@ test('ordinary Project Master detail defaults to a non-financial database projec
   assert.ok(source.includes('null::text as cost_center'));
   assert.ok(source.includes("'0'::text as revenue_satang"));
   assert.ok(source.includes("'0'::text as hidden_cost_satang"));
+});
+
+test('Google API monthly budget defaults to 8,500 and refuses values above the free-use ceiling', () => {
+  assert.equal(googleMonthlyHardCap('places_autocomplete', {}), 8_500);
+  assert.equal(googleMonthlyHardCap('routes_compute', {}), 8_500);
+  assert.equal(
+    googleMonthlyHardCap('places_autocomplete', { GOOGLE_PLACES_MONTHLY_HARD_CAP: '9000' }),
+    9_000,
+  );
+  assert.throws(
+    () => googleMonthlyHardCap('routes_compute', { GOOGLE_ROUTES_MONTHLY_HARD_CAP: '10001' }),
+    /between 1 and 10000/,
+  );
+  const unsafe = productionReadiness({
+    NODE_ENV: 'test',
+    GOOGLE_PLACES_MONTHLY_HARD_CAP: '10001',
+  });
+  assert.equal(unsafe.find((gate) => gate.id === 'google_api_monthly_budget')?.ready, false);
+  assert.equal(unsafe.find((gate) => gate.id === 'google_api_monthly_budget')?.blocking, true);
+});
+
+test('Google provider calls reserve the monthly budget before sending a request', () => {
+  const places = readFileSync(
+    new URL('../src/server/integrations/google-places.ts', import.meta.url),
+    'utf8',
+  );
+  const routes = readFileSync(
+    new URL('../src/server/integrations/google-routes.ts', import.meta.url),
+    'utf8',
+  );
+  const migration = readFileSync(
+    new URL('../migrations/019_google_api_monthly_budget.sql', import.meta.url),
+    'utf8',
+  );
+  assert.ok(
+    places.indexOf("reserveGoogleApiUsage('places_autocomplete')") <
+      places.indexOf("fetch('https://places.googleapis.com"),
+  );
+  assert.ok(
+    routes.indexOf("reserveGoogleApiUsage('routes_compute')") <
+      routes.indexOf("fetch('https://routes.googleapis.com"),
+  );
+  assert.ok(migration.includes('PRIMARY KEY (month, sku)'));
 });
 
 test('mileage address fields use Google autocomplete and selected place IDs for route preview', () => {
