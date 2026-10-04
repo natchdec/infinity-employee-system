@@ -67,36 +67,31 @@ export function ApprovalDelegationPanel({
           {error}
         </div>
       ) : null}
-      <form className="request-form" onSubmit={create}>
-        <div className="form-grid-2">
-          <label>
-            <span>ผู้รับมอบหมาย</span>
-            <select name="delegateId" required defaultValue="">
-              <option value="" disabled>
-                เลือก Head
+      <form className="approval-delegation-form" onSubmit={create}>
+        <label>
+          <span>ผู้รับมอบหมาย</span>
+          <select name="delegateId" required defaultValue="">
+            <option value="" disabled>
+              เลือก Head
+            </option>
+            {candidates.map((candidate) => (
+              <option key={candidate.id} value={candidate.id}>
+                {candidate.displayName}
               </option>
-              {candidates.map((candidate) => (
-                <option key={candidate.id} value={candidate.id}>
-                  {candidate.displayName}
-                </option>
-              ))}
-            </select>
-          </label>
-          <span />
-          <label>
-            <span>ตั้งแต่วันที่</span>
-            <input name="effectiveFrom" type="date" required />
-          </label>
-          <label>
-            <span>ถึงวันที่</span>
-            <input name="effectiveTo" type="date" required />
-          </label>
-        </div>
-        <div className="form-actions">
-          <button className="button button-secondary" type="submit" disabled={Boolean(busy)}>
-            {busy === 'create' ? 'กำลังบันทึก…' : 'เพิ่มการมอบหมาย'}
-          </button>
-        </div>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>ตั้งแต่วันที่</span>
+          <input name="effectiveFrom" type="date" required />
+        </label>
+        <label>
+          <span>ถึงวันที่</span>
+          <input name="effectiveTo" type="date" required />
+        </label>
+        <button className="button button-secondary" type="submit" disabled={Boolean(busy)}>
+          {busy === 'create' ? 'กำลังบันทึก…' : 'เพิ่มการมอบหมาย'}
+        </button>
       </form>
 
       {delegations.length ? (

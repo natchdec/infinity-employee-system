@@ -436,3 +436,29 @@ test('Teams workflow payload rejects protocol-relative external links', () => {
       error instanceof DomainError && error.code === 'TEAMS_NOTIFICATION_LINK_INVALID',
   );
 });
+
+test('V4 compact enterprise UI prevents oversized checks, fields and wrapped delegation actions', () => {
+  const layout = readFileSync(new URL('../src/app/layout.tsx', import.meta.url), 'utf8');
+  const v4 = readFileSync(new URL('../src/app/brand-v4.css', import.meta.url), 'utf8');
+  const delegation = readFileSync(
+    new URL('../src/components/ApprovalDelegationPanel.tsx', import.meta.url),
+    'utf8',
+  );
+  const holiday = readFileSync(
+    new URL('../src/app/admin/policies/CalendarPolicyAdminClient.tsx', import.meta.url),
+    'utf8',
+  );
+  const homeAddress = readFileSync(
+    new URL('../src/components/profile/HomeAddressForm.tsx', import.meta.url),
+    'utf8',
+  );
+
+  assert.ok(layout.includes("import './brand-v4.css';"));
+  assert.ok(v4.includes('width: 16px !important'));
+  assert.ok(v4.includes('grid-template-columns: minmax(240px, 1.35fr)'));
+  assert.ok(v4.includes('.admin-policy-holidays textarea'));
+  assert.ok(v4.includes('.profile-home-address textarea'));
+  assert.ok(delegation.includes('className="approval-delegation-form"'));
+  assert.ok(holiday.includes('rows={5}'));
+  assert.ok(homeAddress.includes('rows={2}'));
+});

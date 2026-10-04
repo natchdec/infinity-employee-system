@@ -43,7 +43,7 @@ export function HomeAddressForm({
       <label>
         <span>Home Address</span>
         <textarea
-          rows={3}
+          rows={2}
           value={homeAddress}
           onChange={(event) => setHomeAddress(event.target.value)}
           placeholder="กรอกที่อยู่บ้านให้ละเอียด เช่น บ้านเลขที่ ถนน แขวง/ตำบล เขต/อำเภอ จังหวัด รหัสไปรษณีย์"

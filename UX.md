@@ -195,3 +195,12 @@ Accepted visual refresh based on the approved Infinity approval-mail direction:
 - Annual leave, sick leave and other leave can optionally name a specific Final Approver after the Reporting Line stage.
 - OT, travel/transport expense, other expense, mixed expense, Trip and Cash Advance can optionally name a Finance Payer as Final Approver; the payer is configured independently per class.
 - Finance Payer final approval is segregated from Finance Verify and from the requester. Payment confirmation remains restricted to the configured Finance Payer when one is assigned.
+
+
+## UX/UI V4 locked compact enterprise — 2026-10-04
+- V4 visual direction is LOCKED from the user-provided reference images and supersedes V3 styling only.
+- Forms use compact 36–40px desktop controls, 16–18px checkboxes, balanced field widths and restrained textarea heights.
+- Admin Calendar/Holiday, Employee role controls, Profile Home Address/Commute and Approval Delegation must follow compact enterprise proportions.
+- Desktop Approval Delegation keeps Delegate + From + To + Action on one aligned row when space permits.
+- Oversized blank form surfaces, giant checkmarks and wrapped desktop actions are rejected by the V4 acceptance gate.
+- Full detail is in UX_UI_V4_LOCKED.md.

@@ -210,7 +210,7 @@ export function CalendarPolicyAdminClient({
         <label className="admin-policy-holidays">
           <span>Company Holidays (YYYY-MM-DD, หนึ่งวันต่อบรรทัด)</span>
           <textarea
-            rows={8}
+            rows={5}
             value={holidaysText}
             onChange={(event) => setHolidaysText(event.target.value)}
             placeholder={'2026-10-13\n2026-12-05\n2026-12-31'}

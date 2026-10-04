@@ -1,0 +1,368 @@
+/* Infinity Employee System — UX/UI V4 locked compact enterprise overrides */
+:root {
+  --v4-canvas: #f5f1ec;
+  --v4-paper: #ffffff;
+  --v4-warm: #fbf8f4;
+  --v4-line: #e4ddd5;
+  --v4-line-strong: #d5cbc1;
+  --v4-ink: #20262b;
+  --v4-muted: #6e757b;
+  --v4-orange: #e84a0c;
+  --v4-orange-soft: #fff1e8;
+}
+
+body {
+  background: var(--v4-canvas);
+}
+
+.v3-page {
+  padding-top: 22px;
+}
+
+.v3-page-header {
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+}
+
+.v3-page-header h1 {
+  font-size: 24px;
+}
+
+.section {
+  padding-block: 18px;
+}
+
+.section + .section {
+  margin-top: 0;
+}
+
+.section-header {
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.section-header h2 {
+  font-size: 16px;
+}
+
+.section-header p,
+.field-note,
+.muted,
+.cell-secondary {
+  font-size: 12px;
+}
+
+/* Controls: compact by default without shrinking mobile touch targets. */
+.request-form input:not([type='checkbox']):not([type='radio']),
+.request-form select,
+.batch-toolbar select,
+.export-control input:not([type='checkbox']):not([type='radio']),
+.export-control select,
+.admin-form-grid select,
+.admin-create-row input:not([type='checkbox']):not([type='radio']),
+.department-row input:not([type='checkbox']):not([type='radio']),
+.admin-reporting-table select,
+.admin-reporting-table input:not([type='checkbox']):not([type='radio']),
+.admin-policy-form input:not([type='checkbox']):not([type='radio']),
+.admin-policy-form select,
+.admin-policy-form textarea,
+.profile-home-address input:not([type='checkbox']):not([type='radio']),
+.profile-home-address textarea,
+.approval-delegation-form input:not([type='checkbox']):not([type='radio']),
+.approval-delegation-form select {
+  min-height: 38px;
+  border: 1px solid var(--v4-line-strong);
+  border-radius: 7px;
+  padding: 7px 10px;
+  background: #fff;
+  color: var(--v4-ink);
+}
+
+/* Native checkboxes must never inherit full-width input rules. */
+input[type='checkbox'],
+.check-field input[type='checkbox'],
+.request-form input[type='checkbox'],
+.admin-policy-form input[type='checkbox'],
+.admin-form-grid input[type='checkbox'],
+.admin-inline-controls input[type='checkbox'] {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  flex: 0 0 16px;
+  margin: 0 !important;
+  padding: 0 !important;
+  accent-color: var(--v4-orange);
+  box-shadow: none !important;
+}
+
+.check-field {
+  min-height: 28px;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 7px !important;
+  margin: 0 !important;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.role-checks {
+  gap: 8px 18px;
+}
+
+.admin-inline-controls {
+  gap: 10px 22px;
+  padding-block: 8px;
+}
+
+.admin-role-fieldset {
+  margin: 14px 0;
+  padding: 10px 14px 12px;
+}
+
+.admin-role-fieldset legend {
+  font-size: 12px;
+}
+
+/* Employee cards */
+.admin-employee-card {
+  max-width: 1040px;
+  padding: 16px 18px;
+}
+
+.admin-card-heading {
+  margin-bottom: 14px;
+}
+
+.admin-form-grid {
+  gap: 12px 16px;
+}
+
+.admin-form-grid select {
+  min-height: 38px;
+}
+
+/* Calendar policy */
+.admin-policy-form {
+  max-width: 980px;
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid var(--v4-line);
+  border-radius: 9px;
+  background: var(--v4-paper);
+}
+
+.admin-policy-form .form-grid {
+  display: grid;
+  grid-template-columns: 1.15fr repeat(4, minmax(110px, 0.72fr));
+  gap: 10px;
+  align-items: end;
+}
+
+.admin-policy-form label {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+}
+
+.admin-policy-form label > span,
+.admin-policy-weekdays legend {
+  color: #4d555b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.admin-policy-weekdays {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 0;
+  padding: 10px 12px 11px;
+  border: 1px solid var(--v4-line);
+  border-radius: 7px;
+  background: var(--v4-warm);
+}
+
+.admin-policy-weekdays legend {
+  padding: 0 4px;
+}
+
+.admin-policy-holidays {
+  max-width: 560px;
+}
+
+.admin-policy-holidays textarea {
+  min-height: 108px;
+  max-height: 180px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.admin-policy-form .button-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 0;
+}
+
+/* Profile */
+.profile-home-address {
+  max-width: 720px;
+  display: grid;
+  gap: 8px;
+}
+
+.profile-home-address label {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+}
+
+.profile-home-address label > span {
+  font-size: 12px;
+  font-weight: 600;
+  color: #4d555b;
+}
+
+.profile-home-address textarea {
+  min-height: 88px;
+  max-height: 140px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.profile-home-address input[type='number'] {
+  max-width: 240px;
+}
+
+.profile-home-address .field-note {
+  max-width: 68ch;
+  margin: 0;
+}
+
+.profile-home-address .action-row {
+  margin-top: 2px;
+}
+
+/* Approval delegation */
+.approval-delegation-form {
+  max-width: 980px;
+  display: grid;
+  grid-template-columns: minmax(240px, 1.35fr) minmax(150px, 0.72fr) minmax(150px, 0.72fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 14px;
+}
+
+.approval-delegation-form label {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+}
+
+.approval-delegation-form label > span {
+  font-size: 12px;
+  font-weight: 600;
+  color: #4d555b;
+}
+
+.approval-delegation-form .button {
+  min-width: max-content;
+  white-space: nowrap;
+  align-self: end;
+}
+
+/* Approval route rows */
+.approval-route-row {
+  grid-template-columns: minmax(185px, 0.75fr) minmax(0, 2.25fr);
+  padding: 11px 13px;
+}
+
+.approval-route-editor {
+  grid-template-columns: minmax(180px, 1.05fr) minmax(200px, 1.2fr) 138px max-content;
+}
+
+.approval-route-editor select,
+.approval-route-editor input {
+  min-height: 36px;
+  font-size: 12px;
+}
+
+.approval-route-editor .button {
+  white-space: nowrap;
+}
+
+button,
+.button {
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  .admin-policy-form .form-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .approval-delegation-form {
+    grid-template-columns: minmax(220px, 1fr) 1fr 1fr;
+  }
+
+  .approval-delegation-form .button {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+}
+
+@media (max-width: 767px) {
+  .section {
+    padding-block: 14px;
+  }
+
+  input[type='checkbox'],
+  .check-field input[type='checkbox'],
+  .request-form input[type='checkbox'],
+  .admin-policy-form input[type='checkbox'] {
+    width: 18px !important;
+    height: 18px !important;
+    min-width: 18px !important;
+    min-height: 18px !important;
+    flex-basis: 18px;
+  }
+
+  .check-field {
+    min-height: 34px;
+    font-size: 14px;
+  }
+
+  .admin-policy-form {
+    padding: 14px;
+  }
+
+  .admin-policy-form .form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .admin-policy-holidays {
+    max-width: none;
+  }
+
+  .profile-home-address {
+    max-width: none;
+  }
+
+  .profile-home-address input[type='number'] {
+    max-width: none;
+  }
+
+  .approval-delegation-form {
+    grid-template-columns: 1fr;
+  }
+
+  .approval-delegation-form .button {
+    width: 100%;
+    grid-column: auto;
+  }
+}
