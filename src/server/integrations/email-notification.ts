@@ -138,19 +138,27 @@ export async function sendApprovalDigestEmail(raw: unknown): Promise<{
       e.display_name as requester_name
     from requests r
     join employees e on e.id=r.employee_id
-    where r.workflow_state='pending_head'
-      and r.employee_id<>${value.employeeId}
+    where r.employee_id<>${value.employeeId}
       and (
-        r.assigned_head_id=${value.employeeId}
-        or exists(
-          select 1
-          from approval_delegations d
-          where d.delegator_id=r.assigned_head_id
-            and d.delegate_id=${value.employeeId}
-            and d.active
-            and d.scope='manager_approval'
-            and d.effective_from<=${value.date}::date
-            and d.effective_to>=${value.date}::date
+        (
+          r.workflow_state='pending_head'
+          and (
+            r.assigned_head_id=${value.employeeId}
+            or exists(
+              select 1
+              from approval_delegations d
+              where d.delegator_id=r.assigned_head_id
+                and d.delegate_id=${value.employeeId}
+                and d.active
+                and d.scope='manager_approval'
+                and d.effective_from<=${value.date}::date
+                and d.effective_to>=${value.date}::date
+            )
+          )
+        )
+        or (
+          r.final_approval_state='pending'
+          and r.assigned_final_approver_id=${value.employeeId}
         )
       )
     order by r.updated_at asc,r.reference

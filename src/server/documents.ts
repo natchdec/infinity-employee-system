@@ -140,7 +140,7 @@ export async function documentForActor(
   let allowed = doc.owner_id === actor.id;
   if (!allowed) {
     const linked = await db()`
-      select distinct r.employee_id,r.assigned_head_id,r.kind
+      select distinct r.employee_id,r.assigned_head_id,r.assigned_final_approver_id,r.kind
       from document_links l
       join requests r on r.id=l.request_id
       where l.document_id=${documentId}
@@ -149,6 +149,7 @@ export async function documentForActor(
       canViewRequest(actor, {
         employee_id: row.employee_id,
         assigned_head_id: row.assigned_head_id,
+        assigned_final_approver_id: row.assigned_final_approver_id,
         kind: row.kind,
       }),
     );

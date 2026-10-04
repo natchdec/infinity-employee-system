@@ -61,6 +61,7 @@ test('ordinary Project Master detail defaults to a non-financial database projec
 test('Google API monthly budget defaults to 8,500 and refuses values above the free-use ceiling', () => {
   assert.equal(googleMonthlyHardCap('places_autocomplete', {}), 8_500);
   assert.equal(googleMonthlyHardCap('routes_compute', {}), 8_500);
+  assert.equal(googleMonthlyHardCap('maps_static', {}), 8_500);
   assert.equal(
     googleMonthlyHardCap('places_autocomplete', { GOOGLE_PLACES_MONTHLY_HARD_CAP: '9000' }),
     9_000,
@@ -137,7 +138,52 @@ test('Google route preview returns selectable alternatives with transient geomet
   assert.ok(expense.includes('<RouteMapPreview'));
   assert.ok(expense.includes('selectedRouteIndex'));
   assert.ok(mapPreview.includes('เปิดต้นทางและปลายทางใน Google Maps'));
-  assert.ok(mapPreview.includes('Google Routes · transient preview'));
+  assert.ok(mapPreview.includes("fetch('/api/routes/map'"));
+  assert.ok(mapPreview.includes('route-map-image'));
+});
+
+test('Google route map uses a server-side Static Maps proxy with its own monthly budget', () => {
+  const endpoint = readFileSync(
+    new URL('../src/app/api/routes/map/route.ts', import.meta.url),
+    'utf8',
+  );
+  const migration = readFileSync(
+    new URL('../migrations/021_google_static_maps_budget.sql', import.meta.url),
+    'utf8',
+  );
+  const productionCompose = readFileSync(
+    new URL('../docker-compose.production.yml', import.meta.url),
+    'utf8',
+  );
+  assert.ok(endpoint.includes("reserveGoogleApiUsage('maps_static')"));
+  assert.ok(endpoint.includes('https://maps.googleapis.com/maps/api/staticmap'));
+  assert.ok(endpoint.includes('GOOGLE_ROUTES_API_KEY'));
+  assert.ok(endpoint.includes('private, no-store'));
+  assert.ok(migration.includes("'maps_static'"));
+  assert.equal(productionCompose.split('GOOGLE_MAPS_STATIC_MONTHLY_HARD_CAP').length - 1, 4);
+});
+
+test('approval routing always starts from Reporting Line and supports per-type final approvers', () => {
+  const routing = readFileSync(
+    new URL('../src/server/approval-routing.ts', import.meta.url),
+    'utf8',
+  );
+  const admin = readFileSync(new URL('../src/server/admin-config.ts', import.meta.url), 'utf8');
+  const decisions = readFileSync(
+    new URL('../src/server/request-decisions.ts', import.meta.url),
+    'utf8',
+  );
+  assert.ok(routing.includes('await activeLineHead(tx, actor.id, today)'));
+  assert.ok(routing.includes("'leave_annual'"));
+  assert.ok(routing.includes("'leave_sick'"));
+  assert.ok(routing.includes("rawMode === 'finance_payer'"));
+  assert.ok(admin.includes("mode: z.enum(['none', 'specific_employee', 'finance_payer'])"));
+  assert.ok(admin.includes('รายการที่เกี่ยวกับการจ่ายเงินต้องใช้ Finance Payer'));
+  assert.ok(decisions.includes('export async function finalApprovalDecision'));
+  assert.ok(decisions.includes('FINANCE_FINAL_PAYER_CONFLICT'));
+  assert.ok(
+    decisions.includes('requireIndependentPayer(actor, current.employee_id, financeVerifierId)'),
+  );
 });
 
 test('travel toll addon is constrained to mileage, taxi or grab and split by the server', () => {

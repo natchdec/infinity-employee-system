@@ -91,7 +91,7 @@ export interface AdminApprovalRouteRow {
   label: string;
   version: number;
   effectiveFrom: string;
-  mode: 'line_head' | 'specific_employee';
+  mode: 'none' | 'specific_employee' | 'finance_payer';
   approverEmployeeId: string | null;
   approverName: string | null;
 }
@@ -100,29 +100,45 @@ export interface ApprovalApproverOption {
   id: string;
   displayName: string;
   email: string;
+  roles: Role[];
 }
 
 export const approvalRouteAdminSchema = z
   .object({
     routeKey: z.enum(approvalRouteKeys),
     effectiveFrom: dateSchema,
-    mode: z.enum(['line_head', 'specific_employee']),
+    mode: z.enum(['none', 'specific_employee', 'finance_payer']),
     approverEmployeeId: z.string().uuid().nullable(),
   })
   .strict()
   .superRefine((value, context) => {
-    if (value.mode === 'line_head' && value.approverEmployeeId) {
+    const leaveRoute = value.routeKey.startsWith('leave_');
+    if (value.mode === 'none' && value.approverEmployeeId) {
       context.addIssue({
         code: 'custom',
         path: ['approverEmployeeId'],
-        message: 'Line Head route ไม่ต้องระบุผู้อนุมัติ',
+        message: 'Route ที่ไม่มี Final Approver ต้องไม่ระบุบุคคล',
       });
     }
-    if (value.mode === 'specific_employee' && !value.approverEmployeeId) {
+    if (value.mode !== 'none' && !value.approverEmployeeId) {
       context.addIssue({
         code: 'custom',
         path: ['approverEmployeeId'],
-        message: 'เลือกผู้อนุมัติสำหรับ route นี้',
+        message: 'เลือก Final Approver สำหรับ route นี้',
+      });
+    }
+    if (leaveRoute && value.mode === 'finance_payer') {
+      context.addIssue({
+        code: 'custom',
+        path: ['mode'],
+        message: 'การลาใช้ Final Approver แบบระบุบุคคลเท่านั้น',
+      });
+    }
+    if (!leaveRoute && value.mode === 'specific_employee') {
+      context.addIssue({
+        code: 'custom',
+        path: ['mode'],
+        message: 'รายการที่เกี่ยวกับการจ่ายเงินต้องใช้ Finance Payer เป็น Final Approver',
       });
     }
   });
@@ -135,7 +151,9 @@ export interface ApprovalPolicyView {
 }
 
 const approvalRouteLabels: Record<ApprovalRouteKey, string> = {
-  leave: 'ลา',
+  leave_annual: 'ลาพักร้อน',
+  leave_sick: 'ลาป่วย',
+  leave_other: 'ลาอื่น ๆ',
   ot: 'OT',
   expense_travel: 'ค่าเดินทาง / ที่พัก',
   expense_other: 'ค่าใช้จ่ายอื่น',
@@ -602,24 +620,27 @@ export async function setAdminApprovalRoute(
     input,
     async (tx) => {
       let approverName: string | null = null;
-      if (input.mode === 'specific_employee') {
+      if (input.mode !== 'none') {
         const [approver] = await tx`
-          select e.id,e.display_name
+          select e.id,e.display_name,
+            exists(
+              select 1 from employee_roles er
+              where er.employee_id=e.id and er.role='finance_payer'
+            ) as is_finance_payer
           from employees e
           where e.id=${input.approverEmployeeId}
             and e.active
-            and exists(
-              select 1 from employee_roles er
-              where er.employee_id=e.id and er.role='head'
-            )
           for update
         `;
-        invariant(
-          approver,
-          'APPROVER_NOT_AVAILABLE',
-          'ผู้อนุมัติต้องเป็น Head / Owner ที่เปิดใช้งาน',
-          409,
-        );
+        invariant(approver, 'APPROVER_NOT_AVAILABLE', 'Final Approver ไม่พร้อมใช้งาน', 409);
+        if (input.mode === 'finance_payer') {
+          invariant(
+            approver.is_finance_payer,
+            'APPROVER_NOT_FINANCE_PAYER',
+            'Final Approver ของรายการจ่ายเงินต้องมีสิทธิ์ Finance Payer',
+            409,
+          );
+        }
         approverName = String(approver.display_name);
       }
 
@@ -641,7 +662,7 @@ export async function setAdminApprovalRoute(
           ${version},
           ${input.effectiveFrom}::date,
           ${input.mode},
-          ${input.mode === 'specific_employee' ? input.approverEmployeeId : null},
+          ${input.mode === 'none' ? null : input.approverEmployeeId},
           ${actor.id},
           ${now}
         )
@@ -659,7 +680,7 @@ export async function setAdminApprovalRoute(
           routeKey: input.routeKey,
           label: approvalRouteLabels[input.routeKey],
           mode: input.mode,
-          approverEmployeeId: input.mode === 'specific_employee' ? input.approverEmployeeId : null,
+          approverEmployeeId: input.mode === 'none' ? null : input.approverEmployeeId,
           effectiveFrom: input.effectiveFrom,
         }),
         correlationId,
@@ -672,7 +693,7 @@ export async function setAdminApprovalRoute(
         version,
         effectiveFrom: input.effectiveFrom,
         mode: input.mode,
-        approverEmployeeId: input.mode === 'specific_employee' ? input.approverEmployeeId : null,
+        approverEmployeeId: input.mode === 'none' ? null : input.approverEmployeeId,
         approverName,
       });
     },
@@ -708,13 +729,15 @@ export async function adminApprovalPolicy(now = new Date()): Promise<{
       order by ar.route_key,ar.effective_from desc,ar.version desc
     `,
     db()`
-      select e.id,e.display_name,e.email
+      select
+        e.id,
+        e.display_name,
+        e.email,
+        coalesce(array_agg(er.role order by er.role) filter (where er.role is not null),'{}') as roles
       from employees e
+      left join employee_roles er on er.employee_id=e.id
       where e.active
-        and exists(
-          select 1 from employee_roles er
-          where er.employee_id=e.id and er.role='head'
-        )
+      group by e.id,e.display_name,e.email
       order by e.display_name,e.email
     `,
   ]);
@@ -741,7 +764,11 @@ export async function adminApprovalPolicy(now = new Date()): Promise<{
       label: approvalRouteLabels[routeKey],
       version: Number(row.version),
       effectiveFrom: String(row.effective_from),
-      mode: String(row.mode) as 'line_head' | 'specific_employee',
+      mode: (row.mode === 'finance_payer'
+        ? 'finance_payer'
+        : row.mode === 'specific_employee'
+          ? 'specific_employee'
+          : 'none') as AdminApprovalRouteRow['mode'],
       approverEmployeeId: row.approver_employee_id ? String(row.approver_employee_id) : null,
       approverName: row.approver_name ? String(row.approver_name) : null,
     };
@@ -756,6 +783,7 @@ export async function adminApprovalPolicy(now = new Date()): Promise<{
       id: String(row.id),
       displayName: String(row.display_name),
       email: String(row.email),
+      roles: (Array.isArray(row.roles) ? row.roles : []).map(String) as Role[],
     })),
   };
 }

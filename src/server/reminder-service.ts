@@ -37,6 +37,11 @@ export async function queueApprovalDigestEmails(now = new Date()): Promise<numbe
       where r.workflow_state='pending_head'
         and r.assigned_head_id is not null
       union
+      select r.assigned_final_approver_id as employee_id
+      from requests r
+      where r.final_approval_state='pending'
+        and r.assigned_final_approver_id is not null
+      union
       select d.delegate_id as employee_id
       from requests r
       join approval_delegations d
@@ -124,6 +129,10 @@ export async function queueOperationalReminders(now = new Date()): Promise<numbe
       select r.assigned_head_id as employee_id
       from requests r
       where r.workflow_state='pending_head' and r.assigned_head_id is not null
+      union all
+      select r.assigned_final_approver_id
+      from requests r
+      where r.final_approval_state='pending' and r.assigned_final_approver_id is not null
       union all
       select d.delegate_id
       from requests r

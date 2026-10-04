@@ -10,8 +10,17 @@ export async function persistSubmission(
   round: number,
   now: Date,
 ): Promise<void> {
-  await tx`insert into request_revisions(request_id,round,payload,calculation,policy_snapshots,project_snapshot,wage_snapshot,assigned_head_id,input_hash,submitted_at)
-    values(${request.id},${round},${tx.json(safeJson(prepared.input))},${tx.json(prepared.calculation)},${tx.json(safeJson(prepared.policies))},${tx.json(prepared.project)},${tx.json(prepared.wage)},${prepared.headId},${fingerprint({ input: prepared.input, calculation: prepared.calculation, policyHashes: prepared.policies.map((policy) => policy.hash) })},${now})`;
+  await tx`insert into request_revisions(
+      request_id,round,payload,calculation,policy_snapshots,project_snapshot,wage_snapshot,
+      assigned_head_id,assigned_final_approver_id,approval_route_version_id,input_hash,submitted_at
+    )
+    values(
+      ${request.id},${round},${tx.json(safeJson(prepared.input))},${tx.json(prepared.calculation)},
+      ${tx.json(safeJson(prepared.policies))},${tx.json(prepared.project)},${tx.json(prepared.wage)},
+      ${prepared.headId},${prepared.finalApproverId},${prepared.approvalRouteVersionId},
+      ${fingerprint({ input: prepared.input, calculation: prepared.calculation, policyHashes: prepared.policies.map((policy) => policy.hash), approvalRouteVersionId: prepared.approvalRouteVersionId })},
+      ${now}
+    )`;
   const input = prepared.input;
   const calculation = prepared.calculation;
   if (input.kind === 'leave') {

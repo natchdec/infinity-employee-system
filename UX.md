@@ -186,5 +186,12 @@ Accepted visual refresh based on the approved Infinity approval-mail direction:
 ## Request flow refinements — 2026-10-04
 - Project selection uses type-ahead search instead of a long dropdown. Search covers Project/PO, customer, project name/code, Product Category and Product Solution from Project Master.
 - Mileage address entry keeps Google Places autocomplete and now requests up to three transient Google Routes alternatives. The employee can select a route; the selected distance is copied into the attested mileage field. Route geometry remains no-store and is not durable financial evidence.
-- The route selector shows a lightweight route diagram from Google Routes geometry and provides an explicit link to open the origin/destination in Google Maps.
+- The route selector shows the selected Google Routes geometry over a real transient Google Maps road-map background, refreshes the map when the employee selects an alternative route, and provides an explicit link to open the origin/destination in Google Maps. The image and geometry are no-store UI assistance.
 - Mileage, Taxi and Grab may include Toll as an add-on in the same travel entry. Toll has its own amount and receipt evidence in the UI, while Finance/reporting receives it as a separate Toll calculation line.
+
+
+## Approval flow refinement — 2026-10-04
+- Reporting Line Head is always the first approval stage for employee requests; request-class configuration never bypasses the Reporting Line.
+- Annual leave, sick leave and other leave can optionally name a specific Final Approver after the Reporting Line stage.
+- OT, travel/transport expense, other expense, mixed expense, Trip and Cash Advance can optionally name a Finance Payer as Final Approver; the payer is configured independently per class.
+- Finance Payer final approval is segregated from Finance Verify and from the requester. Payment confirmation remains restricted to the configured Finance Payer when one is assigned.

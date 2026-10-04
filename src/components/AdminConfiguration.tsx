@@ -26,11 +26,19 @@ interface ApprovalPolicyView {
 
 interface ApprovalRouteRow {
   routeKey:
-    'leave' | 'ot' | 'expense_travel' | 'expense_other' | 'expense_mixed' | 'trip' | 'advance';
+    | 'leave_annual'
+    | 'leave_sick'
+    | 'leave_other'
+    | 'ot'
+    | 'expense_travel'
+    | 'expense_other'
+    | 'expense_mixed'
+    | 'trip'
+    | 'advance';
   label: string;
   version: number;
   effectiveFrom: string;
-  mode: 'line_head' | 'specific_employee';
+  mode: 'none' | 'specific_employee' | 'finance_payer';
   approverEmployeeId: string | null;
   approverName: string | null;
 }
@@ -39,6 +47,7 @@ interface ApprovalApproverOption {
   id: string;
   displayName: string;
   email: string;
+  roles: string[];
 }
 
 const adminSections = [
@@ -117,6 +126,11 @@ function ApprovalRouteEditor({
   const [effectiveFrom, setEffectiveFrom] = useState(bangkokToday());
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const leaveRoute = route.routeKey.startsWith('leave_');
+  const eligibleApprovers =
+    mode === 'finance_payer'
+      ? approvers.filter((person) => person.roles.includes('finance_payer'))
+      : approvers;
 
   async function save() {
     setBusy(true);
@@ -126,7 +140,7 @@ function ApprovalRouteEditor({
         routeKey: route.routeKey,
         effectiveFrom,
         mode,
-        approverEmployeeId: mode === 'specific_employee' ? approverId || null : null,
+        approverEmployeeId: mode === 'none' ? null : approverId || null,
       });
       setMessage('บันทึก route version ใหม่แล้ว');
       window.setTimeout(() => window.location.reload(), 400);
@@ -139,25 +153,34 @@ function ApprovalRouteEditor({
 
   return (
     <div className="approval-route-editor">
+      <span className="muted">ขั้นแรก: Reporting Line Head (บังคับ)</span>
       <select
         value={mode}
-        onChange={(event) => setMode(event.target.value as ApprovalRouteRow['mode'])}
+        onChange={(event) => {
+          setMode(event.target.value as ApprovalRouteRow['mode']);
+          setApproverId('');
+        }}
       >
-        <option value="line_head">ตาม Line Head ของผู้ขอ</option>
-        <option value="specific_employee">กำหนดผู้อนุมัติเฉพาะ</option>
+        <option value="none">ไม่มี Final Approver เพิ่มเติม</option>
+        {leaveRoute ? <option value="specific_employee">Final Approver ระบุบุคคล</option> : null}
+        {!leaveRoute ? (
+          <option value="finance_payer">Final Approver = Finance Payer ที่กำหนด</option>
+        ) : null}
       </select>
 
-      {mode === 'specific_employee' ? (
+      {mode !== 'none' ? (
         <select value={approverId} onChange={(event) => setApproverId(event.target.value)} required>
-          <option value="">เลือก Head / Owner...</option>
-          {approvers.map((person) => (
+          <option value="">
+            {mode === 'finance_payer' ? 'เลือก Finance Payer...' : 'เลือก Final Approver...'}
+          </option>
+          {eligibleApprovers.map((person) => (
             <option value={person.id} key={person.id}>
               {person.displayName} · {person.email}
             </option>
           ))}
         </select>
       ) : (
-        <span className="muted">ใช้ Reporting Line ของพนักงาน</span>
+        <span className="muted">จบที่ Reporting Line / ขั้น Finance ที่ระบบกำหนด</span>
       )}
 
       <input
@@ -171,7 +194,7 @@ function ApprovalRouteEditor({
       <button
         type="button"
         className="button button-secondary"
-        disabled={busy || (mode === 'specific_employee' && !approverId)}
+        disabled={busy || (mode !== 'none' && !approverId)}
         onClick={() => void save()}
       >
         {busy ? 'กำลังบันทึก…' : 'ใช้ค่านี้'}
@@ -202,10 +225,10 @@ export function ApprovalRulesPanel({
       <section className="section">
         <div className="notice">
           <p>
-            Approval Policy v{current.version} มีผล {current.effectiveFrom}. Admin
-            สามารถกำหนดผู้อนุมัติแยกตามประเภทงานได้ โดยเลือกใช้ Line Head หรือ Head / Owner
-            คนใดคนหนึ่งแบบ Effective-Dated และเก็บประวัติทุกเวอร์ชัน. Head / Owner
-            ที่ยื่นคำขอของตนเองยังคง SYSTEM_SKIPPED และ Finance ยังบังคับคนละคนกับผู้ขอ.
+            Approval Policy v{current.version} มีผล {current.effectiveFrom}. ขั้นแรกยึด Reporting
+            Line Head เสมอ (Head / Owner self-request ยังคง SYSTEM_SKIPPED). จากนั้น Admin กำหนด
+            Final Approver แยกตามประเภทได้: การลาเลือกบุคคลได้ ส่วนรายการที่เกี่ยวกับการจ่ายเงิน
+            เลือก Finance Payer คนที่รับผิดชอบประเภทนั้น และทุกการเปลี่ยนค่าเป็น Effective-Dated.
           </p>
         </div>
       </section>
@@ -215,8 +238,8 @@ export function ApprovalRulesPanel({
           <div>
             <h2>ผู้อนุมัติแยกตามประเภท</h2>
             <p>
-              แยก OT, ลา, ค่าเดินทาง, ค่าใช้จ่ายอื่น, Trip และเงินทดรองได้คนละคน
-              การเปลี่ยนค่ามีผลกับคำขอใหม่หลัง Effective Date เท่านั้น
+              ขั้นแรกใช้ Reporting Line เหมือนกันทุกประเภท แล้วแยก Final Approver สำหรับ ลาพักร้อน /
+              ลาป่วย / OT / ค่าเดินทาง / ค่าใช้จ่ายอื่น / Trip / เงินทดรองได้คนละคน
             </p>
           </div>
           <span className="state state-success">Configurable routing</span>
@@ -229,9 +252,9 @@ export function ApprovalRulesPanel({
                 <strong>{route.label}</strong>
                 <span>
                   ปัจจุบัน:{' '}
-                  {route.mode === 'line_head'
-                    ? 'Line Head'
-                    : (route.approverName ?? 'Specific approver')}
+                  {route.mode === 'none'
+                    ? 'ไม่มี Final เพิ่มเติม'
+                    : (route.approverName ?? 'Final Approver')}
                 </span>
                 <small>
                   v{route.version} · มีผล {route.effectiveFrom}
@@ -273,7 +296,7 @@ export function ApprovalRulesPanel({
                   <td>
                     <strong>{row.label}</strong>
                   </td>
-                  <td>Configurable route</td>
+                  <td>Reporting Line (fixed)</td>
                   <td>{row.finance}</td>
                   <td>{row.destination}</td>
                 </tr>
@@ -293,7 +316,7 @@ export function ApprovalRulesPanel({
           </div>
           <dl className="detail-grid detail-grid-surface">
             <dt>Manager routing</dt>
-            <dd>Line Head หรือ Specific Head / Owner ตาม route</dd>
+            <dd>Reporting Line Head เท่านั้น</dd>
             <dt>Head / Owner self-request</dt>
             <dd>{current.body.ownerHeadSkip ? 'SYSTEM_SKIPPED' : 'ไม่ข้าม'}</dd>
             <dt>Finance independence</dt>

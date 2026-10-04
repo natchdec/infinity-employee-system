@@ -47,6 +47,8 @@ export default async function RequestDetailPage({ params }: Props) {
           id: detail.request.id,
           employeeId: detail.request.employee_id,
           assignedHeadId: detail.request.assigned_head_id,
+          assignedFinalApproverId: detail.request.assigned_final_approver_id,
+          finalApprovalState: detail.request.final_approval_state,
           kind: detail.request.kind,
           revision: detail.request.revision,
           workflowState: detail.request.workflow_state,

@@ -165,15 +165,26 @@ export async function markPaymentBatchPaid(
       );
 
       const obligations = await tx`
-      select o.id,o.owner_id,o.request_id,o.source_kind,o.source_id,o.state,o.amount_satang::text,o.verified_by
+      select
+        o.id,o.owner_id,o.request_id,o.source_kind,o.source_id,o.state,o.amount_satang::text,
+        o.verified_by,r.assigned_final_approver_id
       from payment_items i
       join payable_obligations o on o.id=i.obligation_id
+      left join requests r on r.id=o.request_id
       where i.batch_id=${batchId} and i.active
       for update of o
     `;
       invariant(obligations.length > 0, 'EMPTY_PAYMENT_BATCH', 'ไม่พบรายการในชุดจ่าย', 409);
       for (const item of obligations) {
         requireIndependentPayer(actor, item.owner_id, String(item.verified_by));
+        if (item.assigned_final_approver_id) {
+          invariant(
+            String(item.assigned_final_approver_id) === actor.id,
+            'PAYMENT_PAYER_MISMATCH',
+            'Payment Batch นี้มีรายการที่กำหนด Finance Payer เป็นบุคคลอื่น',
+            403,
+          );
+        }
         invariant(
           item.state === 'allocated',
           'PAYABLE_NOT_ALLOCATED',

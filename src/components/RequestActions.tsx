@@ -6,6 +6,8 @@ interface RequestSummary {
   id: string;
   employeeId: string;
   assignedHeadId: string | null;
+  assignedFinalApproverId: string | null;
+  finalApprovalState: string;
   kind: string;
   revision: number;
   workflowState: string;
@@ -46,12 +48,15 @@ export function RequestActions({
   const isHead =
     roles.includes('head') && !owner && (canHeadDecide || request.assignedHeadId === actorId);
   const isFinance = roles.includes('finance') && !owner;
+  const isFinalApprover = !owner && request.assignedFinalApproverId === actorId;
 
   async function command(action: string, extra: Record<string, unknown> = {}) {
     const reason =
       action === 'return' ||
       action === 'reject' ||
       action === 'finance_return' ||
+      action === 'final_return' ||
+      action === 'final_reject' ||
       action === 'cancel'
         ? window.prompt('ระบุเหตุผล')
         : null;
@@ -59,6 +64,8 @@ export function RequestActions({
       (action === 'return' ||
         action === 'reject' ||
         action === 'finance_return' ||
+        action === 'final_return' ||
+        action === 'final_reject' ||
         action === 'cancel') &&
       !reason?.trim()
     )
@@ -147,7 +154,7 @@ export function RequestActions({
 
   const cancellable =
     owner &&
-    ['pending_head', 'approved', 'returned'].includes(request.workflowState) &&
+    ['pending_head', 'pending_final', 'approved', 'returned'].includes(request.workflowState) &&
     request.financeState !== 'verified' &&
     !['allocated', 'paid'].includes(request.paymentState);
 
@@ -185,6 +192,32 @@ export function RequestActions({
               className="button button-reject"
               disabled={Boolean(busy)}
               onClick={() => void command('reject')}
+            >
+              ไม่อนุมัติ
+            </button>
+          </>
+        ) : null}
+
+        {isFinalApprover && request.finalApprovalState === 'pending' ? (
+          <>
+            <button
+              className="button button-approve"
+              disabled={Boolean(busy)}
+              onClick={() => void command('final_approve')}
+            >
+              Final Approve
+            </button>
+            <button
+              className="button button-return"
+              disabled={Boolean(busy)}
+              onClick={() => void command('final_return')}
+            >
+              ส่งกลับแก้ไข
+            </button>
+            <button
+              className="button button-reject"
+              disabled={Boolean(busy)}
+              onClick={() => void command('final_reject')}
             >
               ไม่อนุมัติ
             </button>

@@ -11,6 +11,7 @@ export type CommandResult = {
   workflowState: string;
   financeState: string;
   paymentState: string;
+  finalApprovalState: string;
   totalSatang: string;
 };
 
@@ -22,11 +23,23 @@ export type ApprovalHistoryAction =
   | 'rejected'
   | 'cancelled'
   | 'finance_verified'
-  | 'finance_returned';
+  | 'finance_returned'
+  | 'final_approved'
+  | 'final_returned'
+  | 'final_rejected';
 
 export function historyAction(
   action:
-    'submit' | 'approve' | 'return' | 'reject' | 'cancel' | 'finance_verify' | 'finance_return',
+    | 'submit'
+    | 'approve'
+    | 'return'
+    | 'reject'
+    | 'cancel'
+    | 'finance_verify'
+    | 'finance_return'
+    | 'final_approve'
+    | 'final_return'
+    | 'final_reject',
 ): ApprovalHistoryAction {
   const actions = {
     submit: 'submitted',
@@ -36,6 +49,9 @@ export function historyAction(
     cancel: 'cancelled',
     finance_verify: 'finance_verified',
     finance_return: 'finance_returned',
+    final_approve: 'final_approved',
+    final_return: 'final_returned',
+    final_reject: 'final_rejected',
   } as const;
   return actions[action];
 }
@@ -70,6 +86,15 @@ export function requestFromRow(row: Record<string, unknown>): RequestRecord {
     total_satang: String(row.total_satang),
     currency: String(row.currency),
     assigned_head_id: row.assigned_head_id ? String(row.assigned_head_id) : null,
+    assigned_final_approver_id: row.assigned_final_approver_id
+      ? String(row.assigned_final_approver_id)
+      : null,
+    final_approval_state: (row.final_approval_state ??
+      'not_required') as RequestRecord['final_approval_state'],
+    approval_route_key: row.approval_route_key ? String(row.approval_route_key) : null,
+    approval_route_version_id: row.approval_route_version_id
+      ? String(row.approval_route_version_id)
+      : null,
     created_at: new Date(String(row.created_at)),
     updated_at: new Date(String(row.updated_at)),
   };
@@ -95,6 +120,10 @@ export async function requestForUpdate(tx: Transaction, id: string): Promise<Req
       total_satang::text,
       currency,
       assigned_head_id,
+      assigned_final_approver_id,
+      final_approval_state,
+      approval_route_key,
+      approval_route_version_id,
       created_at,
       updated_at
     from requests
@@ -114,6 +143,7 @@ export function resultOf(request: RequestRecord): CommandResult {
     workflowState: request.workflow_state,
     financeState: request.finance_state,
     paymentState: request.payment_state,
+    finalApprovalState: request.final_approval_state,
     totalSatang: request.total_satang,
   };
 }
@@ -128,6 +158,16 @@ export async function notifyHead(
     employeeId: headId,
     title: `มีคำขอรออนุมัติ ${request.reference}`,
     detail: `${request.title} · กรุณาตรวจสอบและเลือก Approve / Return / Reject`,
+    href: `/requests/${request.id}`,
+  });
+}
+
+export async function notifyFinalApprover(tx: Transaction, request: RequestRecord): Promise<void> {
+  if (!request.assigned_final_approver_id || request.final_approval_state !== 'pending') return;
+  await enqueueEmployeeNotice(tx, `${request.id}:${request.submission_round}:final_pending`, {
+    employeeId: request.assigned_final_approver_id,
+    title: `มีคำขอรอ Final Approval ${request.reference}`,
+    detail: `${request.title} · ผ่าน Reporting Line แล้ว กรุณาตรวจสอบขั้นสุดท้าย`,
     href: `/requests/${request.id}`,
   });
 }
@@ -155,15 +195,24 @@ export async function notifyFinancePayers(
 ): Promise<void> {
   if (!financialKind(request.kind)) return;
   if (request.finance_state !== 'verified' || request.payment_state !== 'unpaid') return;
-  await enqueueRoleNotices(
-    tx,
-    'finance_payer',
-    `${request.id}:${request.submission_round}:payment_pending`,
-    {
-      title: `มีรายการพร้อมจ่าย ${request.reference}`,
-      detail: `${request.title} · Finance Verify แล้ว กรุณาจัดชุดจ่ายและยืนยัน Paid`,
-      href: '/finance/payments',
-    },
-    [request.employee_id, ...excludeEmployeeIds],
-  );
+  const eventKey = `${request.id}:${request.submission_round}:payment_pending`;
+  const notice = {
+    title: `มีรายการพร้อมจ่าย ${request.reference}`,
+    detail: `${request.title} · Finance Verify และ Final Approval ครบแล้ว กรุณาจัดชุดจ่ายและยืนยัน Paid`,
+    href: '/finance/payments',
+  };
+  if (
+    request.assigned_final_approver_id &&
+    !excludeEmployeeIds.includes(request.assigned_final_approver_id)
+  ) {
+    await enqueueEmployeeNotice(tx, eventKey, {
+      employeeId: request.assigned_final_approver_id,
+      ...notice,
+    });
+    return;
+  }
+  await enqueueRoleNotices(tx, 'finance_payer', eventKey, notice, [
+    request.employee_id,
+    ...excludeEmployeeIds,
+  ]);
 }

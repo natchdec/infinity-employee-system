@@ -4,6 +4,7 @@ import { apiActor, apiError, mutationHeaders } from '@/server/api';
 import {
   cancelRequest,
   financeDecision,
+  finalApprovalDecision,
   headDecision,
   resubmitRequest,
 } from '@/server/request-service';
@@ -81,6 +82,25 @@ export async function POST(request: Request, { params }: Params) {
 
     if (body.action === 'approve' || body.action === 'return' || body.action === 'reject') {
       const result = await headDecision(actor, id, body, idempotencyKey, new Date(), correlationId);
+      return Response.json(
+        { ok: true, request: result },
+        { headers: { 'Cache-Control': 'no-store' } },
+      );
+    }
+
+    if (
+      body.action === 'final_approve' ||
+      body.action === 'final_return' ||
+      body.action === 'final_reject'
+    ) {
+      const result = await finalApprovalDecision(
+        actor,
+        id,
+        body,
+        idempotencyKey,
+        new Date(),
+        correlationId,
+      );
       return Response.json(
         { ok: true, request: result },
         { headers: { 'Cache-Control': 'no-store' } },

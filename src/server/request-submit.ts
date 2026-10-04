@@ -10,6 +10,7 @@ import { assertPeriodAcceptsNewRequest } from './monthly-operations-service';
 import {
   financeAfterManager,
   notifyFinancePending,
+  notifyFinalApprover,
   notifyHead,
   resultOf,
   requestForUpdate,
@@ -147,7 +148,10 @@ export async function submitNewRequest(
       prepared.date,
     );
     const routing = managerialRouting(actor, prepared.headId);
-    const financeState = financeAfterManager(prepared.input.kind, routing.state);
+    const workflowState =
+      routing.state === 'approved' && prepared.finalAfterHead ? 'pending_final' : routing.state;
+    const finalApprovalState = workflowState === 'pending_final' ? 'pending' : 'not_required';
+    const financeState = financeAfterManager(prepared.input.kind, workflowState);
     const [sequence] = await tx`select nextval('request_reference_seq')::text as value`;
     const reference = `IES-${bangkokDate(now).slice(0, 4)}-${String(sequence!.value).padStart(6, '0')}`;
 
@@ -169,7 +173,11 @@ export async function submitNewRequest(
         payment_state,
         total_satang,
         currency,
-        assigned_head_id
+        assigned_head_id,
+        assigned_final_approver_id,
+        final_approval_state,
+        approval_route_key,
+        approval_route_version_id
       )
       values(
         ${id},
@@ -187,12 +195,16 @@ export async function submitNewRequest(
         ${tx.json(safeJson(prepared.input))},
         1,
         1,
-        ${routing.state},
+        ${workflowState},
         ${financeState},
         'not_applicable',
         ${prepared.totalSatang},
         'THB',
-        ${routing.assignedHeadId}
+        ${routing.assignedHeadId},
+        ${prepared.finalApproverId},
+        ${finalApprovalState},
+        ${prepared.approvalRouteKey},
+        ${prepared.approvalRouteVersionId}
       )
       returning created_at, updated_at
     `;
@@ -212,12 +224,16 @@ export async function submitNewRequest(
       draft_payload: safeJson(prepared.input) as Record<string, unknown>,
       revision: 1,
       submission_round: 1,
-      workflow_state: routing.state,
+      workflow_state: workflowState,
       finance_state: financeState,
       payment_state: 'not_applicable',
       total_satang: prepared.totalSatang,
       currency: 'THB',
       assigned_head_id: routing.assignedHeadId,
+      assigned_final_approver_id: prepared.finalApproverId,
+      final_approval_state: finalApprovalState,
+      approval_route_key: prepared.approvalRouteKey,
+      approval_route_version_id: prepared.approvalRouteVersionId,
       created_at: new Date(inserted!.created_at),
       updated_at: new Date(inserted!.updated_at),
     };
@@ -284,11 +300,13 @@ export async function submitNewRequest(
         routing: routing.action,
         approvalRoute: prepared.approvalRoute,
         financeState,
+        finalApprovalState,
       },
       correlationId,
     );
     await notifyHead(tx, request, routing.assignedHeadId);
-    if (routing.state === 'approved') {
+    await notifyFinalApprover(tx, request);
+    if (workflowState === 'approved') {
       await approvedEffects(tx, request, actor, now, correlationId);
       await notifyFinancePending(tx, request);
     }
@@ -331,7 +349,10 @@ export async function resubmitRequest(
     const routing = managerialRouting(actor, prepared.headId);
     const nextRound = current.submission_round + 1;
     const nextRevision = current.revision + 1;
-    const financeState = financeAfterManager(current.kind, routing.state);
+    const workflowState =
+      routing.state === 'approved' && prepared.finalAfterHead ? 'pending_final' : routing.state;
+    const finalApprovalState = workflowState === 'pending_final' ? 'pending' : 'not_required';
+    const financeState = financeAfterManager(current.kind, workflowState);
 
     await tx`
         update requests
@@ -347,11 +368,15 @@ export async function resubmitRequest(
           draft_payload = ${tx.json(safeJson(prepared.input))},
           revision = ${nextRevision},
           submission_round = ${nextRound},
-          workflow_state = ${routing.state},
+          workflow_state = ${workflowState},
           finance_state = ${financeState},
           payment_state = 'not_applicable',
           total_satang = ${prepared.totalSatang},
           assigned_head_id = ${routing.assignedHeadId},
+          assigned_final_approver_id = ${prepared.finalApproverId},
+          final_approval_state = ${finalApprovalState},
+          approval_route_key = ${prepared.approvalRouteKey},
+          approval_route_version_id = ${prepared.approvalRouteVersionId},
           updated_at = ${now}
         where id = ${id}
       `;
@@ -368,11 +393,15 @@ export async function resubmitRequest(
       draft_payload: safeJson(prepared.input) as Record<string, unknown>,
       revision: nextRevision,
       submission_round: nextRound,
-      workflow_state: routing.state,
+      workflow_state: workflowState,
       finance_state: financeState,
       payment_state: 'not_applicable',
       total_satang: prepared.totalSatang,
       assigned_head_id: routing.assignedHeadId,
+      assigned_final_approver_id: prepared.finalApproverId,
+      final_approval_state: finalApprovalState,
+      approval_route_key: prepared.approvalRouteKey,
+      approval_route_version_id: prepared.approvalRouteVersionId,
       updated_at: now,
     };
 
@@ -398,7 +427,8 @@ export async function resubmitRequest(
       correlationId,
     );
     await notifyHead(tx, updated, routing.assignedHeadId);
-    if (routing.state === 'approved') {
+    await notifyFinalApprover(tx, updated);
+    if (workflowState === 'approved') {
       await approvedEffects(tx, updated, actor, now, correlationId);
       await notifyFinancePending(tx, updated);
     }

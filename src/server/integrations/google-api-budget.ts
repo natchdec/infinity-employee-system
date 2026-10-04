@@ -1,15 +1,15 @@
 import { DomainError } from '../../domain/core';
 import { db } from '../db';
 
-export type GoogleBillableSku = 'places_autocomplete' | 'routes_compute';
+export type GoogleBillableSku = 'places_autocomplete' | 'routes_compute' | 'maps_static';
 
 const DEFAULT_MONTHLY_HARD_CAP = 8_500;
 const MAX_SAFE_CAP = 10_000;
 
 function envName(sku: GoogleBillableSku): string {
-  return sku === 'places_autocomplete'
-    ? 'GOOGLE_PLACES_MONTHLY_HARD_CAP'
-    : 'GOOGLE_ROUTES_MONTHLY_HARD_CAP';
+  if (sku === 'places_autocomplete') return 'GOOGLE_PLACES_MONTHLY_HARD_CAP';
+  if (sku === 'routes_compute') return 'GOOGLE_ROUTES_MONTHLY_HARD_CAP';
+  return 'GOOGLE_MAPS_STATIC_MONTHLY_HARD_CAP';
 }
 
 export function googleMonthlyHardCap(
@@ -48,11 +48,20 @@ export async function reserveGoogleApiUsage(
   );
 
   if (!row) {
-    const label = sku === 'places_autocomplete' ? 'Google Places' : 'Google Routes';
-    throw new DomainError(
+    const label =
+      sku === 'places_autocomplete'
+        ? 'Google Places'
+        : sku === 'routes_compute'
+          ? 'Google Routes'
+          : 'Google Static Maps';
+    const code =
       sku === 'places_autocomplete'
         ? 'GOOGLE_PLACES_MONTHLY_CAP_REACHED'
-        : 'GOOGLE_ROUTES_MONTHLY_CAP_REACHED',
+        : sku === 'routes_compute'
+          ? 'GOOGLE_ROUTES_MONTHLY_CAP_REACHED'
+          : 'GOOGLE_STATIC_MAPS_MONTHLY_CAP_REACHED';
+    throw new DomainError(
+      code,
       `${label} ถึงขีดจำกัดรายเดือน ${limit.toLocaleString('en-US')} requests แล้ว ระบบหยุดเรียก Google เพื่อป้องกันค่าใช้จ่ายเพิ่ม`,
       429,
     );

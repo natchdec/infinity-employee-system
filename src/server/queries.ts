@@ -71,20 +71,28 @@ export async function assignedApprovals(headId: string): Promise<
       e.display_name
     from requests r
     join employees e on e.id = r.employee_id
-    where r.workflow_state = 'pending_head'
-      and (
-        r.assigned_head_id = ${headId}
-        or exists(
-          select 1
-          from approval_delegations d
-          where d.active
-            and d.scope='manager_approval'
-            and d.delegator_id=r.assigned_head_id
-            and d.delegate_id=${headId}
-            and d.effective_from <= ${date}::date
-            and d.effective_to >= ${date}::date
+    where (
+      (
+        r.workflow_state = 'pending_head'
+        and (
+          r.assigned_head_id = ${headId}
+          or exists(
+            select 1
+            from approval_delegations d
+            where d.active
+              and d.scope='manager_approval'
+              and d.delegator_id=r.assigned_head_id
+              and d.delegate_id=${headId}
+              and d.effective_from <= ${date}::date
+              and d.effective_to >= ${date}::date
+          )
         )
       )
+      or (
+        r.final_approval_state='pending'
+        and r.assigned_final_approver_id=${headId}
+      )
+    )
     order by r.created_at, r.id
     limit 100
   `;

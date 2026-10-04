@@ -1,5 +1,8 @@
 'use client';
 
+import Image from 'next/image';
+import { useEffect, useState } from 'react';
+
 export interface RouteOption {
   routeIndex: number;
   distanceMetres: number;
@@ -13,61 +16,6 @@ export interface RoutePreview {
   destinationLabel: string;
   routes: RouteOption[];
   selectedRouteIndex: number;
-}
-
-interface RoutePoint {
-  lat: number;
-  lng: number;
-}
-
-function decodePolyline(encoded: string): RoutePoint[] {
-  const points: RoutePoint[] = [];
-  let index = 0;
-  let lat = 0;
-  let lng = 0;
-
-  while (index < encoded.length) {
-    let shift = 0;
-    let result = 0;
-    let byte = 0;
-    do {
-      byte = encoded.charCodeAt(index++) - 63;
-      result |= (byte & 0x1f) << shift;
-      shift += 5;
-    } while (byte >= 0x20 && index <= encoded.length);
-    lat += result & 1 ? ~(result >> 1) : result >> 1;
-
-    shift = 0;
-    result = 0;
-    do {
-      byte = encoded.charCodeAt(index++) - 63;
-      result |= (byte & 0x1f) << shift;
-      shift += 5;
-    } while (byte >= 0x20 && index <= encoded.length);
-    lng += result & 1 ? ~(result >> 1) : result >> 1;
-
-    points.push({ lat: lat / 1e5, lng: lng / 1e5 });
-  }
-
-  return points;
-}
-
-function routePath(
-  points: RoutePoint[],
-  bounds: { minLat: number; maxLat: number; minLng: number; maxLng: number },
-): string {
-  const width = 420;
-  const height = 180;
-  const pad = 18;
-  const latSpan = Math.max(bounds.maxLat - bounds.minLat, 0.00001);
-  const lngSpan = Math.max(bounds.maxLng - bounds.minLng, 0.00001);
-  return points
-    .map((point) => {
-      const x = pad + ((point.lng - bounds.minLng) / lngSpan) * (width - pad * 2);
-      const y = height - pad - ((point.lat - bounds.minLat) / latSpan) * (height - pad * 2);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(' ');
 }
 
 function metresToKm(value: number): string {
@@ -96,47 +44,79 @@ export function RouteMapPreview({
   preview: RoutePreview;
   onSelect: (route: RouteOption) => void;
 }) {
-  if (!preview.routes.length) return null;
-
-  const decoded = preview.routes.map((route) => ({
-    route,
-    points: decodePolyline(route.encodedPolyline),
-  }));
-  const allPoints = decoded.flatMap((item) => item.points);
-  if (!allPoints.length) return null;
-
-  const bounds = {
-    minLat: Math.min(...allPoints.map((point) => point.lat)),
-    maxLat: Math.max(...allPoints.map((point) => point.lat)),
-    minLng: Math.min(...allPoints.map((point) => point.lng)),
-    maxLng: Math.max(...allPoints.map((point) => point.lng)),
-  };
   const selected =
     preview.routes.find((route) => route.routeIndex === preview.selectedRouteIndex) ??
-    preview.routes[0]!;
+    preview.routes[0];
+  const selectedPolyline = selected?.encodedPolyline ?? '';
+  const [mapUrl, setMapUrl] = useState('');
+  const [mapError, setMapError] = useState('');
+  const [mapLoading, setMapLoading] = useState(false);
+
+  useEffect(() => {
+    if (!selectedPolyline) return;
+    const controller = new AbortController();
+    let objectUrl = '';
+
+    async function loadMap() {
+      setMapLoading(true);
+      setMapError('');
+      try {
+        const response = await fetch('/api/routes/map', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ encodedPolyline: selectedPolyline }),
+          signal: controller.signal,
+          cache: 'no-store',
+        });
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => null)) as {
+            error?: { message?: string };
+          } | null;
+          throw new Error(payload?.error?.message ?? 'โหลดแผนที่ไม่สำเร็จ');
+        }
+        const blob = await response.blob();
+        objectUrl = URL.createObjectURL(blob);
+        setMapUrl((previous) => {
+          if (previous) URL.revokeObjectURL(previous);
+          return objectUrl;
+        });
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        setMapUrl('');
+        setMapError(error instanceof Error ? error.message : 'โหลดแผนที่ไม่สำเร็จ');
+      } finally {
+        if (!controller.signal.aborted) setMapLoading(false);
+      }
+    }
+
+    void loadMap();
+    return () => {
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [selectedPolyline]);
+
+  if (!selected) return null;
 
   return (
     <div className="route-picker">
-      <div className="route-map-frame">
-        <svg viewBox="0 0 420 180" role="img" aria-label="แผนผังเส้นทางจาก Google Routes">
-          <rect width="420" height="180" className="route-map-background" />
-          <path
-            d="M0 45H420 M0 90H420 M0 135H420 M105 0V180 M210 0V180 M315 0V180"
-            className="route-map-grid"
+      <div className="route-map-frame route-map-frame-google">
+        {mapLoading ? <div className="route-map-loading">กำลังโหลด Google Map…</div> : null}
+        {mapUrl ? (
+          <Image
+            className="route-map-image"
+            src={mapUrl}
+            alt={`Google Map เส้นทางจาก ${preview.originLabel} ไป ${preview.destinationLabel}`}
+            width={1280}
+            height={640}
+            unoptimized
           />
-          {decoded.map(({ route, points }) => (
-            <polyline
-              key={route.routeIndex}
-              points={routePath(points, bounds)}
-              className={
-                route.routeIndex === selected.routeIndex
-                  ? 'route-map-line route-map-line-selected'
-                  : 'route-map-line'
-              }
-            />
-          ))}
-        </svg>
-        <span className="route-map-attribution">Google Routes · transient preview</span>
+        ) : null}
+        {mapError ? (
+          <div className="route-map-error" role="alert">
+            {mapError}
+          </div>
+        ) : null}
       </div>
 
       <div className="route-option-list">
@@ -173,8 +153,8 @@ export function RouteMapPreview({
         เปิดต้นทางและปลายทางใน Google Maps ↗
       </a>
       <p className="field-note">
-        แผนผังด้านบนวาดจาก geometry ที่ Google Routes ส่งกลับแบบชั่วคราว · กด “เปิดใน Google Maps”
-        เพื่อดูแผนที่เต็ม และระบบไม่เก็บ geometry นี้เป็นหลักฐานถาวร
+        แผนที่และเส้นทางโหลดแบบชั่วคราวจาก Google Maps · เปลี่ยนทางเลือกด้านบนเพื่อดูเส้นทางบนแผนที่
+        และระบบไม่เก็บภาพ/geometry นี้เป็นหลักฐานถาวร
       </p>
     </div>
   );

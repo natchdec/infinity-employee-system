@@ -139,7 +139,7 @@ export const requestInputSchema = z.discriminatedUnion('kind', [
 export type RequestInput = z.infer<typeof requestInputSchema>;
 export type RequestKind = RequestInput['kind'];
 export type RequestState =
-  'draft' | 'pending_head' | 'approved' | 'returned' | 'rejected' | 'cancelled';
+  'draft' | 'pending_head' | 'pending_final' | 'approved' | 'returned' | 'rejected' | 'cancelled';
 export interface RequestRecord {
   id: string;
   reference: string;
@@ -158,6 +158,10 @@ export interface RequestRecord {
   total_satang: string;
   currency: string;
   assigned_head_id: string | null;
+  assigned_final_approver_id: string | null;
+  final_approval_state: 'not_required' | 'pending' | 'approved' | 'returned' | 'rejected';
+  approval_route_key: string | null;
+  approval_route_version_id: string | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -195,12 +199,16 @@ export function requireOwnEditable(actor: Actor, request: RequestRecord): void {
 
 export function canViewRequest(
   actor: Actor,
-  request: Pick<RequestRecord, 'employee_id' | 'assigned_head_id' | 'kind'>,
+  request: Pick<
+    RequestRecord,
+    'employee_id' | 'assigned_head_id' | 'assigned_final_approver_id' | 'kind'
+  >,
 ): boolean {
   if (!actor.active) return false;
   if (
     actor.id === request.employee_id ||
-    (actor.roles.includes('head') && actor.id === request.assigned_head_id)
+    (actor.roles.includes('head') && actor.id === request.assigned_head_id) ||
+    actor.id === request.assigned_final_approver_id
   )
     return true;
   // System administration does not automatically grant access to private leave/medical information.
@@ -249,6 +257,9 @@ export const commandSchema = z
       'cancel',
       'finance_verify',
       'finance_return',
+      'final_approve',
+      'final_return',
+      'final_reject',
     ]),
     reason: z.string().trim().max(2000).optional(),
   })

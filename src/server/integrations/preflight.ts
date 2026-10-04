@@ -102,7 +102,8 @@ export function productionReadiness(env: NodeJS.ProcessEnv = process.env): Readi
         try {
           return (
             googleMonthlyHardCap('places_autocomplete', env) <= 10_000 &&
-            googleMonthlyHardCap('routes_compute', env) <= 10_000
+            googleMonthlyHardCap('routes_compute', env) <= 10_000 &&
+            googleMonthlyHardCap('maps_static', env) <= 10_000
           );
         } catch {
           return false;
@@ -110,7 +111,7 @@ export function productionReadiness(env: NodeJS.ProcessEnv = process.env): Readi
       })(),
       blocking: true,
       detail:
-        'Application hard caps must stay at or below 10,000 requests/month per Google SKU; production defaults are 8,500 for Places and 8,500 for Routes',
+        'Application hard caps must stay at or below 10,000 requests/month per Google SKU; production defaults are 8,500 for Places, Routes and Static Maps',
     },
     {
       id: 'google_routes',

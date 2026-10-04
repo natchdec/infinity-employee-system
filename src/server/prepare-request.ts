@@ -17,7 +17,12 @@ import type { LeavePolicy, OTPolicy, PerDiemPolicy, VersionedPolicy } from '../d
 import { policyFor, safeJson, type Transaction } from './db';
 import { prepareExpense, validateDocuments } from './prepare-expense';
 import { config } from './config';
-import { approvalRouteAudit, resolveApprovalRoute } from './approval-routing';
+import {
+  approvalRouteAudit,
+  finalApprovalAfterFinance,
+  finalApprovalAfterHead,
+  resolveApprovalRoute,
+} from './approval-routing';
 
 export interface PreparedRequest {
   input: RequestInput;
@@ -28,6 +33,11 @@ export interface PreparedRequest {
   project: Json;
   wage: Json;
   headId: string | null;
+  finalApproverId: string | null;
+  approvalRouteKey: string;
+  approvalRouteVersionId: string;
+  finalAfterHead: boolean;
+  finalAfterFinance: boolean;
   approvalRoute: Record<string, Json>;
   originalRequired: boolean;
 }
@@ -91,7 +101,7 @@ export async function prepareRequest(
     project = safeJson(row);
   }
   const approvalRoute = await resolveApprovalRoute(tx, actor, input, now);
-  const headId = approvalRoute.assignedApproverId;
+  const headId = approvalRoute.headId;
   if (input.kind === 'leave') {
     const policy = await policyFor<LeavePolicy>(tx, 'leave', date);
     const calendar = await policyFor<Calendar>(tx, 'calendar', date);
@@ -200,6 +210,11 @@ export async function prepareRequest(
     project,
     wage,
     headId,
+    finalApproverId: approvalRoute.finalApproverId,
+    approvalRouteKey: approvalRoute.routeKey,
+    approvalRouteVersionId: approvalRoute.routeVersionId,
+    finalAfterHead: finalApprovalAfterHead(approvalRoute),
+    finalAfterFinance: finalApprovalAfterFinance(approvalRoute),
     approvalRoute: approvalRouteAudit(approvalRoute),
     originalRequired,
   };

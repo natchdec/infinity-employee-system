@@ -3,6 +3,7 @@ import { bangkokDate } from '../domain/calendar';
 import {
   invariant,
   requireIndependentFinance,
+  requireIndependentPayer,
   requireRevision,
   type Actor,
   type Json,
@@ -18,6 +19,7 @@ import {
   historyAction,
   notifyFinancePending,
   notifyFinancePayers,
+  notifyFinalApprover,
   requestForUpdate,
   resultOf,
   type CommandResult,
@@ -72,8 +74,21 @@ export async function headDecision(
     );
 
     const nextRevision = current.revision + 1;
+    const finalAfterHead =
+      Boolean(current.assigned_final_approver_id) &&
+      ['leave_annual', 'leave_sick', 'leave_other', 'ot', 'trip'].includes(
+        current.approval_route_key ?? '',
+      );
     const workflowState =
-      input.action === 'approve' ? 'approved' : input.action === 'return' ? 'returned' : 'rejected';
+      input.action === 'approve'
+        ? finalAfterHead
+          ? 'pending_final'
+          : 'approved'
+        : input.action === 'return'
+          ? 'returned'
+          : 'rejected';
+    const finalApprovalState =
+      input.action === 'approve' && finalAfterHead ? 'pending' : 'not_required';
     const financeState =
       workflowState === 'approved'
         ? financeAfterManager(current.kind, workflowState)
@@ -89,6 +104,7 @@ export async function headDecision(
           revision = ${nextRevision},
           workflow_state = ${workflowState},
           finance_state = ${financeState},
+          final_approval_state = ${finalApprovalState},
           payment_state = 'not_applicable',
           updated_at = ${now}
         where id = ${id}
@@ -109,6 +125,7 @@ export async function headDecision(
       revision: nextRevision,
       workflow_state: workflowState,
       finance_state: financeState,
+      final_approval_state: finalApprovalState,
       payment_state: 'not_applicable',
       updated_at: now,
     };
@@ -134,11 +151,19 @@ export async function headDecision(
             : 'คำขอได้รับอนุมัติแล้ว',
         detail:
           financeState === 'pending'
-            ? `${current.reference} ผ่าน Manager approval แล้ว และถูกส่งต่อให้ Finance Verify`
+            ? `${current.reference} ผ่าน Reporting Line แล้ว และถูกส่งต่อให้ Finance Verify`
             : `${current.reference} ได้รับอนุมัติเรียบร้อยแล้ว`,
         href: `/requests/${id}`,
       });
       await notifyFinancePending(tx, updated);
+    } else if (workflowState === 'pending_final') {
+      await enqueueEmployeeNotice(tx, `${id}:${current.submission_round}:head_approved`, {
+        employeeId: current.employee_id,
+        title: 'หัวหน้าอนุมัติแล้ว · รอ Final Approval',
+        detail: `${current.reference} ผ่าน Reporting Line แล้ว และรอผู้อนุมัติขั้นสุดท้าย`,
+        href: `/requests/${id}`,
+      });
+      await notifyFinalApprover(tx, updated);
     } else {
       await enqueueEmployeeNotice(tx, `${id}:${current.submission_round}:head_${input.action}`, {
         employeeId: current.employee_id,
@@ -175,6 +200,12 @@ export async function financeDecision(
     requireRevision(current.revision, input.expectedRevision);
     requireIndependentFinance(actor, current.employee_id);
     invariant(
+      !current.assigned_final_approver_id || current.assigned_final_approver_id !== actor.id,
+      'FINANCE_FINAL_PAYER_CONFLICT',
+      'Finance Verifier ต้องเป็นคนละคนกับ Finance Payer ที่ถูกกำหนดเป็น Final Approver',
+      403,
+    );
+    invariant(
       financialKind(current.kind),
       'FINANCE_NOT_REQUIRED',
       'รายการประเภทนี้ไม่ใช้ขั้นตรวจสอบการเงิน',
@@ -193,9 +224,20 @@ export async function financeDecision(
     const financeState = returning ? 'returned' : 'verified';
     const routedToTripSettlement =
       !returning && current.kind === 'expense' && current.parent_trip_id !== null;
+    const finalAfterFinance =
+      !returning &&
+      Boolean(current.assigned_final_approver_id) &&
+      ['expense_travel', 'expense_other', 'expense_mixed', 'advance'].includes(
+        current.approval_route_key ?? '',
+      );
+    const finalApprovalState = returning
+      ? 'not_required'
+      : finalAfterFinance
+        ? 'pending'
+        : current.final_approval_state;
     const paymentState = returning
       ? 'not_applicable'
-      : routedToTripSettlement
+      : routedToTripSettlement || finalAfterFinance
         ? 'not_applicable'
         : 'unpaid';
 
@@ -205,6 +247,7 @@ export async function financeDecision(
           revision = ${nextRevision},
           workflow_state = ${workflowState},
           finance_state = ${financeState},
+          final_approval_state = ${finalApprovalState},
           payment_state = ${paymentState},
           updated_at = ${now}
         where id = ${id}
@@ -220,7 +263,7 @@ export async function financeDecision(
         )
       `;
 
-    if (!returning && !routedToTripSettlement) {
+    if (!returning && !routedToTripSettlement && !finalAfterFinance) {
       await tx`
           insert into payable_obligations(
             owner_id,
@@ -262,6 +305,7 @@ export async function financeDecision(
       revision: nextRevision,
       workflow_state: workflowState,
       finance_state: financeState,
+      final_approval_state: finalApprovalState,
       payment_state: paymentState,
       updated_at: now,
     };
@@ -283,12 +327,248 @@ export async function financeDecision(
         ? input.reason?.trim() || `${current.reference} ถูกส่งกลับจาก Finance`
         : routedToTripSettlement
           ? `${current.reference} ผ่าน Finance Verify แล้ว และจะไปรวมใน Trip Settlement`
-          : `${current.reference} ผ่าน Finance Verify แล้ว และพร้อมเข้าสู่ขั้นจ่ายเงิน`,
+          : finalAfterFinance
+            ? `${current.reference} ผ่าน Finance Verify แล้ว และรอ Final Approver ที่กำหนดไว้`
+            : `${current.reference} ผ่าน Finance Verify แล้ว และพร้อมเข้าสู่ขั้นจ่ายเงิน`,
       href: `/requests/${id}`,
     });
     if (!returning) {
-      await notifyFinancePayers(tx, updated, [actor.id]);
+      if (finalAfterFinance) await notifyFinalApprover(tx, updated);
+      else await notifyFinancePayers(tx, updated, [actor.id]);
     }
+    return resultOf(updated) as unknown as Json;
+  }) as Promise<CommandResult>;
+}
+
+export async function finalApprovalDecision(
+  actor: Actor,
+  id: string,
+  rawCommand: unknown,
+  idempotencyKey: string,
+  now = new Date(),
+  correlationId: string = randomUUID(),
+): Promise<CommandResult> {
+  const input = commandSchema.parse(rawCommand);
+  invariant(
+    input.action === 'final_approve' ||
+      input.action === 'final_return' ||
+      input.action === 'final_reject',
+    'INVALID_FINAL_ACTION',
+    'คำสั่งนี้ไม่ใช่ Final Approval',
+    400,
+  );
+  if (input.action !== 'final_approve') {
+    invariant(input.reason?.trim(), 'REASON_REQUIRED', 'ระบุเหตุผลก่อนส่งกลับหรือไม่อนุมัติ');
+  }
+
+  return command(actor, `request.final:${id}`, idempotencyKey, { id, ...input }, async (tx) => {
+    const current = await requestForUpdate(tx, id);
+    requireRevision(current.revision, input.expectedRevision);
+    invariant(
+      actor.active &&
+        current.assigned_final_approver_id === actor.id &&
+        current.employee_id !== actor.id &&
+        current.final_approval_state === 'pending',
+      'FORBIDDEN',
+      'คุณไม่ใช่ Final Approver ที่ได้รับมอบหมายสำหรับรายการนี้',
+      403,
+    );
+
+    const [route] = current.approval_route_version_id
+      ? await tx`
+          select mode
+          from approval_route_versions
+          where id=${current.approval_route_version_id}
+          limit 1
+        `
+      : [];
+    invariant(route, 'APPROVAL_ROUTE_NOT_CONFIGURED', 'ไม่พบ Approval Route ของคำขอนี้', 409);
+    const financePayerFinal = route.mode === 'finance_payer';
+    if (financePayerFinal) {
+      invariant(
+        actor.roles.includes('finance_payer'),
+        'FORBIDDEN',
+        'Final Approver ของรายการจ่ายเงินต้องมีสิทธิ์ Finance Payer',
+        403,
+      );
+    }
+
+    const afterFinance =
+      current.workflow_state === 'approved' &&
+      current.finance_state === 'verified' &&
+      ['expense_travel', 'expense_other', 'expense_mixed', 'advance'].includes(
+        current.approval_route_key ?? '',
+      );
+    const afterHead =
+      current.workflow_state === 'pending_final' &&
+      ['leave_annual', 'leave_sick', 'leave_other', 'ot', 'trip'].includes(
+        current.approval_route_key ?? '',
+      );
+    invariant(
+      afterFinance || afterHead,
+      'FINAL_APPROVAL_NOT_PENDING',
+      'รายการนี้ไม่ได้อยู่ในขั้น Final Approval',
+      409,
+    );
+
+    let financeVerifierId: string | null = null;
+    if (afterFinance) {
+      const [verification] = await tx`
+        select actor_id
+        from approval_actions
+        where request_id=${current.id}
+          and round=${current.submission_round}
+          and action='finance_verified'
+          and actor_id is not null
+        order by created_at desc,id desc
+        limit 1
+      `;
+      financeVerifierId = verification?.actor_id ? String(verification.actor_id) : null;
+      invariant(
+        financeVerifierId,
+        'FINANCE_VERIFIER_MISSING',
+        'ไม่พบผู้ตรวจสอบ Finance ของรายการนี้',
+        409,
+      );
+      if (financePayerFinal) {
+        requireIndependentPayer(actor, current.employee_id, financeVerifierId);
+      }
+    }
+
+    const approved = input.action === 'final_approve';
+    const returned = input.action === 'final_return';
+    const nextRevision = current.revision + 1;
+    const workflowState = approved ? 'approved' : returned ? 'returned' : 'rejected';
+    const financeState = afterFinance
+      ? approved
+        ? 'verified'
+        : returned
+          ? 'returned'
+          : current.finance_state
+      : current.finance_state;
+    const finalApprovalState = approved ? 'approved' : returned ? 'returned' : 'rejected';
+    const routedToTripSettlement =
+      approved && afterFinance && current.kind === 'expense' && current.parent_trip_id !== null;
+    const paymentState =
+      approved && afterFinance && !routedToTripSettlement ? 'unpaid' : 'not_applicable';
+
+    if (!approved) {
+      await releaseLeave(tx, current, input.reason ?? input.action);
+    }
+
+    if (approved && afterFinance && !routedToTripSettlement) {
+      invariant(financeVerifierId, 'FINANCE_VERIFIER_MISSING', 'ไม่พบผู้ตรวจสอบ Finance', 409);
+      await tx`
+        insert into payable_obligations(
+          owner_id,
+          source_kind,
+          source_id,
+          source_round,
+          request_id,
+          amount_satang,
+          currency,
+          verified_by,
+          state,
+          snapshot
+        )
+        values(
+          ${current.employee_id},
+          ${current.kind},
+          ${current.id},
+          ${current.submission_round},
+          ${current.id},
+          ${current.total_satang},
+          'THB',
+          ${financeVerifierId},
+          'unpaid',
+          ${tx.json(
+            safeJson({
+              requestId: current.id,
+              reference: current.reference,
+              round: current.submission_round,
+              totalSatang: current.total_satang,
+              financeVerifiedBy: financeVerifierId,
+              finalApprovedBy: actor.id,
+              finalApprovedAt: now.toISOString(),
+            }),
+          )}
+        )
+      `;
+    }
+
+    await tx`
+      update requests
+      set
+        revision=${nextRevision},
+        workflow_state=${workflowState},
+        finance_state=${financeState},
+        final_approval_state=${finalApprovalState},
+        payment_state=${paymentState},
+        updated_at=${now}
+      where id=${id}
+    `;
+    await tx`
+      insert into approval_actions(request_id,round,actor_id,action,reason)
+      values(
+        ${id},
+        ${current.submission_round},
+        ${actor.id},
+        ${historyAction(input.action)},
+        ${input.reason ?? null}
+      )
+    `;
+
+    const updated: RequestRecord = {
+      ...current,
+      revision: nextRevision,
+      workflow_state: workflowState,
+      finance_state: financeState,
+      final_approval_state: finalApprovalState,
+      payment_state: paymentState,
+      updated_at: now,
+    };
+
+    await audit(
+      tx,
+      actor,
+      `request.${input.action}`,
+      'request',
+      id,
+      nextRevision,
+      {
+        round: current.submission_round,
+        routeKey: current.approval_route_key,
+        reason: input.reason ?? null,
+      },
+      correlationId,
+    );
+
+    if (approved) {
+      if (afterHead) {
+        await approvedEffects(tx, updated, actor, now, correlationId);
+      }
+      await enqueueEmployeeNotice(tx, `${id}:${current.submission_round}:final_approved`, {
+        employeeId: current.employee_id,
+        title: 'Final Approver อนุมัติแล้ว',
+        detail: afterFinance
+          ? routedToTripSettlement
+            ? `${current.reference} ผ่าน Final Approval แล้ว และจะไปรวมใน Trip Settlement`
+            : `${current.reference} ผ่าน Final Approval แล้ว และพร้อมเข้าสู่ขั้นจ่ายเงิน`
+          : `${current.reference} ได้รับอนุมัติครบทุกขั้นแล้ว`,
+        href: `/requests/${id}`,
+      });
+      if (afterFinance && !routedToTripSettlement) {
+        await notifyFinancePayers(tx, updated);
+      }
+    } else {
+      await enqueueEmployeeNotice(tx, `${id}:${current.submission_round}:${input.action}`, {
+        employeeId: current.employee_id,
+        title: returned ? 'Final Approver ส่งคำขอกลับ' : 'Final Approver ไม่อนุมัติ',
+        detail: input.reason?.trim() || `${current.reference} เปลี่ยนสถานะแล้ว`,
+        href: `/requests/${id}`,
+      });
+    }
+
     return resultOf(updated) as unknown as Json;
   }) as Promise<CommandResult>;
 }
@@ -316,7 +596,7 @@ export async function cancelRequest(
     requireRevision(current.revision, input.expectedRevision);
     invariant(current.employee_id === actor.id && actor.active, 'NOT_FOUND', 'ไม่พบรายการ', 404);
     invariant(
-      ['pending_head', 'approved', 'returned'].includes(current.workflow_state),
+      ['pending_head', 'pending_final', 'approved', 'returned'].includes(current.workflow_state),
       'REQUEST_NOT_CANCELLABLE',
       'สถานะปัจจุบันไม่สามารถยกเลิกได้',
       409,
@@ -357,8 +637,10 @@ export async function cancelRequest(
       set revision=${revision},
           workflow_state='cancelled',
           finance_state='not_required',
+          final_approval_state='not_required',
           payment_state='not_applicable',
           assigned_head_id=null,
+          assigned_final_approver_id=null,
           updated_at=${now}
       where id=${id}
     `;
@@ -381,8 +663,10 @@ export async function cancelRequest(
       revision,
       workflow_state: 'cancelled',
       finance_state: 'not_required',
+      final_approval_state: 'not_required',
       payment_state: 'not_applicable',
       assigned_head_id: null,
+      assigned_final_approver_id: null,
       updated_at: now,
     }) as unknown as Json;
   }) as Promise<CommandResult>;

@@ -4,7 +4,9 @@ import type { RequestInput } from '../domain/requests';
 import type { Transaction } from './db';
 
 export const approvalRouteKeys = [
-  'leave',
+  'leave_annual',
+  'leave_sick',
+  'leave_other',
   'ot',
   'expense_travel',
   'expense_other',
@@ -14,7 +16,7 @@ export const approvalRouteKeys = [
 ] as const;
 
 export type ApprovalRouteKey = (typeof approvalRouteKeys)[number];
-export type ApprovalRouteMode = 'line_head' | 'specific_employee';
+export type FinalApprovalMode = 'none' | 'specific_employee' | 'finance_payer';
 
 const travelExpenseCategories = new Set([
   'mileage',
@@ -31,13 +33,17 @@ export interface ApprovalRouteResolution {
   routeKey: ApprovalRouteKey;
   routeVersionId: string;
   routeVersion: number;
-  mode: ApprovalRouteMode;
-  configuredApproverId: string | null;
-  assignedApproverId: string | null;
-  usedLineHeadFallback: boolean;
+  mode: FinalApprovalMode;
+  headId: string | null;
+  finalApproverId: string | null;
 }
 
 export function approvalRouteKey(input: RequestInput): ApprovalRouteKey {
+  if (input.kind === 'leave') {
+    if (input.typeId === 'annual') return 'leave_annual';
+    if (input.typeId === 'sick') return 'leave_sick';
+    return 'leave_other';
+  }
   if (input.kind !== 'expense') return input.kind;
 
   const groups = new Set(
@@ -64,7 +70,7 @@ async function activeLineHead(tx: Transaction, employeeId: string, today: string
   invariant(
     heads.length === 1 && heads[0]!.head_id !== employeeId,
     'HEAD_NOT_CONFIGURED',
-    'ต้องมีหัวหน้าตามสายงานที่เปิดใช้งานเพียงหนึ่งคน',
+    'ต้องมีหัวหน้าตาม Reporting Line ที่เปิดใช้งานเพียงหนึ่งคน',
   );
   return String(heads[0]!.head_id);
 }
@@ -77,6 +83,7 @@ export async function resolveApprovalRoute(
 ): Promise<ApprovalRouteResolution> {
   const routeKey = approvalRouteKey(input);
   const today = bangkokDate(now);
+  const headId = actor.isHeadOwner ? null : await activeLineHead(tx, actor.id, today);
 
   const [route] = await tx`
     select id,route_key,version,mode,approver_employee_id
@@ -86,71 +93,69 @@ export async function resolveApprovalRoute(
     order by effective_from desc,version desc
     limit 1
   `;
-  invariant(route, 'APPROVAL_ROUTE_NOT_CONFIGURED', 'ยังไม่ได้กำหนดเส้นทางผู้อนุมัติ', 409);
+  invariant(route, 'APPROVAL_ROUTE_NOT_CONFIGURED', 'ยังไม่ได้กำหนด Final Approval Route', 409);
 
-  if (actor.isHeadOwner) {
-    return {
-      routeKey,
-      routeVersionId: String(route.id),
-      routeVersion: Number(route.version),
-      mode: String(route.mode) as ApprovalRouteMode,
-      configuredApproverId: route.approver_employee_id ? String(route.approver_employee_id) : null,
-      assignedApproverId: null,
-      usedLineHeadFallback: false,
-    };
+  const rawMode = String(route.mode);
+  const leaveRoute = routeKey.startsWith('leave_');
+  const mode: FinalApprovalMode = leaveRoute
+    ? rawMode === 'specific_employee'
+      ? 'specific_employee'
+      : 'none'
+    : rawMode === 'finance_payer'
+      ? 'finance_payer'
+      : 'none';
+
+  let finalApproverId: string | null = null;
+  if (mode !== 'none') {
+    finalApproverId = String(route.approver_employee_id ?? '');
+    invariant(
+      finalApproverId,
+      'FINAL_APPROVER_NOT_CONFIGURED',
+      'ยังไม่ได้กำหนด Final Approver',
+      409,
+    );
+    invariant(
+      finalApproverId !== actor.id,
+      'FINAL_APPROVER_SELF_CONFLICT',
+      'Final Approver ตรงกับผู้ยื่นคำขอ กรุณากำหนดผู้อนุมัติคนอื่น',
+      409,
+    );
+
+    const [approver] =
+      mode === 'finance_payer'
+        ? await tx`
+            select e.id
+            from employees e
+            where e.id=${finalApproverId}
+              and e.active
+              and exists(
+                select 1 from employee_roles er
+                where er.employee_id=e.id and er.role='finance_payer'
+              )
+          `
+        : await tx`
+            select e.id
+            from employees e
+            where e.id=${finalApproverId}
+              and e.active
+          `;
+    invariant(
+      approver,
+      'FINAL_APPROVER_NOT_AVAILABLE',
+      mode === 'finance_payer'
+        ? 'Final Approver ต้องเป็น Finance Payer ที่เปิดใช้งาน'
+        : 'Final Approver ที่กำหนดไว้ไม่พร้อมใช้งาน',
+      409,
+    );
   }
 
-  if (route.mode === 'specific_employee') {
-    const configuredApproverId = String(route.approver_employee_id);
-    if (configuredApproverId !== actor.id) {
-      const [approver] = await tx`
-        select e.id
-        from employees e
-        where e.id=${configuredApproverId}
-          and e.active
-          and exists(
-            select 1 from employee_roles er
-            where er.employee_id=e.id and er.role='head'
-          )
-      `;
-      invariant(
-        approver,
-        'APPROVER_NOT_AVAILABLE',
-        'ผู้อนุมัติที่กำหนดไว้ไม่พร้อมใช้งานหรือไม่มีสิทธิ์ Head',
-        409,
-      );
-      return {
-        routeKey,
-        routeVersionId: String(route.id),
-        routeVersion: Number(route.version),
-        mode: 'specific_employee',
-        configuredApproverId,
-        assignedApproverId: configuredApproverId,
-        usedLineHeadFallback: false,
-      };
-    }
-
-    const fallback = await activeLineHead(tx, actor.id, today);
-    return {
-      routeKey,
-      routeVersionId: String(route.id),
-      routeVersion: Number(route.version),
-      mode: 'specific_employee',
-      configuredApproverId,
-      assignedApproverId: fallback,
-      usedLineHeadFallback: true,
-    };
-  }
-
-  const lineHead = await activeLineHead(tx, actor.id, today);
   return {
     routeKey,
     routeVersionId: String(route.id),
     routeVersion: Number(route.version),
-    mode: 'line_head',
-    configuredApproverId: null,
-    assignedApproverId: lineHead,
-    usedLineHeadFallback: false,
+    mode,
+    headId,
+    finalApproverId,
   };
 }
 
@@ -160,8 +165,21 @@ export function approvalRouteAudit(route: ApprovalRouteResolution): Record<strin
     routeVersionId: route.routeVersionId,
     routeVersion: route.routeVersion,
     mode: route.mode,
-    configuredApproverId: route.configuredApproverId,
-    assignedApproverId: route.assignedApproverId,
-    usedLineHeadFallback: route.usedLineHeadFallback,
+    headId: route.headId,
+    finalApproverId: route.finalApproverId,
   };
+}
+
+export function finalApprovalAfterHead(route: ApprovalRouteResolution): boolean {
+  return (
+    route.finalApproverId !== null &&
+    ['leave_annual', 'leave_sick', 'leave_other', 'ot', 'trip'].includes(route.routeKey)
+  );
+}
+
+export function finalApprovalAfterFinance(route: ApprovalRouteResolution): boolean {
+  return (
+    route.finalApproverId !== null &&
+    ['expense_travel', 'expense_other', 'expense_mixed', 'advance'].includes(route.routeKey)
+  );
 }
