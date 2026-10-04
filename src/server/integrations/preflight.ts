@@ -113,7 +113,7 @@ export function productionReadiness(env: NodeJS.ProcessEnv = process.env): Readi
       ready: false,
       blocking: false,
       detail:
-        'Smartbiz direct integration remains fail-closed until Smartbiz366 Open API Developer Partner credentials/contract are available; file import and direct database writes are prohibited',
+        'Installed Smartbiz Desktop has no import menu. Integration remains fail-closed until the Admin-machine Smartbiz Desktop Bridge is mapped and live-UAT verified; file import and direct database writes are prohibited',
     },
     {
       id: 'restore_acceptance',

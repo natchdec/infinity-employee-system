@@ -182,7 +182,7 @@ export async function createAccountingExport(
       if (input.adapter === 'smartbiz') {
         const id = randomUUID();
         const reason =
-          'Smartbiz direct integration requires the sanctioned Smartbiz366 Open API Developer Partner contract and credentials. File import and direct database writes are prohibited by product decision.';
+          'Installed Smartbiz is a Windows desktop application with no import menu. Integration requires the approved local Smartbiz Desktop Bridge on the Admin machine with receipt-backed Windows UI Automation; file import and direct database writes are prohibited.';
         await tx`
         insert into export_jobs(id,actor_id,adapter,scope,input_hash,input_snapshot,state,blocked_reason)
         values(${id},${actor.id},'smartbiz',${scope},${inputHash},${tx.json(snapshot)},'blocked',${reason})

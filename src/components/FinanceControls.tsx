@@ -421,7 +421,7 @@ export function AccountingExportControls({ csrf }: { csrf: string }) {
         disabled={busy}
         onClick={() => void create('smartbiz')}
       >
-        สถานะ Smartbiz API Integration
+        สถานะ Smartbiz Desktop Bridge
       </button>
       {message ? <p className="field-note">{message}</p> : null}
     </form>

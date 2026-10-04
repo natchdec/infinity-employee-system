@@ -14,6 +14,16 @@ test('EASY-ACC direct integration forbids file import and direct database writes
   assert.equal(EASY_ACC_INTEGRATION_POLICY.directDatabaseWriteAllowed, false);
 });
 
+test('Smartbiz integration targets the installed Admin desktop bridge without import or direct DB writes', () => {
+  const gate = productionReadiness({ NODE_ENV: 'test' }).find((item) => item.id === 'smartbiz');
+  assert.equal(gate?.blocking, false);
+  assert.match(gate?.detail ?? '', /Smartbiz Desktop/);
+  assert.match(gate?.detail ?? '', /Desktop Bridge/);
+  assert.match(gate?.detail ?? '', /file import/i);
+  assert.match(gate?.detail ?? '', /direct database writes/i);
+  assert.doesNotMatch(gate?.detail ?? '', /Smartbiz366 Open API/);
+});
+
 test('Project financial reporting enforces Finance/Admin at the server query boundary', () => {
   const projectReporting = readFileSync(
     new URL('../src/server/project-reporting.ts', import.meta.url),
