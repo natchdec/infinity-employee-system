@@ -96,22 +96,30 @@ export async function prepareExpense(
       );
       const rate = await policyFor<MileagePolicy>(tx, 'mileage', line.date);
       if (!snapshots.some((item) => item.id === rate.id)) snapshots.push(rate);
-      const [commute] = await tx`
-        select id,distance_metres,effective_from::text
-        from commute_versions
-        where employee_id=${actor.id}
-        order by
-          case when effective_from<=${line.date}::date then 0 else 1 end,
-          case when effective_from<=${line.date}::date then effective_from end desc,
-          case when effective_from>${line.date}::date then effective_from end asc
-        limit 1
-      `;
-      invariant(
-        commute,
-        'COMMUTE_NOT_CONFIGURED',
-        'ต้องยืนยันระยะทางบ้านถึงสำนักงานก่อนเบิกค่าเดินทาง',
+      const needsCommute = line.mileage.some(
+        (leg) => leg.origin === 'home' || leg.destination === 'home',
       );
-      const commuteAppliedRetroactively = String(commute.effective_from) > line.date;
+      const [commute] = needsCommute
+        ? await tx`
+            select id,distance_metres,effective_from::text
+            from commute_versions
+            where employee_id=${actor.id}
+            order by
+              case when effective_from<=${line.date}::date then 0 else 1 end,
+              case when effective_from<=${line.date}::date then effective_from end desc,
+              case when effective_from>${line.date}::date then effective_from end asc
+            limit 1
+          `
+        : [null];
+      invariant(
+        !needsCommute || commute,
+        'COMMUTE_NOT_CONFIGURED',
+        'ต้องยืนยันระยะทางบ้านถึงสำนักงานก่อนเบิกเที่ยวที่เกี่ยวข้องกับบ้าน',
+      );
+      const commuteMetres = commute ? Number(commute.distance_metres) : 0;
+      const commuteAppliedRetroactively = commute
+        ? String(commute.effective_from) > line.date
+        : false;
       const verifiedLegs = [];
       for (const leg of line.mileage) {
         if (leg.source === 'manual_attested') {
@@ -156,12 +164,12 @@ export async function prepareExpense(
           providerReference: quote.id,
         });
       }
-      const result = calculateMileage(verifiedLegs, commute.distance_metres, rate.body);
+      const result = calculateMileage(verifiedLegs, commuteMetres, rate.body);
       amount = BigInt(result.totalSatang);
       const providerVerified = verifiedLegs.some((leg) => leg.source === 'google_routes');
       detail = safeJson({
         ...result,
-        commuteVersionId: commute.id,
+        commuteVersionId: commute?.id ?? null,
         commuteAppliedRetroactively,
         recordedAt: now.toISOString(),
         attestation: providerVerified ? 'server_verified_route' : 'employee_manual',
