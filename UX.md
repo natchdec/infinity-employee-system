@@ -163,3 +163,14 @@ Before implementation:
 - Financial confidentiality is explicit: Employee/Head project screens show operational Project Master metadata only. Revenue, Cost Center, planned costs, actual costs, margin and P&L are Finance/Admin-only and are not fetched by ordinary-user project queries.
 - Mileage origin/destination fields provide Google Maps-style type-ahead suggestions through Google Places. Selecting a suggestion retains its Place ID for route preview; free-text remains available as fallback, and the suggestion surface includes Google Maps attribution.
 <!-- agent-gateway:managed:end:project-master-accepted-ux-20260930 -->
+
+
+## Infinity Corporate Workbench — 2026-10-04
+Accepted visual refresh based on the approved Infinity approval-mail direction:
+- Corporate white/soft-blue visual language with Infinity blue as the primary accent.
+- Shared app shell: branded navigation rail, clear role context, account identity and a soft-blue page hero on every authenticated screen.
+- Shared surfaces: 14–18px card radii, restrained elevation, compact semantic status chips, blue-tinted table headers, calmer form fields and clearer sticky actions.
+- Employee Home uses icon-led request cards rather than numbered generic tiles.
+- Head, Finance and Admin retain their existing workflows and density, but inherit the same shell, cards, forms, tables and status language.
+- Mobile keeps the bottom navigation and safe-area behavior; desktop keeps a scrollable role-aware sidebar.
+- No business rules, role gates or financial confidentiality rules may be weakened by visual redesign.

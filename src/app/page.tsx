@@ -1,3 +1,9 @@
+import {
+  AirplaneTilt,
+  CalendarCheck,
+  ClockCountdown,
+  Receipt,
+} from '@phosphor-icons/react/dist/ssr';
 import Link from 'next/link';
 import { AppShell, Money, StateLabel } from '@/components/AppShell';
 import { requireActor } from '@/server/auth-context';
@@ -69,18 +75,30 @@ export default async function HomePage() {
         </div>
         <div className="quick-list">
           <Link className="quick-link" href="/requests/new?kind=leave">
+            <span className="quick-link-icon" aria-hidden="true">
+              <CalendarCheck size={22} weight="duotone" />
+            </span>
             <strong>ลา</strong>
             <span>ลางานแบบเต็มวันและดูสิทธิคงเหลือ</span>
           </Link>
           <Link className="quick-link" href="/requests/new?kind=ot">
+            <span className="quick-link-icon" aria-hidden="true">
+              <ClockCountdown size={22} weight="duotone" />
+            </span>
             <strong>OT</strong>
             <span>บันทึกชั่วโมงตามหมวดที่นโยบายกำหนด</span>
           </Link>
           <Link className="quick-link" href="/requests/new?kind=expense">
+            <span className="quick-link-icon" aria-hidden="true">
+              <Receipt size={22} weight="duotone" />
+            </span>
             <strong>ค่าใช้จ่าย</strong>
             <span>แนบหลักฐาน ค่าเดินทาง และ Entertainment</span>
           </Link>
           <Link className="quick-link" href="/requests/new?kind=trip">
+            <span className="quick-link-icon" aria-hidden="true">
+              <AirplaneTilt size={22} weight="duotone" />
+            </span>
             <strong>เดินทาง</strong>
             <span>ทริป เบี้ยเลี้ยง เงินทดรอง และการเคลียร์</span>
           </Link>

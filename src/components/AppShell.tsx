@@ -43,10 +43,12 @@ export function AppShell({ actor, title, description, children }: Props) {
 
       <aside className="sidebar" aria-label="เมนูหลัก">
         <Link className="brand" href="/">
-          <span className="brand-rail" aria-hidden="true" />
+          <span className="brand-emblem" aria-hidden="true">
+            ∞
+          </span>
           <span className="brand-copy">
             <span className="brand-mark">INFINITY</span>
-            <span className="brand-product">People Operations</span>
+            <span className="brand-product">Employee System</span>
           </span>
         </Link>
 
@@ -83,11 +85,18 @@ export function AppShell({ actor, title, description, children }: Props) {
         </header>
 
         <main id="main-content" className="page">
-          <header className="page-header">
+          <header className="page-header page-hero">
+            <span className="page-hero-mark" aria-hidden="true">
+              ∞
+            </span>
             <div className="page-header-copy">
-              <span className="page-kicker">EMPLOYEE WORKSPACE</span>
+              <span className="page-kicker">INFINITY EMPLOYEE SYSTEM</span>
               <h1>{title}</h1>
               {description ? <p>{description}</p> : null}
+              <div className="page-hero-meta" aria-label="บริบทหน้าปัจจุบัน">
+                <span className="page-role-chip">{roleLabel}</span>
+                <span>People · Work · Expense · Travel</span>
+              </div>
             </div>
           </header>
           {children}
