@@ -96,13 +96,22 @@ export async function prepareExpense(
       );
       const rate = await policyFor<MileagePolicy>(tx, 'mileage', line.date);
       if (!snapshots.some((item) => item.id === rate.id)) snapshots.push(rate);
-      const [commute] =
-        await tx`select id,distance_metres,effective_from::text from commute_versions where employee_id=${actor.id} and effective_from<=${line.date}::date order by effective_from desc limit 1`;
+      const [commute] = await tx`
+        select id,distance_metres,effective_from::text
+        from commute_versions
+        where employee_id=${actor.id}
+        order by
+          case when effective_from<=${line.date}::date then 0 else 1 end,
+          case when effective_from<=${line.date}::date then effective_from end desc,
+          case when effective_from>${line.date}::date then effective_from end asc
+        limit 1
+      `;
       invariant(
         commute,
         'COMMUTE_NOT_CONFIGURED',
         'ต้องยืนยันระยะทางบ้านถึงสำนักงานก่อนเบิกค่าเดินทาง',
       );
+      const commuteAppliedRetroactively = String(commute.effective_from) > line.date;
       const verifiedLegs = [];
       for (const leg of line.mileage) {
         if (leg.source === 'manual_attested') {
@@ -153,6 +162,7 @@ export async function prepareExpense(
       detail = safeJson({
         ...result,
         commuteVersionId: commute.id,
+        commuteAppliedRetroactively,
         recordedAt: now.toISOString(),
         attestation: providerVerified ? 'server_verified_route' : 'employee_manual',
         providerVerified,

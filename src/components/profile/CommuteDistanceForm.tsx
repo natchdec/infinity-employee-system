@@ -82,7 +82,8 @@ export function CommuteDistanceForm({
       </label>
       <p className="field-note">
         หน่วยกิโลเมตร · พนักงานตรวจสอบและรับรองระยะทางเอง ระบบใช้ค่านี้หัก Commute
-        เฉพาะเที่ยวที่เกี่ยวข้องกับ “บ้าน” และเก็บเป็น version เพื่อ Audit
+        เฉพาะเที่ยวที่เกี่ยวข้องกับ “บ้าน” และเก็บเป็น version เพื่อ Audit · baseline
+        แรกจะใช้กับรายการย้อนหลังที่ยังไม่เคยส่งคำขอด้วย
       </p>
       {!homeAddressConfigured ? (
         <p className="field-note">บันทึก Home Address ด้านบนก่อน แล้วจึงกำหนดระยะทางมาตรฐาน</p>

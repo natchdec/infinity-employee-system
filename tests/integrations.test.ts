@@ -109,6 +109,15 @@ test('mileage address fields use Google autocomplete and selected place IDs for 
   assert.ok(autocomplete.includes('setSelectedPlaceId(item.placeId)'));
 });
 
+test('first commute baseline can cover older unsubmitted mileage while later versions stay date-aware', () => {
+  const source = readFileSync(new URL('../src/server/prepare-expense.ts', import.meta.url), 'utf8');
+  assert.ok(source.includes('case when effective_from<=${line.date}::date then 0 else 1 end'));
+  assert.ok(
+    source.includes('case when effective_from>${line.date}::date then effective_from end asc'),
+  );
+  assert.ok(source.includes('commuteAppliedRetroactively'));
+});
+
 test('Google mileage input requires a server-issued quote reference', () => {
   const base = {
     title: 'Mileage',
