@@ -45,7 +45,7 @@ export default async function ProjectCostsPage() {
             <strong>
               <Money satang={report.totalMarginSatang} />
             </strong>
-            <span>Actual Margin</span>
+            <span>Current Margin</span>
           </div>
         </div>
       </section>
@@ -140,8 +140,7 @@ export default async function ProjectCostsPage() {
           <strong>หลักการคำนวณ</strong>
           <p>
             Planned Cost = Sale Cost + Engineer Cost + Entertain Cost + Hidden Cost + Sale
-            Commission. Actual Margin = Revenue − Actual Employee Cost. ค่า planned และ actual
-            ถูกแสดงแยกกันเพื่อไม่ให้ double count
+            Commission. Current Margin = Revenue − Planned Cost − Actual Employee Cost.
           </p>
         </div>
       </section>

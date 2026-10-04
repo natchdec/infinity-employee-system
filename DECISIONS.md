@@ -85,3 +85,7 @@ Manager approval routing is effective-dated and configurable by request class: L
 
 ## D-027 Travel Route Choice and Toll Add-on
 Google Routes alternatives are transient UI assistance. The application may request alternative routes and encoded geometry, render a temporary route diagram, and let the employee choose which distance to attest; geometry is not stored as durable financial evidence unless the separate retention gate is explicitly enabled. Mileage, Taxi and Grab may carry Toll as a same-screen add-on. Toll evidence is mapped separately and the server expands the add-on into a distinct Toll calculation line for Finance/reporting/accounting classification.
+
+## D-028 Project Margin Formula
+Project Current Margin is defined as Revenue minus Planned Cost minus Actual Employee Cost. Planned Cost is the sum of Sale Cost, Engineer Cost, Entertain Cost, Hidden Cost and Sale Commission from Project Master; Actual Employee Cost is the Employee System total for OT, Expense/Mileage and Travel. Margin % is Current Margin divided by Revenue. Planned Cost and Actual Employee Cost are therefore both deducted and must not be presented as mutually exclusive alternatives.
+

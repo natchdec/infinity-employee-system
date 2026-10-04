@@ -25,6 +25,15 @@ test('Smartbiz integration targets the installed Admin desktop bridge without im
   assert.doesNotMatch(gate?.detail ?? '', /Smartbiz366 Open API/);
 });
 
+test('Project margin subtracts both planned and actual employee cost from revenue', () => {
+  const source = readFileSync(
+    new URL('../src/server/project-profit-reporting.ts', import.meta.url),
+    'utf8',
+  );
+  assert.ok(source.includes('const totalCost = planned + actualTotal;'));
+  assert.ok(source.includes('const margin = revenue - totalCost;'));
+});
+
 test('Project financial reporting enforces Finance/Admin at the server query boundary', () => {
   const projectReporting = readFileSync(
     new URL('../src/server/project-reporting.ts', import.meta.url),

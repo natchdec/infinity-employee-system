@@ -96,11 +96,11 @@ export default async function FinanceProjectDetailPage({
             <strong>
               <Money satang={cost.marginSatang} />
             </strong>
-            <span>Actual Margin · {percentLabel(cost.marginBasisPoints)}</span>
+            <span>Current Margin · {percentLabel(cost.marginBasisPoints)}</span>
           </div>
         </div>
         <p className="field-note">
-          Planned remaining <Money satang={cost.plannedRemainingSatang} /> · รอ Head{' '}
+          Current Margin = Revenue − Planned Cost − Actual Employee Cost · รอ Head{' '}
           {cost.pendingHead} · รอ Finance {cost.pendingFinance}
         </p>
       </section>
@@ -109,7 +109,7 @@ export default async function FinanceProjectDetailPage({
         <div className="section-header">
           <div>
             <h2>Planned Cost จาก Project Master</h2>
-            <p>แยกจาก Actual Cost เพื่อป้องกันการ double count</p>
+            <p>Planned Cost และ Actual Employee Cost เป็นคนละก้อนและถูกหักจาก Revenue ทั้งคู่</p>
           </div>
         </div>
         <div className="data-table-wrap" tabIndex={0}>

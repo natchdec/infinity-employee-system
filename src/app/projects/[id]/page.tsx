@@ -128,10 +128,15 @@ export default async function ProjectDetailPage({ params }: Props) {
             </div>
             <div className="metric">
               <strong>
-                <Money satang={profit?.cost.marginSatang ?? project.revenueSatang} />
+                <Money
+                  satang={
+                    profit?.cost.marginSatang ??
+                    (BigInt(project.revenueSatang) - BigInt(project.plannedCostSatang)).toString()
+                  }
+                />
               </strong>
               <span>
-                Actual Margin
+                Current Margin
                 {profit ? ` · ${percentLabel(profit.cost.marginBasisPoints)}` : ''}
               </span>
             </div>

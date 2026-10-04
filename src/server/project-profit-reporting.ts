@@ -17,7 +17,6 @@ export interface ProjectProfitRow extends ProjectCostRow {
   plannedCostSatang: string;
   marginSatang: string;
   marginBasisPoints: number | null;
-  plannedRemainingSatang: string;
 }
 
 export interface ProjectProfitSummary {
@@ -86,7 +85,8 @@ function mergeProfit(financial: FinancialGroup, actual?: ProjectCostRow): Projec
   const actualTotal = BigInt(actual?.totalSatang ?? '0');
   const revenue = BigInt(financial.revenueSatang);
   const planned = plannedCost(financial);
-  const margin = revenue - actualTotal;
+  const totalCost = planned + actualTotal;
+  const margin = revenue - totalCost;
   return {
     projectId: financial.id,
     code: financial.code,
@@ -109,7 +109,6 @@ function mergeProfit(financial: FinancialGroup, actual?: ProjectCostRow): Projec
     totalSatang: actualTotal.toString(),
     marginSatang: margin.toString(),
     marginBasisPoints: revenue > 0n ? Number((margin * 10_000n) / revenue) : null,
-    plannedRemainingSatang: (planned - actualTotal).toString(),
     pendingHead: actual?.pendingHead ?? 0,
     pendingFinance: actual?.pendingFinance ?? 0,
     latestActivityAt: actual?.latestActivityAt ?? null,
