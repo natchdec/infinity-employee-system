@@ -248,3 +248,15 @@ Provider verification 2026-09-26:
 - Production readiness now contains a blocking `google_places_autocomplete` gate requiring both a configured key and `GOOGLE_PLACES_ENABLED_CONFIRMED=true`; the flag must only be set after a successful live probe.
 - `PRODUCTION_CUTOVER_APPROVED` is an explicit business/operations sign-off assertion consumed by production preflight. It is not a deployment, DNS, tunnel, or Cloudflare bypass switch and must not be set without explicit cutover approval.
 <!-- agent-gateway:managed:end:financial-privacy-places-direct-integrations-20261004 -->
+
+<!-- agent-gateway:managed:start:ux-v5-production-deploy-20261004 -->
+## UX/UI V5 production deployment — 2026-10-04
+- Active AGW OCI project workspace is Natchanon (`e1dd59e3-bce9-489d-be6c-c965e62daf2c`). The shared Infinity VPN execution plane remains `customer-infinity-solutions` / worker `vpn-infinity-solutions`; it is used only as the routed execution path to the ESXi VM and does not replace the active project workspace.
+- Exact deployed source is `036213896c9f27d7810c38912a84070b6ef74322` on `feat/v1-implementation`; source/origin were synchronized before deployment.
+- Source verification before deployment passed Prettier, ESLint zero warnings, TypeScript, 101/101 tests and Next.js production build.
+- Production VM `infinity-employee-prod01` now runs App and Worker from `/home/ubuntu/infinity-employee-0362138`. Deployment used a detached bounded remote script after the first long shell call crossed the 60-second AGW operation deadline; durable inspection proved the first attempt had not switched runtime before the detached retry.
+- Post-deploy local health PASS: `/api/health` -> ok=true; `/api/ready` -> database=true, migrations=true.
+- Installed-runtime V5 asset checks PASS: `brand-v5.css`, V5 layout import, Department row rule and Approval Rules editor rule are present in the running app container. Compiled Next CSS also contains V5 tokens/classes (`COMPILED_V5_CSS:PASS`).
+- Public ingress is live and protected by Cloudflare Access; unauthenticated HTTPS probe returns the expected HTTP 302 to the Cloudflare Access login.
+- V5 locked design remains controlled by `UX_UI_V5_LOCKED.md`: white desktop sidebar, clean Infinity orange/navy logo, pale-orange active navigation, warm-neutral canvas, Save->Delete same-row desktop action order, and Effective Date->Apply same-row desktop action order.
+<!-- agent-gateway:managed:end:ux-v5-production-deploy-20261004 -->
