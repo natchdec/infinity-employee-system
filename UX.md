@@ -174,3 +174,12 @@ Accepted visual refresh based on the approved Infinity approval-mail direction:
 - Head, Finance and Admin retain their existing workflows and density, but inherit the same shell, cards, forms, tables and status language.
 - Mobile keeps the bottom navigation and safe-area behavior; desktop keeps a scrollable role-aware sidebar.
 - No business rules, role gates or financial confidentiality rules may be weakened by visual redesign.
+
+
+## UX/UI V3 design freeze — 2026-10-04
+- The previous "Infinity Corporate Workbench" visual refresh is **rejected as the target design**. It is retained only as historical context.
+- Reason: the universal hero / repeated metric-card / card-grid composition still reads as a generic AI dashboard and does not create enough role-specific hierarchy.
+- UI implementation is now frozen pending explicit review and lock of:
+  - `UX_UI_V3_FOUNDATION_PROPOSED.md`
+  - `UX_UI_V3_SCREEN_MAP_PROPOSED.md`
+- No further GUI coding or production UI mutation should begin until these documents are explicitly promoted from PROPOSED to LOCKED.
