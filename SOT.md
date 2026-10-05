@@ -261,3 +261,18 @@ Provider verification 2026-09-26:
 - Public ingress is live and protected by Cloudflare Access; unauthenticated HTTPS probe returns the expected HTTP 302 to the Cloudflare Access login.
 - V5 locked design remains controlled by `UX_UI_V5_LOCKED.md`: white desktop sidebar, clean Infinity orange/navy logo, pale-orange active navigation, warm-neutral canvas, Save->Delete same-row desktop action order, and Effective Date->Apply same-row desktop action order.
 <!-- agent-gateway:managed:end:ux-v5-production-deploy-20261004 -->
+
+<!-- agent-gateway:managed:start:cloudflare_zero_trust -->
+Verified 2026-10-05:
+- Cloudflare production account is pinned to account ID 9aaa7e2e9be7382908589bf3373eabd6; zone infinitysolutions.co.th (zone ID aa9b69434b3b552665cc4ed54d6d1f7e) is active under this account.
+- AGW OCI Cloudflare integration no longer uses the interactive mcp.cloudflare.com OAuth connector. The canonical MCP server name remains `Cloudflare`, targetId `cloudflare-prod`, and now runs local stdio wrapper `/workspace/cloudflare-rest-mcp/server.cjs` (infinity-cloudflare-rest v1.1.0) with a static account-owned Cloudflare API token.
+- Token secret value is not stored in MCP config. It is mounted inside the worker at `/workspace/.agentgw-secrets/cloudflare-api-infinity/token` from host path `/opt/agent-gateway-workspace/.agentgw-secrets/cloudflare-api-infinity/token`, mode 0600 owned by worker UID/GID 999:999.
+- Connector readiness is live-read-verified through a bounded `cf_posture_list` probe; integration.read_probe task 6fef3425-16fa-4b90-9f03-65fdb563508a completed with ready=true.
+- WARP/Zero Trust Team remains `infinitysolutionservice` with auth domain `infinitysolutionservice.cloudflareaccess.com`.
+- Pilot Device Posture rules exist and are enabled for Windows, polling every 5 minutes, but are NOT enforced by Gateway/Access policy yet:
+  - Windows Firewall Enabled: bb578146-a1d6-44d9-bffb-de5a69d799c9
+  - Disk Encryption Required (requireAll=true): 2b430ae7-3b20-47dc-99ec-f8fccfd4a890
+  - Windows 11 24H2 or newer (>=10.0.26100): b133719c-a736-4d3f-879d-2e863afcb631
+- Current active private-network Gateway allow rule `Infinity Enrolled Devices - Private Networks` (fdb2473e-0475-4bd9-8513-7d191cf92a0d) still has an empty device_posture expression. Default deny remains unchanged, so adding the pilot checks did not change private-network access.
+- Do not enforce Intune compliance yet; the current pilot device previously reported noncompliant in Intune and would be at risk of lockout until that condition is remediated and verified.
+<!-- agent-gateway:managed:end:cloudflare_zero_trust -->
