@@ -1,6 +1,13 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import {
+  AirplaneTilt,
+  CalendarCheck,
+  ClockCountdown,
+  Receipt,
+  Wallet,
+} from '@phosphor-icons/react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Json } from '@/domain/core';
 import type { RequestKind } from '@/domain/requests';
@@ -30,6 +37,34 @@ interface Props {
   sourceWorklogs?: { id: string; expectedRevision: number }[];
 }
 
+const kindMeta: Record<RequestKind, { title: string; description: string; icon: ReactNode }> = {
+  leave: {
+    title: 'คำขอลา',
+    description: 'เลือกประเภทลาและวันลา ระบบตรวจนโยบายที่มีผลให้ตามข้อมูลจริง',
+    icon: <CalendarCheck size={24} weight="duotone" />,
+  },
+  ot: {
+    title: 'คำขอ OT',
+    description: 'กรอกวันที่ งาน และชั่วโมง OT ทีละ 0.5 ชั่วโมงตามหมวดที่ใช้จริง',
+    icon: <ClockCountdown size={24} weight="duotone" />,
+  },
+  expense: {
+    title: 'คำขอค่าใช้จ่าย / ค่ารถ',
+    description: 'เพิ่มค่าใช้จ่ายได้หลายรายการ เลือกใบเสร็จ และคำนวณ Mileage ผ่าน Google Maps',
+    icon: <Receipt size={24} weight="duotone" />,
+  },
+  trip: {
+    title: 'คำขอเดินทางไปปฏิบัติงาน',
+    description: 'ระบุช่วงเดินทาง ปลายทาง Project และรายการที่ต้องใช้ระหว่างทริป',
+    icon: <AirplaneTilt size={24} weight="duotone" />,
+  },
+  advance: {
+    title: 'คำขอเงินทดรอง',
+    description: 'เลือกทริปที่อนุมัติแล้วและระบุจำนวนเงินทดรองที่ต้องใช้',
+    icon: <Wallet size={24} weight="duotone" />,
+  },
+};
+
 export function RequestForm({
   kind,
   csrf,
@@ -53,6 +88,7 @@ export function RequestForm({
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const meta = kindMeta[kind];
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -131,7 +167,15 @@ export function RequestForm({
   }
 
   return (
-    <form className="request-form" onSubmit={submit}>
+    <form className="request-form" data-kind={kind} onSubmit={submit}>
+      <div className="request-form-kind-banner">
+        <span className="request-form-kind-icon">{meta.icon}</span>
+        <span>
+          <strong>{meta.title}</strong>
+          <small>{meta.description}</small>
+        </span>
+      </div>
+
       <div className="request-progress" aria-label="ขั้นตอนการส่งคำขอ">
         <span className="request-progress-step is-active">
           <b>1.</b> ข้อมูล
@@ -142,7 +186,7 @@ export function RequestForm({
         </span>
         <span className="request-progress-line" aria-hidden="true" />
         <span className="request-progress-step">
-          <b>3.</b> ยืนยัน
+          <b>3.</b> ตรวจสอบและส่ง
         </span>
       </div>
       {sourceWorklogs?.length || sourceWorklogId ? (

@@ -18,6 +18,10 @@ export interface RoutePreview {
   selectedRouteIndex: number;
 }
 
+const MAP_SCALE_MIN = 0.7;
+const MAP_SCALE_MAX = 2;
+const MAP_SCALE_STEP = 0.15;
+
 function metresToKm(value: number): string {
   return (value / 1000).toFixed(3).replace(/\.?0+$/, '');
 }
@@ -51,12 +55,13 @@ export function RouteMapPreview({
   const [mapUrl, setMapUrl] = useState('');
   const [mapError, setMapError] = useState('');
   const [mapLoading, setMapLoading] = useState(false);
+  const [mapScale, setMapScale] = useState(1);
+  const [mapExpanded, setMapExpanded] = useState(false);
 
   useEffect(() => {
     if (!selectedPolyline) return;
     const controller = new AbortController();
     let objectUrl = '';
-
     async function loadMap() {
       setMapLoading(true);
       setMapError('');
@@ -98,25 +103,77 @@ export function RouteMapPreview({
 
   if (!selected) return null;
 
+  const mapScalePercent = Math.round(mapScale * 100);
+
   return (
     <div className="route-picker">
-      <div className="route-map-frame route-map-frame-google">
-        {mapLoading ? <div className="route-map-loading">กำลังโหลด Google Map…</div> : null}
-        {mapUrl ? (
-          <Image
-            className="route-map-image"
-            src={mapUrl}
-            alt={`Google Map เส้นทางจาก ${preview.originLabel} ไป ${preview.destinationLabel}`}
-            width={1280}
-            height={640}
-            unoptimized
-          />
-        ) : null}
-        {mapError ? (
-          <div className="route-map-error" role="alert">
-            {mapError}
-          </div>
-        ) : null}
+      <div
+        className={
+          mapExpanded
+            ? 'route-map-frame route-map-frame-google is-expanded'
+            : 'route-map-frame route-map-frame-google'
+        }
+      >
+        <div className="route-map-toolbar" aria-label="เครื่องมือแผนที่">
+          <button
+            type="button"
+            aria-label="ย่อแผนที่"
+            title="ย่อแผนที่"
+            disabled={mapScale <= MAP_SCALE_MIN}
+            onClick={() =>
+              setMapScale((value) =>
+                Math.max(MAP_SCALE_MIN, Number((value - MAP_SCALE_STEP).toFixed(2))),
+              )
+            }
+          >
+            −
+          </button>
+          <span aria-live="polite">{mapScalePercent}%</span>
+          <button
+            type="button"
+            aria-label="ขยายแผนที่"
+            title="ขยายแผนที่"
+            disabled={mapScale >= MAP_SCALE_MAX}
+            onClick={() =>
+              setMapScale((value) =>
+                Math.min(MAP_SCALE_MAX, Number((value + MAP_SCALE_STEP).toFixed(2))),
+              )
+            }
+          >
+            +
+          </button>
+          <button
+            className="route-map-frame-toggle"
+            type="button"
+            onClick={() => setMapExpanded((value) => !value)}
+          >
+            {mapExpanded ? 'ย่อกรอบ' : 'ขยายกรอบ'}
+          </button>
+        </div>
+
+        <div className="route-map-canvas">
+          {mapLoading ? <div className="route-map-loading">กำลังโหลด Google Map…</div> : null}
+          {mapUrl ? (
+            <Image
+              className="route-map-image"
+              src={mapUrl}
+              alt={`Google Map เส้นทางจาก ${preview.originLabel} ไป ${preview.destinationLabel}`}
+              width={1280}
+              height={640}
+              style={{
+                width: `${mapScalePercent}%`,
+                height: 'auto',
+                maxWidth: 'none',
+              }}
+              unoptimized
+            />
+          ) : null}
+          {mapError ? (
+            <div className="route-map-error" role="alert">
+              {mapError}
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <div className="route-option-list">
@@ -153,8 +210,8 @@ export function RouteMapPreview({
         เปิดต้นทางและปลายทางใน Google Maps ↗
       </a>
       <p className="field-note">
-        แผนที่และเส้นทางโหลดแบบชั่วคราวจาก Google Maps · เปลี่ยนทางเลือกด้านบนเพื่อดูเส้นทางบนแผนที่
-        และระบบไม่เก็บภาพ/geometry นี้เป็นหลักฐานถาวร
+        แผนที่และเส้นทางโหลดแบบชั่วคราวจาก Google Maps · ใช้ − / + เพื่อย่อหรือขยายภาพ และกด
+        “ขยายกรอบ” เมื่อต้องการดูพื้นที่มากขึ้น ระบบไม่เก็บภาพ/geometry นี้เป็นหลักฐานถาวร
       </p>
     </div>
   );

@@ -230,3 +230,14 @@ Accepted visual refresh based on the approved Infinity approval-mail direction:
 - EASY-ACC and Smartbiz remain fail-closed until their approved integration contracts/bridges are ready; this UX change does not bypass readiness gates.
 - Responsive acceptance remains 390/820/1440 and uses the locked V5 white-sidebar / warm-neutral / Infinity-orange visual foundation.
 <!-- agent-gateway:managed:end:finance-command-center-v5-20261005 -->
+
+<!-- agent-gateway:managed:start:request-experience-v5-map-controls-20261005 -->
+## Request Experience V5 + Google Map controls — 2026-10-05
+- User approved applying the Request UX mockup direction to the live Employee System.
+- /requests now uses compact status-summary cards for Draft, Waiting Approval, Returned, Approved and Paid; request type is shown with semantic icon/color while the underlying request state machine remains unchanged.
+- /requests/new now uses icon-led semantic request-type cards for Leave, OT, Expense/Mileage, Business Trip and Cash Advance, plus a clear entry to Outlook Calendar worklog review.
+- Each request form shows a compact type banner with the same semantic color/icon language. Business rules, approval routing, evidence rules and security remain unchanged.
+- Mileage Google Maps preview is compact by default instead of consuming the full form width/height. The user can zoom the rendered map image from 70% to 200% with − / + controls and can expand/collapse the map frame.
+- Map zoom/frame controls are client-side presentation only and do not create additional Google Maps API calls or change the selected route/distance evidence.
+- Responsive behavior remains required at 390/820/1440 widths and stays within the locked V5 white-sidebar / warm-neutral visual system.
+<!-- agent-gateway:managed:end:request-experience-v5-map-controls-20261005 -->
